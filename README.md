@@ -14,7 +14,7 @@ Then visit `http://localhost:8000`.
 
 ## Controls
 
-- Desktop: WASD to move, mouse or arrow keys to look, click/1 for lightning, 2 for freeze, 3 for shield.
-- Touch: left joystick to move, drag the right side to look, tap the spell cards to cast.
+- Desktop: WASD to move, mouse or arrow keys to look, click/1 for lightning, 2 for freeze, 3 for shield, and M for the map.
+- Touch landscape: right joystick to move, drag the center to look, and use the three spell buttons on the left.
 
-Contain all twelve beasts to open the golden gate. Every beast grants 10 mastery; reaching 100 upgrades lightning damage and freeze duration for the final stretch.
+Complete ten distinct maze levels, starting with the realistically textured Brick Labyrinth. Contain every dragon in a level to open its golden gate. Every dragon grants 10 mastery; reaching 100 upgrades lightning damage and freeze duration. Golden magic berries restore 30 health and remain on their bushes when health is already full. The map button in the top-left—or M on a keyboard—opens a transparent live maze overlay showing dragons, berries, the gate, your facing direction, and a “You are here” marker.

@@ -21,7 +21,7 @@
         <div class="start-content">
           <p class="eyebrow"><span></span> Arcane Field Trial № 7</p>
           <h1 id="game-title">Haze<br /><em>Maze</em></h1>
-          <p class="dek">The moon garden is awake. Find every escaped beast, master your field spells, and reach the celestial gate before the mist closes in.</p>
+          <p class="dek">The moon garden is awake. Find every escaped dragon, master your field spells, and reach the celestial gate before the mist closes in.</p>
           <button id="start-button" class="primary-button" type="button">
             <span>Enter the maze</span><b aria-hidden="true">→</b>
           </button>
@@ -30,12 +30,13 @@
             <div><kbd>Drag / mouse</kbd><span>Look</span></div>
             <div><kbd>1 · 2 · 3</kbd><span>Cast</span></div>
           </div>
+          <p class="landscape-note">Rotate your phone for the best field view.</p>
         </div>
         <aside class="field-card">
           <span class="field-card__number">01</span>
           <div>
             <p>Tonight's objective</p>
-            <strong>Contain 12 beasts</strong>
+            <strong>Complete 10 levels</strong>
           </div>
           <i></i>
           <div>
@@ -47,13 +48,22 @@
 
       <section id="hud" class="hud" aria-label="Game status">
         <header class="topbar">
+          <button id="map-button" class="map-button" type="button" aria-label="Show mini maze; keyboard shortcut M" aria-expanded="false" title="Map · M">
+            <span aria-hidden="true">⌗</span><small>MAP</small>
+          </button>
           <div class="brand"><span>HM</span><strong>Haze Maze</strong></div>
           <div class="objective">
             <span id="objective-label">FIELD OBJECTIVE</span>
-            <strong id="objective-text">Contain the escaped beasts</strong>
+            <strong id="objective-text">Contain the escaped dragons</strong>
           </div>
           <button id="pause-button" class="icon-button" type="button" aria-label="Pause game">Ⅱ</button>
         </header>
+
+        <aside id="mini-map" class="mini-map" aria-label="Mini maze">
+          <div class="mini-map__header"><span id="map-level">LEVEL 01</span><small>FIELD MAP</small></div>
+          <canvas id="mini-map-canvas" width="420" height="420" aria-label="Map of the current maze and your current position"></canvas>
+          <div class="mini-map__legend"><span><i class="legend-player"></i>You</span><span><i class="legend-beast"></i>Dragon</span><span><i class="legend-berry"></i>Berry</span><span><i class="legend-gate"></i>Gate</span></div>
+        </aside>
 
         <div class="status-stack">
           <div class="health-row">
@@ -75,7 +85,9 @@
 
         <div id="crosshair" class="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
         <div id="message" class="message" role="status"></div>
+        <div id="level-banner" class="level-banner" aria-live="polite"><span>LEVEL</span><strong>01</strong><small>THE BRICK LABYRINTH</small></div>
         <div id="damage-vignette" class="damage-vignette" aria-hidden="true"></div>
+        <div id="berry-flash" class="berry-flash" aria-hidden="true"><span>✦</span><strong>+30 HEALTH</strong></div>
         <div id="bubble-overlay" class="bubble-overlay" aria-hidden="true"></div>
 
         <div id="touch-look" class="touch-look" aria-hidden="true"></div>
@@ -104,6 +116,8 @@
           <div class="staff__claw staff__claw--left"></div>
           <div class="staff__claw staff__claw--right"></div>
           <div class="staff__shaft"></div>
+          <div class="staff__grip"></div>
+          <div class="staff__rune">ᚱ</div>
         </div>
         <div id="cast-fx" class="cast-fx" aria-hidden="true"></div>
       </section>
@@ -123,10 +137,11 @@
           <div class="end-sigil">✦</div>
           <h2 id="end-title">Maze<br />mastered.</h2>
           <p id="end-copy">Every beast is safely contained. The celestial gate recognizes your mastery.</p>
-          <div class="end-stats"><div><span>Beasts</span><strong id="stat-beasts">12</strong></div><div><span>Mastery</span><strong id="stat-xp">120</strong></div></div>
+          <div class="end-stats"><div><span>Levels</span><strong id="stat-levels">10</strong></div><div><span>Beasts</span><strong id="stat-beasts">0</strong></div><div><span>Mastery</span><strong id="stat-xp">0</strong></div></div>
           <button id="play-again-button" class="primary-button" type="button"><span>Enter again</span><b>↻</b></button>
         </div>
       </section>
+      <div id="orientation-hint" class="orientation-hint" aria-hidden="true"><span>↻</span><strong>Rotate to landscape</strong><small>More room to explore and cast</small></div>
     </main>
     <script src="game.js"></script>
   </body>
