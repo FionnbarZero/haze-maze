@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#09051b" />
+    <meta name="description" content="Haze Maze — an original enchanted maze first-person spellcasting game." />
+    <title>Haze Maze — Arcane Field Trial</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Haze Maze game">
+      <canvas id="game" aria-label="First-person enchanted maze"></canvas>
+
+      <section id="start-screen" class="screen screen--active" aria-labelledby="game-title">
+        <div class="start-art" aria-hidden="true"></div>
+        <div class="start-vignette" aria-hidden="true"></div>
+        <div class="start-content">
+          <p class="eyebrow"><span></span> Arcane Field Trial № 7</p>
+          <h1 id="game-title">Haze<br /><em>Maze</em></h1>
+          <p class="dek">The moon garden is awake. Find every escaped beast, master your field spells, and reach the celestial gate before the mist closes in.</p>
+          <button id="start-button" class="primary-button" type="button">
+            <span>Enter the maze</span><b aria-hidden="true">→</b>
+          </button>
+          <div class="controls-hint">
+            <div><kbd>WASD</kbd><span>Move</span></div>
+            <div><kbd>Drag / mouse</kbd><span>Look</span></div>
+            <div><kbd>1 · 2 · 3</kbd><span>Cast</span></div>
+          </div>
+        </div>
+        <aside class="field-card">
+          <span class="field-card__number">01</span>
+          <div>
+            <p>Tonight's objective</p>
+            <strong>Contain 12 beasts</strong>
+          </div>
+          <i></i>
+          <div>
+            <p>Mastery reward</p>
+            <strong>Overcharged lightning</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section id="hud" class="hud" aria-label="Game status">
+        <header class="topbar">
+          <div class="brand"><span>HM</span><strong>Haze Maze</strong></div>
+          <div class="objective">
+            <span id="objective-label">FIELD OBJECTIVE</span>
+            <strong id="objective-text">Contain the escaped beasts</strong>
+          </div>
+          <button id="pause-button" class="icon-button" type="button" aria-label="Pause game">Ⅱ</button>
+        </header>
+
+        <div class="status-stack">
+          <div class="health-row">
+            <span class="status-icon">✦</span>
+            <div class="meter meter--health"><i id="health-fill"></i></div>
+            <strong id="health-text">100</strong>
+          </div>
+          <div class="rank-card">
+            <div><span>ARCANE MASTERY</span><strong id="rank-label">APPRENTICE</strong></div>
+            <span id="xp-text">0 / 100</span>
+            <div class="meter meter--xp"><i id="xp-fill"></i></div>
+          </div>
+        </div>
+
+        <div id="boss-card" class="boss-card" aria-live="polite">
+          <div class="boss-card__top"><span id="beast-name">Mirehorn</span><i id="beast-state">WILD</i></div>
+          <div class="boss-health"><i id="beast-health-fill"></i></div>
+        </div>
+
+        <div id="crosshair" class="crosshair" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+        <div id="message" class="message" role="status"></div>
+        <div id="damage-vignette" class="damage-vignette" aria-hidden="true"></div>
+        <div id="bubble-overlay" class="bubble-overlay" aria-hidden="true"></div>
+
+        <div id="touch-look" class="touch-look" aria-hidden="true"></div>
+        <div id="joystick" class="joystick" aria-label="Movement joystick"><i></i></div>
+
+        <div class="spell-dock" aria-label="Spells">
+          <button class="spell spell--lightning is-selected" type="button" data-spell="lightning" aria-label="Cast lightning">
+            <span class="spell__key">1</span><span class="spell__glyph">ϟ</span>
+            <span class="spell__copy"><strong>Volt Lash</strong><small>Damage</small></span>
+            <i class="spell__cooldown"></i>
+          </button>
+          <button class="spell spell--frost" type="button" data-spell="frost" aria-label="Cast freezing spell">
+            <span class="spell__key">2</span><span class="spell__glyph">❄</span>
+            <span class="spell__copy"><strong>Stillfrost</strong><small>Freeze · 4s</small></span>
+            <i class="spell__cooldown"></i>
+          </button>
+          <button class="spell spell--bubble" type="button" data-spell="bubble" aria-label="Cast protective bubble">
+            <span class="spell__key">3</span><span class="spell__glyph">◯</span>
+            <span class="spell__copy"><strong>Aegis Orb</strong><small>Shield · 5s</small></span>
+            <i class="spell__cooldown"></i>
+          </button>
+        </div>
+        <div class="staff" aria-hidden="true">
+          <div id="staff-glow" class="staff__glow"></div>
+          <div class="staff__crystal"><i></i></div>
+          <div class="staff__claw staff__claw--left"></div>
+          <div class="staff__claw staff__claw--right"></div>
+          <div class="staff__shaft"></div>
+        </div>
+        <div id="cast-fx" class="cast-fx" aria-hidden="true"></div>
+      </section>
+
+      <section id="pause-screen" class="screen modal-screen" aria-labelledby="pause-title">
+        <div class="modal-card">
+          <p class="eyebrow"><span></span> Field notes suspended</p>
+          <h2 id="pause-title">The mist<br />waits.</h2>
+          <button id="resume-button" class="primary-button" type="button"><span>Return to maze</span><b>→</b></button>
+          <button id="restart-button" class="text-button" type="button">Restart field trial</button>
+        </div>
+      </section>
+
+      <section id="end-screen" class="screen modal-screen" aria-labelledby="end-title">
+        <div class="modal-card modal-card--end">
+          <p id="end-eyebrow" class="eyebrow"><span></span> Trial complete</p>
+          <div class="end-sigil">✦</div>
+          <h2 id="end-title">Maze<br />mastered.</h2>
+          <p id="end-copy">Every beast is safely contained. The celestial gate recognizes your mastery.</p>
+          <div class="end-stats"><div><span>Beasts</span><strong id="stat-beasts">12</strong></div><div><span>Mastery</span><strong id="stat-xp">120</strong></div></div>
+          <button id="play-again-button" class="primary-button" type="button"><span>Enter again</span><b>↻</b></button>
+        </div>
+      </section>
+    </main>
+    <script src="game.js"></script>
+  </body>
+</html>
