@@ -265,38 +265,40 @@
   function hairGeometry(columns = 12, rows = 18) {
     const positions=[],normals=[],variations=[],indices=[];
     for(let row=0;row<=rows;row++){
-      const t=row/rows,halfWidth=.07+Math.sin(t*Math.PI)*.34+t*.08,centerX=-.035*t,y=.2-1.58*t,z=.11+Math.sin(t*Math.PI)*.12;
+      const t=row/rows,halfWidth=.07+Math.sin(t*Math.PI)*.34+t*.08,centerX=-.035*t,y=.2-1.58*t,z=.11+Math.sin(t*Math.PI)*.12+.22*Math.pow(t,1.35),earNotch=Math.exp(-Math.pow((t-.235)/.105,2));
       for(let column=0;column<=columns;column++){
-        const across=column/columns*2-1,wave=Math.sin(column*2+row*.8)*.035*(.25+t),x=centerX+across*halfWidth;
-        positions.push(x,y,z+wave);normals.push(-Math.cos(column*2+row*.8)*.2,.04,1);variations.push(clamp(.18+column/columns*.52+Math.sin(row*1.7+column)*.12,0,1));
+        const across=column/columns*2-1,wave=Math.sin(column*2+row*.8)*.035*(.25+t),x=centerX+across*halfWidth-Math.max(0,across)*earNotch*.1;
+        positions.push(x,y,z+wave);normals.push(-Math.cos(column*2+row*.8)*.2,.04,1);variations.push(clamp(.1+column/columns*.68+Math.sin(row*1.7+column)*.16,0,1));
       }
     }
     for(let row=0;row<rows;row++)for(let column=0;column<columns;column++){
+      const t=(row+.5)/rows,across=(column+.5)/columns*2-1,earDistance=Math.abs(t-.235)/.135,earBoundary=.5+.38*earDistance*earDistance;
+      if(earDistance<1&&across>earBoundary)continue;
       const a=row*(columns+1)+column,b=(row+1)*(columns+1)+column;
       indices.push(a,b,a+1,b,b+1,a+1);
     }
     return {positions,normals,variations,indices};
   }
 
-  function crownHairGeometry(layerIndex = 0, rows = 9, columns = 20, sections = 12) {
+  function crownHairGeometry(layerIndex = 0, rows = 9, columns = 20, sections = 14) {
     const positions=[],normals=[],variations=[],indices=[];
     const random=(index,salt=0)=>{const value=Math.sin((index+1)*19.1987+salt*71.417)*43758.5453;return value-Math.floor(value);};
     for(let row=0;row<rows;row++)for(let column=0;column<columns;column++){
-      const strand=layerIndex*rows*columns+row*columns+column,rowPhase=(row+layerIndex*.22)/rows;
-      const rootY=.427-rowPhase*.37,rootWidth=.37*Math.sqrt(clamp(1-(rootY/.43)*(rootY/.43),.002,1));
+      const strand=layerIndex*rows*columns+row*columns+column,rowPhase=(row+layerIndex*.16)/rows;
+      const rootY=.462-rowPhase*.405,rootWidth=.385*Math.sqrt(clamp(1-(rootY/.47)*(rootY/.47),.002,1));
       const stagger=((row+layerIndex)%2?.38:-.38)/columns,across=clamp(column/(columns-1)*2-1+stagger,-1,1);
-      const rootX=across*rootWidth+(random(strand,1)-.5)*.006,drop=.12+random(strand,2)*.072+rowPhase*.035,endY=Math.max(-.035,rootY-drop);
-      const endWidth=.37*Math.sqrt(clamp(1-(endY/.43)*(endY/.43),.002,1)),flowSide=rootX>=.025?1:-1;
+      const rootX=across*rootWidth+(random(strand,1)-.5)*.007,drop=.13+random(strand,2)*.082+rowPhase*.04,endY=Math.max(-.045,rootY-drop);
+      const endWidth=.385*Math.sqrt(clamp(1-(endY/.47)*(endY/.47),.002,1)),flowSide=rootX>=.025?1:-1;
       const targetX=clamp(across*endWidth+flowSide*(.012+random(strand,3)*.025)-.007,-endWidth,endWidth),phase=random(strand,4)*Math.PI*2,waveRate=1.2+random(strand,5)*1.3;
       const strandVariation=clamp(.06+random(strand,6)*.9,0,1),strandStart=positions.length/3,points=[];
       for(let section=0;section<=sections;section++){
-        const t=section/sections,eased=t*t*(3-2*t),x=rootX*(1-eased)+targetX*eased+Math.sin(phase+t*Math.PI*waveRate)*.0055*Math.sin(t*Math.PI),y=rootY-drop*t;
-        const ellipse=clamp(1-(x/.39)*(x/.39)-(y/.43)*(y/.43),.006,1),z=.35*Math.sqrt(ellipse)+.01+layerIndex*.0025+Math.sin(phase+t*Math.PI*2.1)*.002;
+        const t=section/sections,eased=t*t*(3-2*t),curlEnvelope=Math.sin(t*Math.PI),x=rootX*(1-eased)+targetX*eased+Math.sin(phase+t*Math.PI*waveRate*1.45)*.0095*curlEnvelope,y=rootY-drop*t+Math.cos(phase+t*Math.PI*2.2)*.0035*curlEnvelope;
+        const ellipse=clamp(1-(x/.405)*(x/.405)-(y/.48)*(y/.48),.006,1),z=.365*Math.sqrt(ellipse)+.011+layerIndex*.0027+Math.sin(phase+t*Math.PI*2.5)*.0035;
         points.push([x,y,z]);
       }
       for(let section=0;section<=sections;section++){
         const previous=points[Math.max(0,section-1)],next=points[Math.min(sections,section+1)],dx=next[0]-previous[0],dy=next[1]-previous[1],length=Math.hypot(dx,dy)||1;
-        const t=section/sections,bodyWidth=.0028+random(strand,7)*.0026,width=bodyWidth*(.38+.62*Math.sin(Math.min(1,t*4)*Math.PI/2))*(1-t*.12),offsetX=-dy/length*width,offsetY=dx/length*width,point=points[section];
+        const t=section/sections,bodyWidth=.0032+random(strand,7)*.003,width=bodyWidth*(.42+.58*Math.sin(Math.min(1,t*4)*Math.PI/2))*(1-t*.08),offsetX=-dy/length*width,offsetY=dx/length*width,point=points[section];
         positions.push(point[0]+offsetX,point[1]+offsetY,point[2],point[0]-offsetX,point[1]-offsetY,point[2]);
         normals.push(0,0,1,0,0,1);variations.push(strandVariation,strandVariation);
       }
@@ -308,21 +310,24 @@
     return {positions,normals,variations,indices};
   }
 
-  function curlGeometry(groupIndex = 0, groupCount = 4, strandCount = 176, sides = 6) {
-    const positions=[],normals=[],variations=[],indices=[],columns=44;
+  function curlGeometry(groupIndex = 0, groupCount = 5, strandCount = 240, sides = 6) {
+    const positions=[],normals=[],variations=[],indices=[],columns=48;
     const random=(index,salt=0)=>{const value=Math.sin((index+1)*12.9898+salt*78.233)*43758.5453;return value-Math.floor(value);};
     for(let strand=groupIndex;strand<strandCount;strand+=groupCount){
       const row=Math.floor(strand/columns),column=strand%columns,across=column/(columns-1)*2-1,side=Math.sign(across)||1;
       const scalpArc=Math.sqrt(Math.max(0,1-across*across));
       const width=.35+row*.014,baseX=across*width+(random(strand,1)-.5)*.014,baseY=.105+.22*scalpArc-row*.05+(random(strand,2)-.5)*.016;
-      const baseZ=.03+scalpArc*.15+row*.015+(random(strand,3)-.5)*.012,phase=random(strand,4)*Math.PI*2,turns=1.35+random(strand,5)*1.35,amplitude=.026+random(strand,6)*.037;
+      const baseZ=.03+scalpArc*.15+row*.015+(random(strand,3)-.5)*.012,phase=random(strand,4)*Math.PI*2,turns=1.72+random(strand,5)*1.58,amplitude=.031+random(strand,6)*.043;
       const lengthVariation=across>.08?.12+(random(strand,7)-.5)*.08:random(strand,7)*.24;
       const length=.94+scalpArc*.72+lengthVariation+row*.035,sections=Math.round(30+scalpArc*8+random(strand,8)*3),baseRadius=.0056+random(strand,9)*.0044,strandVariation=clamp(random(strand,10)*.86+row*.035,0,1);
       const strandStart=positions.length/3;
       for(let section=0;section<=sections;section++){
-        const t=section/sections,curl=phase+t*turns*Math.PI*2+Math.sin(t*Math.PI*2+phase)*.16,waveGrowth=.08+.92*Math.sin(Math.min(1,t*2.6)*Math.PI/2),strandTaper=Math.min(1,.22+t*11)*(.99-.5*Math.pow(t,1.7));
-        const radius=Math.max(.0028,baseRadius*strandTaper),softWave=amplitude*waveGrowth,rightBalance=across>.12?.018*t:0;
-        const centerX=baseX+Math.sin(curl)*softWave+Math.sin(curl*.47+phase)*.01*t-side*t*.012-.05*Math.pow(t,1.32)+rightBalance,centerY=baseY-length*t+Math.sin(curl*.5)*.01*t,centerZ=baseZ+(1-Math.exp(-t*18))*.14+Math.cos(curl)*softWave*.62+Math.sin(t*Math.PI)*.044+t*.045;
+        const t=section/sections,curl=phase+t*turns*Math.PI*2+Math.sin(t*Math.PI*2+phase)*.2,waveGrowth=.08+.92*Math.sin(Math.min(1,t*2.6)*Math.PI/2),strandTaper=Math.min(1,.22+t*11)*(.99-.36*Math.pow(t,1.7));
+        const radius=Math.max(.0034,baseRadius*strandTaper),softWave=amplitude*waveGrowth,rightBalance=across>.12?.018*t:0;
+        const centerY=baseY-length*t+Math.sin(curl*.5)*.012*t,fabricClearance=.22*t*t*(3-2*t);
+        const rawX=baseX+Math.sin(curl)*softWave+Math.sin(curl*.47+phase)*.012*t-side*t*.012-.05*Math.pow(t,1.32)+rightBalance;
+        const earY=Math.exp(-Math.pow((centerY+.22)/.17,2)),earX=Math.exp(-Math.pow((rawX-.34)/.17,2)),earSeparation=(rawX>.34?.16:-.11)*earY*earX;
+        const centerX=rawX+earSeparation,centerZ=baseZ+(1-Math.exp(-t*18))*.14+Math.cos(curl)*softWave*.62+Math.sin(t*Math.PI)*.044+t*.045+fabricClearance;
         for(let ring=0;ring<=sides;ring++){
           const angle=ring*Math.PI*2/sides,x=Math.cos(angle),z=Math.sin(angle);
           positions.push(centerX+x*radius,centerY,centerZ+z*radius);normals.push(x,0,z);variations.push(clamp(strandVariation+Math.sin(t*Math.PI)*.055,0,1));
@@ -352,7 +357,7 @@
       if(!this.gl){canvas.classList.add('witch-3d--unavailable');return;}
       const gl=this.gl, program=createProgram(gl);this.program=program;
       this.uniforms={model:gl.getUniformLocation(program,'uModel'),normal:gl.getUniformLocation(program,'uNormalMatrix'),viewProjection:gl.getUniformLocation(program,'uViewProjection'),color:gl.getUniformLocation(program,'uColor'),secondaryColor:gl.getUniformLocation(program,'uSecondaryColor'),camera:gl.getUniformLocation(program,'uCamera'),emissive:gl.getUniformLocation(program,'uEmissive'),surface:gl.getUniformLocation(program,'uSurface')};
-      this.meshes={sphere:uploadMesh(gl,sphereGeometry(20,26)),hairCap:uploadMesh(gl,sphereGeometry(28,52)),crownHairLayers:Array.from({length:4},(_,layer)=>uploadMesh(gl,crownHairGeometry(layer))),cylinder:uploadMesh(gl,cylinderGeometry(22)),skirt:uploadMesh(gl,skirtGeometry()),cape:uploadMesh(gl,capeGeometry()),hair:uploadMesh(gl,hairGeometry()),curls:Array.from({length:4},(_,group)=>uploadMesh(gl,curlGeometry(group))),torus:uploadMesh(gl,torusGeometry()),box:uploadMesh(gl,boxGeometry())};
+      this.meshes={sphere:uploadMesh(gl,sphereGeometry(20,26)),hairCap:uploadMesh(gl,sphereGeometry(30,58)),crownHairLayers:Array.from({length:6},(_,layer)=>uploadMesh(gl,crownHairGeometry(layer))),cylinder:uploadMesh(gl,cylinderGeometry(22)),skirt:uploadMesh(gl,skirtGeometry()),cape:uploadMesh(gl,capeGeometry()),hair:uploadMesh(gl,hairGeometry()),curls:Array.from({length:5},(_,group)=>uploadMesh(gl,curlGeometry(group))),torus:uploadMesh(gl,torusGeometry()),box:uploadMesh(gl,boxGeometry())};
       gl.enable(gl.DEPTH_TEST);gl.enable(gl.CULL_FACE);gl.cullFace(gl.BACK);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
     }
 
@@ -429,13 +434,13 @@
     }
 
     drawHair(root, sway, lift) {
-      const palettes=[['#48100e','#8f2419'],['#5d1410','#b43a22'],['#741c14','#d15b31'],['#52110f','#a82f1e']];
-      this.meshes.curls.forEach((mesh,group)=>this.drawShape(mesh,root,[0,3.92+lift*.04,.2+group*.006],[1,1,1],color(palettes[group][0]),[-sway*(.18+group*.035),0,sway*(.34+group*.055)+(group-1.5)*.006],0,5,color(palettes[group][1])));
+      const palettes=[['#350b0b','#792019'],['#48100d','#992d20'],['#5c140f','#b63c25'],['#731d13','#d65b32'],['#4e0d0d','#bd4729']];
+      this.meshes.curls.forEach((mesh,group)=>this.drawShape(mesh,root,[0,3.92+lift*.04,.2+group*.008],[1,1,1],color(palettes[group][0]),[-sway*(.17+group*.03),0,sway*(.32+group*.05)+(group-2)*.005],0,5,color(palettes[group][1])));
     }
 
     drawCrownHair(root, sway) {
-      const palettes=[['#3c0b0a','#8e2a1d'],['#4b0e0c','#a93621'],['#57120e','#bd4628'],['#641711','#d05a31']];
-      this.meshes.crownHairLayers.forEach((mesh,layer)=>this.drawShape(mesh,root,[0,3.94,.15+layer*.0015],[1,1,1],color(palettes[layer][0]),[-sway*(.014+layer*.004),0,(layer-1.5)*.0035+sway*(.025+layer*.004)],0,5,color(palettes[layer][1])));
+      const palettes=[['#310809','#7d2119'],['#400b0a','#942b1d'],['#4e0e0b','#aa3721'],['#5c130e','#c04728'],['#6b1911','#d45a31'],['#4a0c0b','#b83d25']];
+      this.meshes.crownHairLayers.forEach((mesh,layer)=>this.drawShape(mesh,root,[0,3.96,.15+layer*.0014],[1,1,1],color(palettes[layer][0]),[-sway*(.012+layer*.003),0,(layer-2.5)*.003+sway*(.022+layer*.003)],0,5,color(palettes[layer][1])));
     }
 
     drawCrescent(parent, position, size, rotation = 0) {
@@ -538,7 +543,7 @@
       this.drawLeg(root,-1,leftLeg,leftKnee,lateralStep);this.drawLeg(root,1,rightLeg,rightKnee,-lateralStep);
 
       const cloakSway=-stride*this.walkWeight*.03-this.hairAngle*.18;
-      const purple=color('#4d176d'),purpleLight=color('#6d278f'),pink=color('#a94f82'),leather=color('#3b2423'),leatherLight=color('#724536'),gold=color('#d2a756'),skin=color('#d9a087'),hair=color('#85231c');
+      const purple=color('#4d176d'),purpleLight=color('#6d278f'),pink=color('#a94f82'),leather=color('#3b2423'),leatherLight=color('#724536'),gold=color('#d2a756'),skin=color('#d9a087');
       const skirtModel=this.drawShape(this.meshes.skirt,root,[0,2.02-crouch*.08,.02],[.83+crouch*.1,1.12+crouch*.04,.53+crouch*.16],purple,[cloakSway-crouch*.045,0,0],0,1);
       const capeRotation=[cloakSway*.7-crouch*.04,0,-.035+this.hairAngle*.08];
       this.drawShape(this.meshes.cape,root,[0,3.4,.34],[1.065,1.025+crouch*.04,.9+crouch*.1],color('#9c476f'),capeRotation,0,1);
@@ -565,14 +570,17 @@
 
       this.drawShape(this.meshes.torus,root,[0,3.55,.02],[.38,.16,.34],pink,[0,0,0],0,1);
       this.drawShape(this.meshes.sphere,root,[0,3.88,-.035],[.3,.37,.28],skin,[0,0,0],0,4);
-      this.drawShape(this.meshes.hairCap,root,[0,3.94,.15],[.39,.43,.35],hair,[0,0,0],0,5,color('#a83220'));
-      this.drawShape(this.meshes.hair,root,[0,3.95,.27],[1,1,1],color('#60120f'),[-.04-this.hairAngle*.12,0,this.hairAngle*.18],0,5,color('#b64125'));
+      this.drawShape(this.meshes.hairCap,root,[0,3.96,.15],[.405,.48,.37],color('#570d0c'),[0,0,0],0,5,color('#c8522e'));
+      this.drawShape(this.meshes.hair,root,[0,3.95,.27],[1,1,1],color('#47090b'),[-.04-this.hairAngle*.12,0,this.hairAngle*.18],0,5,color('#c95b33'));
       this.drawCrownHair(root,this.hairAngle);
       this.drawHair(root,this.hairAngle,air);
+      this.drawShape(this.meshes.sphere,root,[.355,3.79,.49],[.05,.082,.034],color('#cf917e'),[0,-.18,-.08],0,4);
+      this.drawShape(this.meshes.sphere,root,[.362,3.79,.525],[.023,.045,.012],color('#a96562'),[0,-.18,-.08],0,4);
+      this.drawSegment(M4.point(root,[.36,3.79,.55]),M4.point(root,[.36,3.735,.55]),.009,gold,this.meshes.cylinder,.06,3);
       this.drawSegment(M4.point(root,[0,2.38,.38]),M4.point(root,[.02,2.18,.4]),.012,gold,this.meshes.cylinder,.05,3);
       this.drawCrescent(root,[.02,2.08,.4],.09,-.12);
-      this.drawCrescent(root,[.34,3.76,.31],.07,-.16);
-      this.drawShape(this.meshes.sphere,root,[.34,3.62,.31],[.035,.055,.035],color('#5d8dff'),[0,0,0],.25,6);
+      this.drawCrescent(root,[.36,3.68,.55],.05,-.16);
+      this.drawShape(this.meshes.sphere,root,[.36,3.575,.55],[.032,.05,.032],color('#5d8dff'),[0,0,0],.25,6);
       this.drawStar(skirtModel,[-.28,-.28,1.01],.075,.15);
       this.drawStar(skirtModel,[-.12,-.83,.96],.065,-.08);
       this.drawStaff(rightHand,cast,this.spell,time);
