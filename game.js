@@ -9,6 +9,8 @@
   const $$ = (selector) => [...document.querySelectorAll(selector)];
   const dragonImage = new Image();
   const berryBushImage = new Image();
+  const coarseControls = matchMedia('(pointer:coarse)').matches;
+  const wallSurfaces = {};
   const wallTextures = Object.fromEntries(Object.entries({
     brick: 'assets/ancient-brick-wall-v2.jpg',
     hedge: 'assets/moonflower-hedge-v2.jpg',
@@ -22,6 +24,7 @@
     starlight: 'assets/arcane-crystal-wall-v2.jpg'
   }).map(([type, source]) => {
     const image = new Image();
+    image.addEventListener('load', () => prepareWallSurface(type, image));
     image.src = source;
     return [type, image];
   }));
@@ -55,7 +58,8 @@
     map: [],
     theme: levelThemes[0],
     lastTime: 0,
-    player: { x: 1.5, y: 1.5, angle: 0, health: 100, z: 0, verticalVelocity: 0, crouching: false, moving: false },
+    simulationRemainder: 0,
+    player: { x: 1.5, y: 1.5, angle: 0, health: 100, z: 0, verticalVelocity: 0, vx: 0, vy: 0, turnVelocity: 0, crouching: false, moving: false },
     beasts: [],
     berries: [],
     obstacles: [],
@@ -214,7 +218,7 @@
     state.level = level;
     state.map = generated.map;
     state.theme = levelThemes[level - 1];
-    state.player = { x: 1.5, y: 1.5, angle: 0, health: carryHealth ? Math.min(100, state.player.health + 20) : 100, z: 0, verticalVelocity: 0, crouching: false, moving: false };
+    state.player = { x: 1.5, y: 1.5, angle: 0, health: carryHealth ? Math.min(100, state.player.health + 20) : 100, z: 0, verticalVelocity: 0, vx: 0, vy: 0, turnVelocity: 0, crouching: false, moving: false };
     state.kills = 0;
     state.bubbleUntil = 0;
     state.cooldowns = { lightning: 0, frost: 0, bubble: 0 };
@@ -278,9 +282,11 @@
   }
 
   function canWalk(x, y) {
-    const pad = .2;
-    for (const ox of [-pad, pad]) for (const oy of [-pad, pad]) {
-      if (isBlockingTile(cell(x + ox, y + oy))) return false;
+    const radius = .18;
+    if (isBlockingTile(cell(x, y))) return false;
+    for (let sample = 0; sample < 8; sample++) {
+      const angle = sample * Math.PI / 4;
+      if (isBlockingTile(cell(x + Math.cos(angle) * radius, y + Math.sin(angle) * radius))) return false;
     }
     for(const obstacle of state.obstacles){
       if(Math.hypot(x-obstacle.x,y-obstacle.y)>.5)continue;
@@ -358,7 +364,7 @@
       ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
     }
 
-    const rayCount = Math.min(560, Math.ceil(w / 2));
+    const rayCount = Math.min(coarseControls ? 300 : 480, Math.ceil(w / (coarseControls ? 2.7 : 2.25)));
     const strip = w / rayCount + .6;
     state.rayDepths.length = rayCount;
     for (let i = 0; i < rayCount; i++) {
@@ -391,23 +397,17 @@
     }
 
     const variation = Math.abs((hit.cellX * 37 + hit.cellY * 71 + state.level * 13) % 11);
-    const image = wallTextures[theme.wall];
-    const cellDistance = Math.hypot(hit.cellX + .5 - state.player.x, hit.cellY + .5 - state.player.y);
-    const closeDetail = cellDistance < 1.15 ? 3 : cellDistance < 2.05 ? 2 : 1;
-    const textureU = (hit.texture * closeDetail + variation * .137) % 1;
-    if (image?.complete && image.naturalWidth) {
-      const sourceWidth = Math.max(2, Math.ceil(image.naturalWidth / 520));
-      const sourceX = Math.min(image.naturalWidth - sourceWidth, Math.floor(textureU * (image.naturalWidth - sourceWidth)));
+    const image = wallSurfaces[theme.wall] || wallTextures[theme.wall];
+    const textureU = (hit.texture + variation * .0685) % 1;
+    const imageWidth=image?.naturalWidth||image?.width||0,imageHeight=image?.naturalHeight||image?.height||0;
+    if (imageWidth && imageHeight) {
+      const sourceWidth = Math.max(2, Math.ceil(imageWidth / 520));
+      const sourceX = Math.min(imageWidth - sourceWidth, Math.floor(textureU * (imageWidth - sourceWidth)));
       ctx.save();
-      ctx.filter = wallTextureFilter(theme.wall, variation);
       ctx.globalAlpha = 1 - mist * .48;
-      const sectionHeight = height / closeDetail;
-      for (let repeat = 0; repeat < closeDetail; repeat++) {
-        ctx.drawImage(image, sourceX, 0, sourceWidth, image.naturalHeight, x, top + repeat * sectionHeight, width + 1, sectionHeight + 1);
-      }
-      ctx.filter = 'none';
+      ctx.drawImage(image, sourceX, 0, sourceWidth, imageHeight, x, top, width + 1, height);
       ctx.globalAlpha = 1;
-      ctx.fillStyle = `rgba(3,2,8,${.075 + (1 - sideShade) * .3 + mist * .15})`;
+      ctx.fillStyle = `rgba(3,2,8,${.055 + variation % 3 * .025 + (1 - sideShade) * .3 + mist * .15})`;
       ctx.fillRect(x, top, width + 1, height);
       const seam = Math.min(hit.texture, 1 - hit.texture);
       if (seam < .018) {
@@ -425,6 +425,16 @@
       ctx.fillStyle = `rgba(38,28,60,${mist * .34})`;
       ctx.fillRect(x, top, width + 1, height);
     }
+  }
+
+  function prepareWallSurface(wall, image) {
+    const surface=document.createElement('canvas'),size=512,tile=size/2;
+    surface.width=size;surface.height=size;
+    const surfaceCtx=surface.getContext('2d');
+    surfaceCtx.filter=wallTextureFilter(wall,5);
+    for(let row=0;row<2;row++)for(let column=0;column<2;column++)surfaceCtx.drawImage(image,column*tile,row*tile,tile,tile);
+    surfaceCtx.filter='none';
+    wallSurfaces[wall]=surface;
   }
 
   function wallTextureFilter(wall, variation) {
@@ -671,6 +681,21 @@
     ctx.restore();
   }
 
+  function movePlayerWithCollision(player, deltaX, deltaY) {
+    const distance = Math.hypot(deltaX, deltaY);
+    const steps = Math.max(1, Math.ceil(distance / .075));
+    const stepX = deltaX / steps, stepY = deltaY / steps;
+    for (let step = 0; step < steps; step++) {
+      if (canWalk(player.x + stepX, player.y + stepY)) {
+        player.x += stepX;
+        player.y += stepY;
+      } else {
+        if (canWalk(player.x + stepX, player.y)) player.x += stepX;
+        if (canWalk(player.x, player.y + stepY)) player.y += stepY;
+      }
+    }
+  }
+
   function update(dt, now) {
     if (!state.running || state.paused || state.pouchOpen || state.finished) return;
     const p = state.player;
@@ -682,13 +707,22 @@
     if(state.keys.has('KeyD'))strafe++;
     if(state.keys.has('KeyA'))strafe--;
     forward+=-state.joystick.y;strafe+=state.joystick.x;
-    p.moving=Math.hypot(forward,strafe)>.08;
-    if(state.keys.has('ArrowLeft'))p.angle-=dt*1.8;if(state.keys.has('ArrowRight'))p.angle+=dt*1.8;
-    const length=Math.hypot(forward,strafe)||1;forward/=length;strafe/=length;
-    const speed=dt*2.25*(p.crouching?.62:1);
-    const nx=p.x+(Math.cos(p.angle)*forward+Math.cos(p.angle+Math.PI/2)*strafe)*speed;
-    const ny=p.y+(Math.sin(p.angle)*forward+Math.sin(p.angle+Math.PI/2)*strafe)*speed;
-    if(canWalk(nx,p.y))p.x=nx;if(canWalk(p.x,ny))p.y=ny;
+    const inputLength=Math.hypot(forward,strafe);
+    if(inputLength>1){forward/=inputLength;strafe/=inputLength;}
+    if(inputLength<.025){forward=0;strafe=0;}
+
+    let turn=0;
+    if(state.keys.has('ArrowLeft')||state.keys.has('KeyQ'))turn--;
+    if(state.keys.has('ArrowRight')||state.keys.has('KeyE'))turn++;
+    p.turnVelocity=turn*2.35;
+    p.angle=normalizeAngle(p.angle+p.turnVelocity*dt);
+
+    const sprinting=!p.crouching&&forward>.15&&(state.keys.has('ShiftLeft')||state.keys.has('ShiftRight'));
+    const speed=(sprinting?3.45:2.55)*(p.crouching ? .58 : 1);
+    p.vx=(Math.cos(p.angle)*forward+Math.cos(p.angle+Math.PI/2)*strafe)*speed;
+    p.vy=(Math.sin(p.angle)*forward+Math.sin(p.angle+Math.PI/2)*strafe)*speed;
+    movePlayerWithCollision(p,p.vx*dt,p.vy*dt);
+    p.moving=Boolean(forward||strafe);
 
     collectBerries(now);
     for(const beast of state.beasts){
@@ -700,7 +734,6 @@
       }
     }
     if(cell(p.x,p.y)==='2'&&!gateIsLocked())advanceLevel();
-    updateHud(now);
   }
 
   function collectBerries(now) {
@@ -801,7 +834,7 @@
     if(!state.running||state.finished)return;
     state.pouchOpen=force??!state.pouchOpen;
     $('#pouch').classList.toggle('is-visible',state.pouchOpen);$('#pouch-button').classList.toggle('is-active',state.pouchOpen);$('#pouch-button').setAttribute('aria-expanded',String(state.pouchOpen));
-    if(state.pouchOpen){state.mapOpen=false;$('#mini-map').classList.remove('is-visible');$('#map-button').classList.remove('is-active');$('#map-button').setAttribute('aria-expanded','false');document.exitPointerLock?.();}
+    if(state.pouchOpen){haltMovement();state.mapOpen=false;$('#mini-map').classList.remove('is-visible');$('#map-button').classList.remove('is-active');$('#map-button').setAttribute('aria-expanded','false');document.exitPointerLock?.();}
     else if(matchMedia('(pointer:fine)').matches&&!state.paused)canvas.requestPointerLock?.();
   }
 
@@ -836,40 +869,63 @@
   }
 
   function start() {
-    resetGame();state.running=true;state.paused=false;state.lastTime=performance.now();
+    haltMovement();resetGame();state.running=true;state.paused=false;state.lastTime=performance.now();state.simulationRemainder=0;
     $('#start-screen').classList.remove('screen--active');$('#pause-screen').classList.remove('screen--active');$('#end-screen').classList.remove('screen--active');$('#hud').classList.add('is-active');
     showMessage('Level 01 · contain the dragons and find the gate');
+    canvas.focus({preventScroll:true});
     if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();
   }
 
   function setPaused(paused) {
     if(!state.running||state.finished)return;state.paused=paused;$('#pause-screen').classList.toggle('screen--active',paused);
-    if(paused){if(state.pouchOpen)togglePouch(false);document.exitPointerLock?.();}else{state.lastTime=performance.now();if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();}
+    if(paused){haltMovement();state.simulationRemainder=0;if(state.pouchOpen)togglePouch(false);document.exitPointerLock?.();}else{state.lastTime=performance.now();if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();}
+  }
+
+  function haltMovement() {
+    state.keys.clear();
+    state.player.vx=0;state.player.vy=0;state.player.turnVelocity=0;state.player.moving=false;
+    state.joystick.x=0;state.joystick.y=0;state.joystick.pointer=null;
+    const joystickKnob=$('#joystick i');if(joystickKnob)joystickKnob.style.transform='';
   }
 
   function frame(time) {
-    const dt=Math.min(.05,(time-state.lastTime)/1000||0);state.lastTime=time;update(dt,time);renderWorld(time);updateHud(time);requestAnimationFrame(frame);
+    const elapsed=Math.min(.1,(time-state.lastTime)/1000||0),step=1/120;state.lastTime=time;state.simulationRemainder+=elapsed;
+    let updates=0;while(state.simulationRemainder>=step&&updates<12){update(step,time);state.simulationRemainder-=step;updates++;}
+    if(updates===12)state.simulationRemainder=0;
+    renderWorld(time);updateHud(time);requestAnimationFrame(frame);
   }
 
   addEventListener('resize',resize);
   addEventListener('keydown',event=>{
+    if(state.running&&['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','ControlLeft','ControlRight'].includes(event.code))event.preventDefault();
     state.keys.add(event.code);
     if(event.code==='Digit1')cast('lightning');if(event.code==='Digit2')cast('frost');if(event.code==='Digit3')cast('bubble');if(event.code==='Space'&&!event.repeat){event.preventDefault();jump();}if(event.code==='KeyM'&&!event.repeat)toggleMap();if(event.code==='KeyP'&&!event.repeat)togglePouch();if(event.code==='Escape'&&state.running){if(state.pouchOpen)togglePouch(false);else setPaused(!state.paused);}
   });
   addEventListener('keyup',event=>state.keys.delete(event.code));
+  addEventListener('blur',haltMovement);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)haltMovement();});
   addEventListener('mousemove',event=>{if(document.pointerLockElement===canvas&&state.running&&!state.paused&&!state.pouchOpen)state.player.angle+=event.movementX*.0024;});
-  canvas.addEventListener('click',()=>{if(state.running&&!state.paused&&!state.pouchOpen&&document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
+  canvas.addEventListener('click',()=>{canvas.focus({preventScroll:true});if(state.running&&!state.paused&&!state.pouchOpen&&document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
   canvas.addEventListener('mousedown',event=>{if(event.button===0&&document.pointerLockElement===canvas)cast('lightning');});
 
   const joystick=$('#joystick'),stick=joystick.querySelector('i');
-  joystick.addEventListener('pointerdown',event=>{state.joystick.pointer=event.pointerId;joystick.setPointerCapture(event.pointerId);});
-  joystick.addEventListener('pointermove',event=>{if(event.pointerId!==state.joystick.pointer)return;const r=joystick.getBoundingClientRect();let x=event.clientX-(r.left+r.width/2),y=event.clientY-(r.top+r.height/2);const d=Math.hypot(x,y),max=30;if(d>max){x=x/d*max;y=y/d*max;}state.joystick.x=x/max;state.joystick.y=y/max;stick.style.transform=`translate(${x}px,${y}px)`;});
-  const releaseStick=event=>{if(event.pointerId===state.joystick.pointer){state.joystick={x:0,y:0,pointer:null};stick.style.transform='';}};
-  joystick.addEventListener('pointerup',releaseStick);joystick.addEventListener('pointercancel',releaseStick);
+  const updateStick=event=>{
+    const r=joystick.getBoundingClientRect(),max=r.width*.31;
+    let x=event.clientX-(r.left+r.width/2),y=event.clientY-(r.top+r.height/2),distance=Math.hypot(x,y);
+    if(distance>max){x=x/distance*max;y=y/distance*max;distance=max;}
+    const raw=Math.min(1,distance/max),deadZone=.12,strength=raw<=deadZone?0:(raw-deadZone)/(1-deadZone);
+    state.joystick.x=distance?x/distance*strength:0;state.joystick.y=distance?y/distance*strength:0;
+    stick.style.transform=`translate(${x}px,${y}px)`;
+  };
+  joystick.addEventListener('pointerdown',event=>{event.preventDefault();state.joystick.pointer=event.pointerId;joystick.setPointerCapture(event.pointerId);updateStick(event);});
+  joystick.addEventListener('pointermove',event=>{if(event.pointerId===state.joystick.pointer)updateStick(event);});
+  const releaseStick=event=>{if(event.pointerId===state.joystick.pointer){state.joystick.x=0;state.joystick.y=0;state.joystick.pointer=null;stick.style.transform='';}};
+  joystick.addEventListener('pointerup',releaseStick);joystick.addEventListener('pointercancel',releaseStick);joystick.addEventListener('lostpointercapture',releaseStick);
   const look=$('#touch-look');
-  look.addEventListener('pointerdown',event=>{state.lookPointer=event.pointerId;state.lookX=event.clientX;look.setPointerCapture(event.pointerId);});
-  look.addEventListener('pointermove',event=>{if(event.pointerId!==state.lookPointer)return;state.player.angle+=(event.clientX-state.lookX)*.008;state.lookX=event.clientX;});
-  look.addEventListener('pointerup',event=>{if(event.pointerId===state.lookPointer)state.lookPointer=null;});
+  look.addEventListener('pointerdown',event=>{event.preventDefault();state.lookPointer=event.pointerId;state.lookX=event.clientX;look.setPointerCapture(event.pointerId);});
+  look.addEventListener('pointermove',event=>{if(event.pointerId!==state.lookPointer)return;const movement=Math.max(-42,Math.min(42,event.clientX-state.lookX));state.player.angle+=movement*.006;state.lookX=event.clientX;});
+  const releaseLook=event=>{if(event.pointerId===state.lookPointer)state.lookPointer=null;};
+  look.addEventListener('pointerup',releaseLook);look.addEventListener('pointercancel',releaseLook);look.addEventListener('lostpointercapture',releaseLook);
 
   $$('.spell').forEach(button=>button.addEventListener('pointerdown',event=>{event.preventDefault();$$('.spell').forEach(item=>item.classList.remove('is-selected'));button.classList.add('is-selected');cast(button.dataset.spell);}));
   $('#jump-button').addEventListener('pointerdown',event=>{event.preventDefault();jump();});

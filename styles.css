@@ -25,7 +25,8 @@ button { color: inherit; font: inherit; }
 .eyebrow { display: flex; align-items: center; gap: 10px; margin: 0 0 20px; font-size: 11px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: #c8b1e9; }
 .eyebrow span { width: 29px; height: 1px; background: var(--pink); box-shadow: 0 0 8px var(--pink); }
 h1, h2 { margin: 0; font-family: "Cinzel", Georgia, serif; font-size: clamp(64px, 8.4vw, 132px); font-weight: 500; letter-spacing: -.06em; line-height: .72; text-transform: uppercase; text-shadow: 0 8px 30px rgba(0,0,0,.5); }
-h1 em { position: relative; left: .36em; color: transparent; -webkit-text-stroke: 1.5px #d8b4ff; font-style: normal; }
+.start-content h1 { font-size:clamp(44px,5.2vw,74px);line-height:.82;letter-spacing:-.045em; }
+h1 em { position: relative; left: .1em; color: transparent; -webkit-text-stroke: 1.5px #d8b4ff; font-style: normal; }
 .dek { max-width: 450px; margin: 34px 0 28px; color: #c9bed9; font-size: 15px; line-height: 1.65; }
 .primary-button { min-width: 215px; padding: 6px 6px 6px 22px; border: 1px solid rgba(216,180,255,.38); background: rgba(139,66,207,.24); backdrop-filter: blur(14px); display: inline-flex; align-items: center; justify-content: space-between; gap: 24px; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: .13em; font-size: 11px; font-weight: 700; transition: background .2s, transform .2s; }
 .primary-button b { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 3px; background: linear-gradient(135deg, #9c65ff, #d253bd); font-size: 17px; }
@@ -48,7 +49,7 @@ kbd { color: #d9c9eb; font: 600 10px "DM Sans", sans-serif; }
 .map-button.is-active { border-color: var(--pink); color: var(--pink); box-shadow: 0 0 18px rgba(255,130,203,.2); }
 .brand { display: flex; align-items: center; gap: 11px; font: 600 12px "Cinzel"; letter-spacing: .12em; text-transform: uppercase; }
 .brand span { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid #a989db; transform: rotate(45deg); font-size: 0; color: var(--pink); }
-.brand span::before { content: "HM"; transform: rotate(-45deg); font-size: 8px; }
+.brand span::before { content: "MW"; transform: rotate(-45deg); font-size: 8px; }
 .objective { margin: auto; display: flex; align-items: center; gap: 14px; }
 .objective span { padding-right: 14px; border-right: 1px solid rgba(255,255,255,.15); color: var(--pink); font-size: 8px; letter-spacing: .17em; }
 .objective strong { font: 500 10px "Cinzel"; letter-spacing: .08em; }
@@ -172,7 +173,7 @@ kbd { color: #d9c9eb; font: 600 10px "DM Sans", sans-serif; }
   .start-art { background-position: 66% center; }
   .start-vignette { background: linear-gradient(0deg, rgba(6,3,18,.99) 0%, rgba(6,3,18,.79) 46%, rgba(6,3,18,.13) 82%), linear-gradient(90deg, rgba(7,4,21,.5), transparent); }
   .start-content { top: auto; bottom: calc(22px + env(safe-area-inset-bottom)); left: 22px; transform: none; width: calc(100% - 44px); }
-  .start-content h1 { font-size: clamp(57px, 19vw, 84px); }
+  .start-content h1 { font-size: clamp(38px, 12vw, 54px); }
   .start-content .dek { margin: 24px 0 20px; max-width: 390px; font-size: 13px; line-height: 1.48; }
   .start-content .eyebrow { margin-bottom: 15px; }
   .landscape-note { display: block; }
@@ -202,7 +203,7 @@ kbd { color: #d9c9eb; font: 600 10px "DM Sans", sans-serif; }
   .start-art { background-position: 68% center; }
   .start-vignette { background: linear-gradient(90deg,rgba(6,3,18,.96),rgba(6,3,18,.57) 48%,rgba(6,3,18,.08) 78%); }
   .start-content { left: max(24px,env(safe-area-inset-left)); top: 51%; bottom:auto; width:min(390px,48vw); transform:translateY(-50%); }
-  .start-content h1 { font-size:clamp(48px,10vw,78px); }.start-content .dek { margin:18px 0 14px;font-size:11px;line-height:1.4; }.start-content .primary-button { width:220px; }.start-content .eyebrow { margin-bottom:12px; }
+  .start-content h1 { font-size:clamp(34px,6.2vw,52px); }.start-content .dek { margin:18px 0 14px;font-size:11px;line-height:1.4; }.start-content .primary-button { width:220px; }.start-content .eyebrow { margin-bottom:12px; }
   .landscape-note { margin-top:9px; }
   .topbar { height:49px;padding-right:max(10px,env(safe-area-inset-right));padding-left:max(10px,env(safe-area-inset-left)); }
   .map-button { height:32px;width:38px; }.icon-button { width:31px;height:31px; }

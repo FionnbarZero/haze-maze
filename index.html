@@ -4,31 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
     <meta name="theme-color" content="#09051b" />
-    <meta name="description" content="Haze Maze — an original enchanted maze first-person spellcasting game." />
-    <title>Haze Maze — Arcane Field Trial</title>
+    <meta name="description" content="Hunt of the Moon Witch — an original enchanted maze spellcasting game." />
+    <title>Hunt of the Moon Witch — Arcane Field Trial</title>
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260816-movement" />
   </head>
   <body>
-    <main id="game-shell" aria-label="Haze Maze game">
-      <canvas id="game" aria-label="First-person enchanted maze"></canvas>
+    <main id="game-shell" aria-label="Hunt of the Moon Witch game">
+      <canvas id="game" tabindex="0" aria-label="Enchanted maze game view"></canvas>
 
       <section id="start-screen" class="screen screen--active" aria-labelledby="game-title">
         <div class="start-art" aria-hidden="true"></div>
         <div class="start-vignette" aria-hidden="true"></div>
         <div class="start-content">
           <p class="eyebrow"><span></span> Arcane Field Trial № 7</p>
-          <h1 id="game-title">Haze<br /><em>Maze</em></h1>
+          <h1 id="game-title">Hunt of the<br /><em>Moon Witch</em></h1>
           <p class="dek">The moon garden is awake. Find every escaped dragon, master your field spells, and reach the celestial gate before the mist closes in.</p>
           <button id="start-button" class="primary-button" type="button">
             <span>Enter the maze</span><b aria-hidden="true">→</b>
           </button>
           <div class="controls-hint">
-            <div><kbd>WASD</kbd><span>Move</span></div>
-            <div><kbd>Drag / mouse</kbd><span>Look</span></div>
+            <div><kbd>WASD · Shift</kbd><span>Move · sprint</span></div>
+            <div><kbd>Mouse · Q/E</kbd><span>Look · turn</span></div>
             <div><kbd>1 · 2 · 3</kbd><span>Cast</span></div>
             <div><kbd>Space · C</kbd><span>Jump · crouch</span></div>
             <div><kbd>P</kbd><span>Pouch</span></div>
@@ -57,7 +57,7 @@
           <button id="pouch-button" class="map-button pouch-button" type="button" aria-label="Open magic pouch; keyboard shortcut P" aria-expanded="false" title="Pouch · P">
             <span aria-hidden="true">♢</span><small>POUCH</small>
           </button>
-          <div class="brand"><span>HM</span><strong>Haze Maze</strong></div>
+          <div class="brand"><span>MW</span><strong>Hunt of the Moon Witch</strong></div>
           <div class="objective">
             <span id="objective-label">FIELD OBJECTIVE</span>
             <strong id="objective-text">Contain the escaped dragons</strong>
@@ -171,6 +171,6 @@
       </section>
       <div id="orientation-hint" class="orientation-hint" aria-hidden="true"><span>↻</span><strong>Rotate to landscape</strong><small>More room to explore and cast</small></div>
     </main>
-    <script src="game.js"></script>
+    <script src="game.js?v=20260816-movement"></script>
   </body>
 </html>
