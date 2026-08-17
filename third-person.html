@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#090615" />
+    <meta name="description" content="Hunt of the Moon Witch third-person Babylon.js technical proof." />
+    <title>Hunt of the Moon Witch — Third-Person Proof</title>
+    <link rel="stylesheet" href="third-person/styles.css?v=20260817-proof-v1" />
+  </head>
+  <body>
+    <main id="proof-shell" aria-label="Hunt of the Moon Witch third-person technical proof">
+      <canvas id="render-canvas" tabindex="0" aria-label="Third-person 3D maze"></canvas>
+
+      <a class="legacy-link" href="index.html">← Legacy prototype</a>
+
+      <section id="hud" class="hud" aria-live="polite">
+        <header class="topbar">
+          <div class="proof-mark"><span>TP</span><div><strong>Level 1 technical proof</strong><small>Babylon.js · temporary geometry</small></div></div>
+          <div id="camera-mode" class="camera-mode">Right shoulder · Explore</div>
+        </header>
+
+        <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
+
+        <aside id="target-card" class="target-card" aria-hidden="true">
+          <div><span>Training dragon</span><strong id="target-health-copy">100 / 100</strong></div>
+          <div class="health-track"><i id="target-health-fill"></i></div>
+        </aside>
+
+        <div id="spell-readout" class="spell-readout"><span>Selected spell</span><strong>Lightning</strong><small>Left click to cast</small></div>
+        <div id="toast" class="toast" role="status"></div>
+
+        <aside id="debug-panel" class="debug-panel" aria-label="Technical proof diagnostics">
+          <strong>Runtime telemetry</strong>
+          <dl>
+            <div><dt>FPS</dt><dd id="debug-fps">—</dd></div>
+            <div><dt>Camera</dt><dd id="debug-camera">—</dd></div>
+            <div><dt>Player</dt><dd id="debug-player">—</dd></div>
+            <div><dt>Collision</dt><dd id="debug-collision">—</dd></div>
+          </dl>
+        </aside>
+
+        <div id="look-zone" class="look-zone touch-only" aria-hidden="true"></div>
+
+        <section class="spell-rack touch-only" aria-label="Spell controls">
+          <button type="button" data-spell="lightning"><b>ϟ</b><span>Lightning</span></button>
+          <button type="button" data-spell="frost" disabled><b>❄</b><span>Frost later</span></button>
+          <button type="button" data-spell="bubble" disabled><b>◯</b><span>Aegis later</span></button>
+        </section>
+
+        <div id="move-stick" class="move-stick touch-only" aria-label="Movement joystick"><i></i></div>
+        <div class="mobility touch-only">
+          <button id="jump-control" type="button"><b>↑</b><span>Jump</span></button>
+          <button id="crouch-control" type="button"><b>⌄</b><span>Crouch</span></button>
+          <button id="shoulder-control" type="button"><b>⇄</b><span>Shoulder</span></button>
+        </div>
+      </section>
+
+      <section id="start-overlay" class="start-overlay">
+        <div>
+          <p>Level 1 · Camera and traversal study</p>
+          <h1>Third-person<br />technical proof</h1>
+          <p>This intentionally uses temporary geometry to validate camera, collision, movement, and staff-origin aiming.</p>
+          <button id="start-proof" type="button">Enter the brick passage <span>→</span></button>
+          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · Right mouse aim · Left click lightning</small>
+        </div>
+      </section>
+
+      <section id="loading" class="loading" aria-live="polite">
+        <span></span><strong>Preparing Babylon scene</strong><small id="loading-copy">Loading the experimental renderer…</small>
+      </section>
+
+      <section class="orientation-block" aria-label="Landscape orientation required">
+        <b>↻</b><strong>Rotate to landscape</strong><span>The third-person proof is designed for landscape play.</span>
+      </section>
+    </main>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script type="module" src="third-person/main.js?v=20260817-proof-v1"></script>
+  </body>
+</html>

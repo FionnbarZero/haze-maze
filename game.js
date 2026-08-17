@@ -834,12 +834,22 @@
     if(state.mapOpen)renderMiniMap();
   }
 
+  function requestGamePointerLock() {
+    if(!matchMedia('(pointer:fine)').matches||document.pointerLockElement===canvas)return;
+    try {
+      const request=canvas.requestPointerLock?.();
+      if(request&&typeof request.catch==='function')request.catch(haltMovement);
+    } catch {
+      haltMovement();
+    }
+  }
+
   function togglePouch(force) {
     if(!state.running||state.introActive||state.finished)return;
     state.pouchOpen=force??!state.pouchOpen;
     $('#pouch').classList.toggle('is-visible',state.pouchOpen);$('#pouch-button').classList.toggle('is-active',state.pouchOpen);$('#pouch-button').setAttribute('aria-expanded',String(state.pouchOpen));
     if(state.pouchOpen){haltMovement();state.mapOpen=false;$('#mini-map').classList.remove('is-visible');$('#map-button').classList.remove('is-active');$('#map-button').setAttribute('aria-expanded','false');document.exitPointerLock?.();}
-    else if(matchMedia('(pointer:fine)').matches&&!state.paused)canvas.requestPointerLock?.();
+    else if(!state.paused)requestGamePointerLock();
   }
 
   function usePouchItem(item) {
@@ -891,12 +901,12 @@
     $('#start-screen').classList.remove('screen--active');$('#pause-screen').classList.remove('screen--active');$('#end-screen').classList.remove('screen--active');$('#hud').classList.add('is-active');
     playMoonArchIntro();
     canvas.focus({preventScroll:true});
-    if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();
+    requestGamePointerLock();
   }
 
   function setPaused(paused) {
     if(!state.running||state.introActive||state.finished)return;state.paused=paused;$('#pause-screen').classList.toggle('screen--active',paused);
-    if(paused){haltMovement();state.simulationRemainder=0;if(state.pouchOpen)togglePouch(false);document.exitPointerLock?.();}else{state.lastTime=performance.now();if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();}
+    if(paused){haltMovement();state.simulationRemainder=0;if(state.pouchOpen)togglePouch(false);document.exitPointerLock?.();}else{state.lastTime=performance.now();requestGamePointerLock();}
   }
 
   function haltMovement() {
@@ -938,8 +948,10 @@
   addEventListener('keyup',event=>state.keys.delete(event.code));
   addEventListener('blur',haltMovement);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)haltMovement();});
+  document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement===canvas)canvas.focus({preventScroll:true});else haltMovement();});
+  document.addEventListener('pointerlockerror',haltMovement);
   addEventListener('mousemove',event=>{if(document.pointerLockElement===canvas&&state.running&&!state.paused&&!state.pouchOpen&&!state.introActive)state.player.angle+=event.movementX*.0024;});
-  canvas.addEventListener('click',()=>{canvas.focus({preventScroll:true});if(state.running&&!state.paused&&!state.pouchOpen&&document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
+  canvas.addEventListener('click',()=>{canvas.focus({preventScroll:true});if(state.running&&!state.paused&&!state.pouchOpen)requestGamePointerLock();});
   canvas.addEventListener('mousedown',event=>{if(event.button===0&&document.pointerLockElement===canvas)cast('lightning');});
 
   const joystick=$('#joystick'),stick=joystick.querySelector('i');
