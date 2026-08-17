@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&amp;family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
-    <link rel="stylesheet" href="styles.css?v=20260816-movement" />
+    <link rel="stylesheet" href="styles.css?v=20260817-webgl-witch-v2" />
   </head>
   <body>
     <main id="game-shell" aria-label="Hunt of the Moon Witch game">
@@ -47,6 +47,15 @@
             <strong>Overcharged lightning</strong>
           </div>
         </aside>
+      </section>
+
+      <section id="moon-arch-intro" class="moon-arch-intro" aria-label="The Moon Witch enters the maze through a Moon Arch" aria-hidden="true">
+        <div class="moon-arch-intro__sky" aria-hidden="true"><i></i><b></b><b></b><b></b></div>
+        <div class="moon-arch-intro__portal" aria-hidden="true"></div>
+        <div class="moon-arch-intro__wizard" aria-hidden="true"><canvas id="moon-witch-intro-3d"></canvas></div>
+        <div class="moon-arch-intro__arch" aria-hidden="true"><i></i><i></i><span>✦　◇　☾　◇　✦</span></div>
+        <div class="moon-arch-intro__mist" aria-hidden="true"></div>
+        <p><span>THE HUNT BEGINS</span><strong>Through the Moon Arch</strong></p>
       </section>
 
       <section id="hud" class="hud" aria-label="Game status">
@@ -133,20 +142,7 @@
           </button>
         </div>
         <div id="character-shield" class="character-shield" aria-hidden="true"></div>
-        <div id="wizard-avatar" class="wizard-avatar" aria-hidden="true">
-          <img class="wizard-avatar__body" src="assets/red-wizard-action-cutout.png" alt="" />
-          <img class="wizard-avatar__hair" src="assets/red-wizard-action-cutout.png" alt="" />
-          <img class="wizard-avatar__arm" src="assets/red-wizard-action-cutout.png" alt="" />
-        </div>
-        <div class="staff" aria-hidden="true">
-          <div id="staff-glow" class="staff__glow"></div>
-          <div class="staff__crystal"><i></i></div>
-          <div class="staff__claw staff__claw--left"></div>
-          <div class="staff__claw staff__claw--right"></div>
-          <div class="staff__shaft"></div>
-          <div class="staff__grip"></div>
-          <div class="staff__rune">ᚱ</div>
-        </div>
+        <canvas id="moon-witch-3d" class="witch-3d" aria-hidden="true"></canvas>
         <div id="cast-fx" class="cast-fx" aria-hidden="true"></div>
       </section>
 
@@ -171,6 +167,7 @@
       </section>
       <div id="orientation-hint" class="orientation-hint" aria-hidden="true"><span>↻</span><strong>Rotate to landscape</strong><small>More room to explore and cast</small></div>
     </main>
-    <script src="game.js?v=20260816-movement"></script>
+    <script src="witch-3d.js?v=20260817-webgl-witch-v2"></script>
+    <script src="game.js?v=20260817-webgl-witch-v2"></script>
   </body>
 </html>

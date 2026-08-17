@@ -10,6 +10,8 @@
   const dragonImage = new Image();
   const berryBushImage = new Image();
   const coarseControls = matchMedia('(pointer:coarse)').matches;
+  const moonWitch = new window.MoonWitch3D($('#moon-witch-3d'));
+  const introMoonWitch = new window.MoonWitch3D($('#moon-witch-intro-3d'), { compact: true });
   const wallSurfaces = {};
   const wallTextures = Object.fromEntries(Object.entries({
     brick: 'assets/ancient-brick-wall-v2.jpg',
@@ -54,6 +56,8 @@
     running: false,
     paused: false,
     finished: false,
+    introActive: false,
+    introTimer: 0,
     level: 1,
     map: [],
     theme: levelThemes[0],
@@ -297,7 +301,7 @@
   }
 
   function jump() {
-    if(!state.running||state.paused||state.pouchOpen||state.player.z>.02)return;
+    if(!state.running||state.paused||state.pouchOpen||state.introActive||state.player.z>.02)return;
     state.player.verticalVelocity=4.15;
     state.player.crouching=false;
     state.mobileCrouch=false;
@@ -697,7 +701,7 @@
   }
 
   function update(dt, now) {
-    if (!state.running || state.paused || state.pouchOpen || state.finished) return;
+    if (!state.running || state.paused || state.pouchOpen || state.introActive || state.finished) return;
     const p = state.player;
     p.crouching=state.mobileCrouch||state.keys.has('KeyC')||state.keys.has('ControlLeft')||state.keys.has('ControlRight');
     p.verticalVelocity-=8.5*dt;p.z+=p.verticalVelocity*dt;if(p.z<=0){p.z=0;p.verticalVelocity=0;}
@@ -752,7 +756,7 @@
   }
 
   function cast(spell) {
-    if(!state.running||state.paused||state.pouchOpen||state.finished)return;
+    if(!state.running||state.paused||state.pouchOpen||state.introActive||state.finished)return;
     const now=performance.now();
     if(now<state.cooldowns[spell]){showMessage('Spell is gathering strength');return;}
     state.spellFx={type:spell,until:now+(spell==='lightning'?420:620),seed:Math.random()*100};
@@ -824,14 +828,14 @@
   }
 
   function toggleMap() {
-    if(!state.running||state.finished)return;
+    if(!state.running||state.introActive||state.finished)return;
     if(state.pouchOpen){state.pouchOpen=false;$('#pouch').classList.remove('is-visible');$('#pouch-button').classList.remove('is-active');$('#pouch-button').setAttribute('aria-expanded','false');}
     state.mapOpen=!state.mapOpen;$('#mini-map').classList.toggle('is-visible',state.mapOpen);$('#map-button').classList.toggle('is-active',state.mapOpen);$('#map-button').setAttribute('aria-expanded',String(state.mapOpen));
     if(state.mapOpen)renderMiniMap();
   }
 
   function togglePouch(force) {
-    if(!state.running||state.finished)return;
+    if(!state.running||state.introActive||state.finished)return;
     state.pouchOpen=force??!state.pouchOpen;
     $('#pouch').classList.toggle('is-visible',state.pouchOpen);$('#pouch-button').classList.toggle('is-active',state.pouchOpen);$('#pouch-button').setAttribute('aria-expanded',String(state.pouchOpen));
     if(state.pouchOpen){haltMovement();state.mapOpen=false;$('#mini-map').classList.remove('is-visible');$('#map-button').classList.remove('is-active');$('#map-button').setAttribute('aria-expanded','false');document.exitPointerLock?.();}
@@ -860,6 +864,7 @@
   }
 
   function finish(won) {
+    clearTimeout(state.introTimer);state.introActive=false;$('#moon-arch-intro').classList.remove('is-active');$('#moon-arch-intro').setAttribute('aria-hidden','true');
     state.finished=true;state.running=false;document.exitPointerLock?.();
     $('#end-eyebrow').innerHTML=`<span></span>${won?'All trials complete':'Field trial interrupted'}`;
     $('#end-title').innerHTML=won?'Ten mazes<br>mastered.':'The maze<br>prevails.';
@@ -868,16 +873,29 @@
     $('#end-screen').classList.add('screen--active');
   }
 
+  function completeMoonArchIntro() {
+    if(!state.introActive)return;
+    state.introActive=false;state.lastTime=performance.now();state.simulationRemainder=0;
+    const intro=$('#moon-arch-intro');intro.classList.remove('is-active');intro.setAttribute('aria-hidden','true');
+    showLevelBanner();showMessage('Level 01 · contain the dragons and find the gate');canvas.focus({preventScroll:true});
+  }
+
+  function playMoonArchIntro() {
+    clearTimeout(state.introTimer);state.introActive=true;
+    const intro=$('#moon-arch-intro');intro.classList.remove('is-active');intro.setAttribute('aria-hidden','false');void intro.offsetWidth;intro.classList.add('is-active');
+    state.introTimer=setTimeout(completeMoonArchIntro,3200);
+  }
+
   function start() {
     haltMovement();resetGame();state.running=true;state.paused=false;state.lastTime=performance.now();state.simulationRemainder=0;
     $('#start-screen').classList.remove('screen--active');$('#pause-screen').classList.remove('screen--active');$('#end-screen').classList.remove('screen--active');$('#hud').classList.add('is-active');
-    showMessage('Level 01 · contain the dragons and find the gate');
+    playMoonArchIntro();
     canvas.focus({preventScroll:true});
     if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();
   }
 
   function setPaused(paused) {
-    if(!state.running||state.finished)return;state.paused=paused;$('#pause-screen').classList.toggle('screen--active',paused);
+    if(!state.running||state.introActive||state.finished)return;state.paused=paused;$('#pause-screen').classList.toggle('screen--active',paused);
     if(paused){haltMovement();state.simulationRemainder=0;if(state.pouchOpen)togglePouch(false);document.exitPointerLock?.();}else{state.lastTime=performance.now();if(matchMedia('(pointer:fine)').matches)canvas.requestPointerLock?.();}
   }
 
@@ -892,11 +910,27 @@
     const elapsed=Math.min(.1,(time-state.lastTime)/1000||0),step=1/120;state.lastTime=time;state.simulationRemainder+=elapsed;
     let updates=0;while(state.simulationRemainder>=step&&updates<12){update(step,time);state.simulationRemainder-=step;updates++;}
     if(updates===12)state.simulationRemainder=0;
-    renderWorld(time);updateHud(time);requestAnimationFrame(frame);
+    renderWorld(time);updateHud(time);
+    const characterActive=state.running&&!state.paused&&!state.pouchOpen&&!state.introActive&&!state.finished;
+    if(state.running&&!state.introActive)moonWitch.render({
+      moving:characterActive&&state.player.moving,
+      speed:characterActive?Math.hypot(state.player.vx,state.player.vy):0,
+      forward:characterActive?(state.player.vx*Math.cos(state.player.angle)+state.player.vy*Math.sin(state.player.angle))/3.45:0,
+      strafe:characterActive?(state.player.vx*-Math.sin(state.player.angle)+state.player.vy*Math.cos(state.player.angle))/3.45:0,
+      crouching:characterActive&&state.player.crouching,
+      jumpHeight:characterActive?state.player.z:0,
+      verticalVelocity:characterActive?state.player.verticalVelocity:0,
+      turnVelocity:characterActive?state.player.turnVelocity:0,
+      casting:characterActive&&time<state.castPoseUntil,
+      spell:state.castPoseSpell
+    },time);
+    if(state.introActive)introMoonWitch.render({moving:true,speed:2.55,forward:1,strafe:0,crouching:false,jumpHeight:0,verticalVelocity:0,turnVelocity:0,casting:false,spell:'lightning'},time);
+    requestAnimationFrame(frame);
   }
 
   addEventListener('resize',resize);
   addEventListener('keydown',event=>{
+    if(state.introActive){event.preventDefault();return;}
     if(state.running&&['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','ControlLeft','ControlRight'].includes(event.code))event.preventDefault();
     state.keys.add(event.code);
     if(event.code==='Digit1')cast('lightning');if(event.code==='Digit2')cast('frost');if(event.code==='Digit3')cast('bubble');if(event.code==='Space'&&!event.repeat){event.preventDefault();jump();}if(event.code==='KeyM'&&!event.repeat)toggleMap();if(event.code==='KeyP'&&!event.repeat)togglePouch();if(event.code==='Escape'&&state.running){if(state.pouchOpen)togglePouch(false);else setPaused(!state.paused);}
@@ -904,7 +938,7 @@
   addEventListener('keyup',event=>state.keys.delete(event.code));
   addEventListener('blur',haltMovement);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)haltMovement();});
-  addEventListener('mousemove',event=>{if(document.pointerLockElement===canvas&&state.running&&!state.paused&&!state.pouchOpen)state.player.angle+=event.movementX*.0024;});
+  addEventListener('mousemove',event=>{if(document.pointerLockElement===canvas&&state.running&&!state.paused&&!state.pouchOpen&&!state.introActive)state.player.angle+=event.movementX*.0024;});
   canvas.addEventListener('click',()=>{canvas.focus({preventScroll:true});if(state.running&&!state.paused&&!state.pouchOpen&&document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
   canvas.addEventListener('mousedown',event=>{if(event.button===0&&document.pointerLockElement===canvas)cast('lightning');});
 

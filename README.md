@@ -2,6 +2,8 @@
 
 An original, mobile-first enchanted maze FPS built with modern browser APIs and no dependencies.
 
+Beginning a new hunt plays a short cinematic transition in which the Moon Witch walks through a glowing stone Moon Arch before control passes to the player.
+
 ## Play
 
 Open `index.html` directly, or run a local server:
@@ -19,4 +21,4 @@ Then visit `http://localhost:8000`.
 
 Complete ten distinct maze levels, starting with the variable, realistically textured Brick Labyrinth. Every level now uses a photoreal wall material, including flowering moon hedges, amethyst rock, damp cloister stone, living fungal briars, frost crystal, cinderstone, silver-veined masonry, and starlight crystal. Deterministic moss, luminous sigils, magical vines, spores, fractures, and ember veins vary from wall to wall. Stable wall-face coordinates and extra close-range texture tiling preserve the material structure instead of magnifying a single wall image as the player approaches. Contain every animated dragon in a level to open its golden gate. Every dragon grants 10 mastery; reaching 100 upgrades lightning damage and freeze duration. Golden magic berries are collected into the interactive pouch and restore 30 health when selected. Opening the pouch reveals a realistic, compartmented leather field bag with photoreal golden berries, storm crystals, frost runes, and phoenix feathers that can be selected directly. Jump over fallen rune relics and crouch beneath moon arches. The map button in the top-left—or M on a keyboard—opens a transparent live maze overlay showing dragons, berries, obstacles, the gate, your facing direction, and a “You are here” marker.
 
-The action-wizard uses a transparent soft-edged character cutout with independent body sway, hair follow-through, jump/crouch motion, and an extended casting-arm pose.
+The action-wizard is a real-time WebGL Moon Witch assembled from lit 3D geometry and a hierarchical skeleton rather than layered character artwork. Her hips, knees, ankles, shoulders, elbows, hands, head, cloak, and curls respond directly to gameplay movement with an opposing-limb walk cycle, airborne leg tuck, properly folded crouch, body weight shift, and spring-delayed hair motion. Her smooth robe widens and drapes over the folded legs while crouching to prevent body clipping. The highlighted wooden crystal staff is anchored visibly beside her calculated right-hand position, contains animated magic inside its glowing orb, and aims forward with her arm whenever she casts. The same animated 3D rig walks through the Moon Arch introduction.
