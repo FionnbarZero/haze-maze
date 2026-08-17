@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Haze Maze</title>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop stop-color="#080516"/>
+      <stop offset=".54" stop-color="#2c1657"/>
+      <stop offset="1" stop-color="#9f5dff"/>
+    </linearGradient>
+    <radialGradient id="moon" cx="76%" cy="19%" r="45%">
+      <stop stop-color="#90efff" stop-opacity=".72"/>
+      <stop offset="1" stop-color="#90efff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="wall" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop stop-color="#ff82cb"/>
+      <stop offset=".5" stop-color="#d15cff"/>
+      <stop offset="1" stop-color="#90efff"/>
+    </linearGradient>
+    <radialGradient id="spark">
+      <stop stop-color="#f4fffb"/>
+      <stop offset=".3" stop-color="#81ffd2"/>
+      <stop offset="1" stop-color="#81ffd2" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="14" fill="url(#moon)"/>
+  <circle cx="32" cy="32" r="25" fill="none" stroke="#ffd889" stroke-opacity=".2" stroke-dasharray="2 4"/>
+  <path d="M32 32h-8V22h20v22H18V18h32" fill="none" stroke="url(#wall)" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="32" r="9" fill="url(#spark)" opacity=".85"/>
+  <circle cx="32" cy="32" r="3.2" fill="#f4fffb"/>
+  <path d="M10 50c7-2 14-2 21 0s14 2 21 0M14 56c6-2 12-2 18 0s12 2 18 0" fill="none" stroke="#90efff" stroke-opacity=".22" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M47 11.5 48 15l3.5 1-3.5 1-1 3.5-1-3.5-3.5-1 3.5-1Z" fill="#ffd889" fill-opacity=".85"/>
+</svg>
