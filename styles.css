@@ -137,7 +137,7 @@ kbd { color: #d9c9eb; font: 600 10px "DM Sans", sans-serif; }
 .spell.is-selected { border-color: rgba(202,146,255,.6); background: linear-gradient(125deg, rgba(61,29,92,.94), rgba(34,18,58,.84)); box-shadow: 0 0 20px rgba(151,82,235,.18); }
 .spell--lightning { color: #cf8cff; }.spell--frost { color: var(--ice); }.spell--bubble { color: #ff9ddd; }
 .spell.is-cooling { filter: saturate(.3); }.spell.is-cooling .spell__cooldown { transform: scaleX(var(--cooldown, 1)); }
-.witch-3d { position:absolute;z-index:1;inset:0;display:block;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 14px 18px rgba(0,0,0,.5)); }
+.witch-3d { position:absolute;z-index:1;inset:0;display:block;width:100%;height:100%;transform:translateY(1in);pointer-events:none;filter:drop-shadow(0 14px 18px rgba(0,0,0,.5)); }
 .witch-3d--unavailable { display:none; }
 .cast-fx { position: absolute; inset: 0; opacity: 0; }
 .cast-fx.lightning { opacity: 1; background: radial-gradient(circle at 50% 50%,rgba(234,225,255,.35),transparent 24%),radial-gradient(circle at 58% 77%,rgba(174,88,255,.42),transparent 18%); filter: drop-shadow(0 0 8px #a13cff); animation: flash .28s steps(2) forwards; }
