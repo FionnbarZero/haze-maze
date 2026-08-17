@@ -30,6 +30,8 @@
             <div><kbd>WASD</kbd><span>Move</span></div>
             <div><kbd>Drag / mouse</kbd><span>Look</span></div>
             <div><kbd>1 · 2 · 3</kbd><span>Cast</span></div>
+            <div><kbd>Space · C</kbd><span>Jump · crouch</span></div>
+            <div><kbd>P</kbd><span>Pouch</span></div>
           </div>
           <p class="landscape-note">Rotate your phone for the best field view.</p>
         </div>
@@ -52,6 +54,9 @@
           <button id="map-button" class="map-button" type="button" aria-label="Show mini maze; keyboard shortcut M" aria-expanded="false" title="Map · M">
             <span aria-hidden="true">⌗</span><small>MAP</small>
           </button>
+          <button id="pouch-button" class="map-button pouch-button" type="button" aria-label="Open magic pouch; keyboard shortcut P" aria-expanded="false" title="Pouch · P">
+            <span aria-hidden="true">♢</span><small>POUCH</small>
+          </button>
           <div class="brand"><span>HM</span><strong>Haze Maze</strong></div>
           <div class="objective">
             <span id="objective-label">FIELD OBJECTIVE</span>
@@ -64,6 +69,18 @@
           <div class="mini-map__header"><span id="map-level">LEVEL 01</span><small>FIELD MAP</small></div>
           <canvas id="mini-map-canvas" width="420" height="420" aria-label="Map of the current maze and your current position"></canvas>
           <div class="mini-map__legend"><span><i class="legend-player"></i>You</span><span><i class="legend-beast"></i>Dragon</span><span><i class="legend-berry"></i>Berry</span><span><i class="legend-gate"></i>Gate</span></div>
+        </aside>
+
+        <aside id="pouch" class="pouch" aria-label="Magic power-up pouch">
+          <div class="pouch__header"><div><span>FIELD POUCH</span><strong>Enchanted supplies</strong></div><button id="pouch-close" type="button" aria-label="Close pouch">×</button></div>
+          <p>Select an object to use it. Collected berries are stored here.</p>
+          <div class="pouch__grid">
+            <button class="pouch-item" type="button" data-item="berry"><img class="item-orb" src="assets/item-golden-berry.jpg" alt=""><span><strong>Golden berry</strong><small>Restore 30 health</small></span><b id="item-berry-count">0</b></button>
+            <button class="pouch-item" type="button" data-item="storm"><img class="item-orb" src="assets/item-storm-crystal.jpg" alt=""><span><strong>Storm crystal</strong><small>Empower lightning · 15s</small></span><b id="item-storm-count">1</b></button>
+            <button class="pouch-item" type="button" data-item="frost"><img class="item-orb" src="assets/item-frost-rune.jpg" alt=""><span><strong>Frost rune</strong><small>Deep freeze · 15s</small></span><b id="item-frost-count">1</b></button>
+            <button class="pouch-item" type="button" data-item="phoenix"><img class="item-orb" src="assets/item-phoenix-feather.jpg" alt=""><span><strong>Phoenix feather</strong><small>Restore full health</small></span><b id="item-phoenix-count">1</b></button>
+          </div>
+          <div class="pouch__hint"><kbd>P</kbd> Close pouch</div>
         </aside>
 
         <div class="status-stack">
@@ -93,6 +110,10 @@
 
         <div id="touch-look" class="touch-look" aria-hidden="true"></div>
         <div id="joystick" class="joystick" aria-label="Movement joystick"><i></i></div>
+        <div class="mobility-dock" aria-label="Movement actions">
+          <button id="jump-button" type="button"><span>↑</span><small>Jump</small></button>
+          <button id="crouch-button" type="button"><span>↓</span><small>Crouch</small></button>
+        </div>
 
         <div class="spell-dock" aria-label="Spells">
           <button class="spell spell--lightning is-selected" type="button" data-spell="lightning" aria-label="Cast lightning">
@@ -110,6 +131,12 @@
             <span class="spell__copy"><strong>Aegis Orb</strong><small>Shield · 5s</small></span>
             <i class="spell__cooldown"></i>
           </button>
+        </div>
+        <div id="character-shield" class="character-shield" aria-hidden="true"></div>
+        <div id="wizard-avatar" class="wizard-avatar" aria-hidden="true">
+          <img class="wizard-avatar__body" src="assets/red-wizard-action-cutout.png" alt="" />
+          <img class="wizard-avatar__hair" src="assets/red-wizard-action-cutout.png" alt="" />
+          <img class="wizard-avatar__arm" src="assets/red-wizard-action-cutout.png" alt="" />
         </div>
         <div class="staff" aria-hidden="true">
           <div id="staff-glow" class="staff__glow"></div>
