@@ -6,7 +6,11 @@ import { CharacterController } from './controller.js';
 import { ShoulderCamera } from './camera.js';
 import { LightningCombat } from './combat.js';
 import { DebugTelemetry } from './debug.js';
+import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js';
+import { MobileQualificationRecorder } from './qualification.js';
 
+const moduleStartedAt = performance.now();
+const qualityRequest = resolveQualityRequest();
 const loading = document.querySelector('#loading');
 const loadingCopy = document.querySelector('#loading-copy');
 
@@ -28,7 +32,8 @@ try {
     adaptToDeviceRatio: true,
     powerPreference: 'high-performance'
   });
-  engine.setHardwareScalingLevel(Math.max(1, (devicePixelRatio || 1) / 1.6));
+  engine.setHardwareScalingLevel(initialHardwareScaling(qualityRequest));
+  const qualityController = new AdaptiveQualityController(engine, qualityRequest);
 
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = BABYLON.Color4.FromHexString('#0a0718ff');
@@ -46,9 +51,10 @@ try {
   moonLight.position.set(-8, 13, -5);
   moonLight.diffuse = BABYLON.Color3.FromHexString('#d9d2ff');
   moonLight.intensity = 1.35;
-  const shadowGenerator = new BABYLON.ShadowGenerator(1024, moonLight);
+  const shadowGenerator = new BABYLON.ShadowGenerator(qualityRequest.profile?.shadowMapSize || 1024, moonLight);
   shadowGenerator.usePercentageCloserFiltering = true;
   shadowGenerator.bias = .0005;
+  const sceneInstrumentation = new BABYLON.SceneInstrumentation(scene);
 
   const world = createWorld(BABYLON, scene, shadowGenerator);
   const witch = createPlaceholderWitch(BABYLON, scene, shadowGenerator);
@@ -56,11 +62,17 @@ try {
   const controller = new CharacterController(BABYLON, world);
   const mobile = matchMedia('(pointer:coarse)').matches;
   const shoulderCamera = new ShoulderCamera(BABYLON, scene, world, mobile);
+  shoulderCamera.addBlockers(dragon.meshes);
   const input = new ProofInput(canvas);
   const combat = new LightningCombat(BABYLON, scene, shoulderCamera, witch, dragon);
-  const telemetry = new DebugTelemetry(engine);
+  const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
+  const routePanel = document.querySelector('.route-panel');
+  const routeObjective = document.querySelector('#route-objective');
+  const routeProgress = document.querySelector('#route-progress');
   let toastTimer = 0;
+  let completed = false;
+  let qualification = null;
 
   const showMessage = message => {
     toast.textContent = message;
@@ -76,13 +88,71 @@ try {
   input.onMessage = showMessage;
   combat.onMessage = showMessage;
 
+  const updateRouteHud = worldState => {
+    const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'dragon', 'exit'];
+    const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
+    routeObjective.textContent = worldState.objective;
+    routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} checkpoints`;
+    routePanel.classList.toggle('is-complete', worldState.complete);
+  };
+  updateRouteHud(world.snapshot());
+
   const startProof = () => {
     document.querySelector('#start-overlay').classList.add('is-hidden');
     document.querySelector('#hud').classList.add('is-active');
     input.start();
+    qualification?.recordEvent('gameplay-start');
     showMessage('Walk through the Moon Arch · jump the relic · crouch beneath the lintel');
   };
   document.querySelector('#start-proof').addEventListener('click', startProof);
+
+  const resetTechnicalRoute = () => {
+    completed = false;
+    input.clearHeldInput();
+    input.setCrouched(false);
+    input.active = true;
+    input.updateBlockedState();
+    world.reset();
+    dragon.reset();
+    combat.reset();
+    controller.reset();
+    shoulderCamera.setLook(0, 0);
+    shoulderCamera.snapNextUpdate();
+    updateRouteHud(world.snapshot());
+    showMessage('Qualification route reset · begin at the Moon Arch');
+  };
+
+  const snapshotProof = () => ({
+    ready: scene.isReady(),
+    active: input.active,
+    input: {
+      pointerLocked: input.pointerLocked,
+      aiming: input.aiming,
+      sprinting: input.sprinting,
+      blocked: input.blocked,
+      movement: input.movementAxes(),
+      heldActions: input.heldActionNames(),
+      coarsePointer: matchMedia('(pointer:coarse)').matches
+    },
+    player: controller.snapshot(),
+    camera: shoulderCamera.snapshot(input.aiming),
+    witch: witch.snapshot(),
+    dragon: dragon.snapshot(),
+    combat: combat.snapshot(),
+    world: world.snapshot(),
+    performance: telemetry.snapshot(),
+    quality: qualityController.snapshot(),
+    meshCount: scene.meshes.length,
+    engine: `Babylon.js WebGL ${engine.webGLVersion}`
+  });
+
+  qualification = new MobileQualificationRecorder({
+    canvas,
+    telemetry,
+    qualityController,
+    getState: snapshotProof,
+    resetRoute: resetTechnicalRoute
+  });
 
   let lastTime = performance.now();
   engine.runRenderLoop(() => {
@@ -94,45 +164,73 @@ try {
     shoulderCamera.updateLook(input);
     controller.update(input, shoulderCamera.yaw, deltaTime);
     shoulderCamera.update(controller, input, deltaTime, witch);
-    witch.update(controller, deltaTime, now);
+    witch.update(controller, input, deltaTime, now);
     dragon.update(now, deltaTime);
     combat.update();
-    telemetry.update(now, measuredDeltaTime, controller.snapshot(), shoulderCamera.snapshot(input.aiming));
+    const routeEvents = world.update(controller, dragon, deltaTime);
+    const worldState = world.snapshot();
+    for (const event of routeEvents) showMessage(event.message);
+    if (worldState.complete && !completed) {
+      completed = true;
+      input.active = false;
+      input.clearHeldInput();
+      document.exitPointerLock?.();
+    }
+    updateRouteHud(worldState);
     scene.render();
+    telemetry.markFirstRenderedFrame();
+    qualityController.update(nowMilliseconds);
+    const playerState = controller.snapshot();
+    const cameraState = shoulderCamera.snapshot(input.aiming);
+    const combatState = combat.snapshot();
+    const dragonState = dragon.snapshot();
+    const witchState = witch.snapshot();
+    telemetry.update(
+      now,
+      measuredDeltaTime,
+      playerState,
+      cameraState,
+      combatState,
+      dragonState,
+      worldState,
+      witchState
+    );
+    qualification?.update(nowMilliseconds, {
+      player: playerState,
+      camera: cameraState,
+      combat: combatState,
+      dragon: dragonState,
+      witch: witchState,
+      world: worldState
+    });
   });
 
   const resize = () => engine.resize();
   addEventListener('resize', resize);
   addEventListener('orientationchange', resize);
+  addEventListener('blur', () => telemetry.recordLifecycle('blur'));
+  addEventListener('focus', () => telemetry.recordLifecycle('focus'));
+  document.addEventListener('visibilitychange', () => telemetry.recordLifecycle(document.hidden ? 'hidden' : 'visible'));
+  canvas.addEventListener('webglcontextlost', event => {
+    event.preventDefault();
+    telemetry.recordLifecycle('contextLost');
+    input.clearHeldInput();
+    showMessage('WebGL context lost · waiting for recovery');
+  });
+  canvas.addEventListener('webglcontextrestored', () => {
+    telemetry.recordLifecycle('contextRestored');
+    showMessage('WebGL context restored');
+  });
 
   scene.executeWhenReady(() => {
+    telemetry.markReady();
     loading.classList.add('is-hidden');
     loading.setAttribute('aria-hidden', 'true');
   });
 
   window.__HMW_THIRD_PERSON_PROOF__ = Object.freeze({
     start: startProof,
-    snapshot: () => ({
-      ready: scene.isReady(),
-      active: input.active,
-      input: {
-        pointerLocked: input.pointerLocked,
-        aiming: input.aiming,
-        movement: input.movementAxes(),
-        coarsePointer: matchMedia('(pointer:coarse)').matches
-      },
-      player: controller.snapshot(),
-      camera: shoulderCamera.snapshot(input.aiming),
-      dragon: { health: dragon.health, alive: dragon.alive },
-      combat: {
-        targeted: combat.targeted,
-        lastCast: combat.lastCast,
-        activeLightningStreams: scene.meshes.filter(mesh => mesh.name.startsWith('lightning-stream-')).length
-      },
-      performance: telemetry.snapshot(),
-      meshCount: scene.meshes.length,
-      engine: `Babylon.js WebGL ${engine.webGLVersion}`
-    }),
+    snapshot: snapshotProof,
     setMovement: (x, y, sprint = false) => {
       input.move.x = Math.max(-1, Math.min(1, x));
       input.move.y = Math.max(-1, Math.min(1, y));
@@ -140,12 +238,30 @@ try {
     },
     stopMovement: () => { input.move.x = 0; input.move.y = 0; input.keys.delete('ShiftLeft'); },
     look: (yawDelta, pitchDelta = 0) => { input.lookDelta.x += yawDelta; input.lookDelta.y += pitchDelta; },
+    setLook: (yaw, pitch) => shoulderCamera.setLook(yaw, pitch),
+    setAim: value => { input.aiming = Boolean(value); },
     jump: () => input.actions.add('jump'),
     crouch: () => input.toggleCrouch(),
+    setCrouched: value => input.setCrouched(value),
     switchShoulder: () => shoulderCamera.switchShoulder(),
     castLightning: () => combat.cast(performance.now() / 1000),
-    teleport: (x, y, z) => { controller.position.set(x, y, z); controller.velocityY = 0; },
-    dispose: () => { engine.stopRenderLoop(); scene.dispose(); engine.dispose(); }
+    teleport: (x, y, z) => { controller.teleport(x, y, z); shoulderCamera.snapNextUpdate(); },
+    resetRoute: resetTechnicalRoute,
+    resetPerformance: () => telemetry.reset(),
+    dispose: () => {
+      engine.stopRenderLoop();
+      qualification?.dispose();
+      sceneInstrumentation.dispose();
+      scene.dispose();
+      engine.dispose();
+    }
+  });
+  window.__HMW_MOBILE_QUALIFICATION__ = Object.freeze({
+    enabled: qualification.enabled,
+    start: () => qualification.start(),
+    end: () => qualification.end(),
+    resetRoute: () => qualification.resetRoute(),
+    snapshot: () => qualification.snapshot()
   });
 } catch (error) {
   showFatalError(error);

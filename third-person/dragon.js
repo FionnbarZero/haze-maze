@@ -4,6 +4,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
   const root = new BABYLON.TransformNode('placeholder-dragon-root', scene);
   root.position.copyFrom(position);
   root.rotation.y = Math.PI;
+  const spawnPosition = position.clone();
   const meshes = [];
   const material = new BABYLON.StandardMaterial('temporary-dragon-material', scene);
   material.diffuseColor = BABYLON.Color3.FromHexString('#49306f');
@@ -20,19 +21,45 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     maximumHealth: COMBAT.dragonHealth,
     alive: true,
     hitUntil: 0,
+    defeatedAt: 0,
+    deathProgress: 0,
+    state: 'IDLE',
     damage(amount, time) {
-      if (!this.alive) return;
+      if (!this.alive) return false;
       this.health = Math.max(0, this.health - amount);
       this.hitUntil = time + .16;
       if (this.health === 0) {
         this.alive = false;
-        setTimeout(() => root.setEnabled(false), 520);
+        this.defeatedAt = time;
+        this.state = 'DEFEAT';
       }
+      return true;
+    },
+    reset() {
+      this.health = this.maximumHealth;
+      this.alive = true;
+      this.hitUntil = 0;
+      this.defeatedAt = 0;
+      this.deathProgress = 0;
+      this.state = 'IDLE';
+      root.position.copyFrom(spawnPosition);
+      root.rotation.set(0, Math.PI, 0);
+      root.scaling.setAll(1);
+      root.setEnabled(true);
+      material.emissiveColor = BABYLON.Color3.FromHexString('#12081f');
     },
     update(time, deltaTime) {
       if (!this.alive) {
-        root.rotation.z += deltaTime * 1.35;
-        root.position.y = Math.max(0, root.position.y - deltaTime * .6);
+        this.deathProgress = Math.min(1, (time - this.defeatedAt) / COMBAT.dragonDefeatDuration);
+        root.rotation.z = this.deathProgress * 1.32;
+        root.position.y = Math.max(-.25, -.25 * this.deathProgress);
+        root.scaling.setAll(1 - this.deathProgress * .22);
+        if (this.deathProgress >= 1 && root.isEnabled()) {
+          root.setEnabled(false);
+          this.state = 'DEFEATED';
+        }
+      } else {
+        this.state = time < this.hitUntil ? 'HIT' : 'IDLE';
       }
       material.emissiveColor = time < this.hitUntil
         ? BABYLON.Color3.FromHexString('#9f3e83')
@@ -40,6 +67,16 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       wingLeft.rotation.z = -.35 + Math.sin(time * 2.7) * .18;
       wingRight.rotation.z = .35 - Math.sin(time * 2.7) * .18;
       tailNodes.forEach((node, index) => { node.rotation.y = Math.sin(time * 2 + index * .7) * (.12 + index * .04); });
+    },
+    snapshot() {
+      return {
+        health: this.health,
+        maximumHealth: this.maximumHealth,
+        alive: this.alive,
+        state: this.state,
+        deathProgress: this.deathProgress,
+        enabled: root.isEnabled()
+      };
     }
   };
 
@@ -48,7 +85,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     mesh.position.copyFrom(localPosition);
     mesh.material = meshMaterial;
     mesh.isPickable = true;
-    mesh.metadata = { combatTarget: actor, aimSurface: true, kind: 'dragon' };
+    mesh.metadata = { combatTarget: actor, aimSurface: true, cameraObstacle: true, kind: 'dragon' };
     meshes.push(mesh);
     shadowGenerator.addShadowCaster(mesh);
     return mesh;

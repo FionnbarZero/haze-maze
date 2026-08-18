@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Decision date: 2026-08-17
-- Implementation state: Product direction adopted; 3D migration not yet started
+- Implementation state: Level 1 Babylon.js technical proof implemented beside the legacy prototype; production migration not yet accepted
 
 ## Decision
 
@@ -10,7 +10,7 @@ Hunt of the Moon Witch is a third-person, over-the-shoulder action spellcasting 
 
 The game is no longer described or designed as a first-person shooter. It may retain fast crosshair-driven spellcasting, but the player fantasy is controlling and watching the Moon Witch move through the maze with her staff in her right hand.
 
-This decision does not convert the current prototype to a full 3D engine. The existing build remains the playable migration baseline until a Babylon.js Level 1 vertical slice satisfies the acceptance criteria in this document.
+This decision does not convert the legacy prototype to a full 3D engine. The existing build remains the playable migration baseline until a Babylon.js Level 1 vertical slice satisfies the acceptance criteria in this document. An isolated technical proof now validates the core camera, traversal, input, and lightning-combat architecture without replacing that baseline.
 
 ## Experience goals
 
@@ -35,6 +35,22 @@ The current build is a hybrid prototype rather than the target implementation:
 - The Witch and maze do not share world coordinates, camera projection, lighting, collision, occlusion, or depth.
 
 The visible character, locomotion intent, staff pose, spell rules, maze logic, HUD concepts, map, pouch, and desktop/mobile action mappings are valuable design references. The separate rendering systems are not the production architecture.
+
+## Level 1 technical-proof checkpoint
+
+`third-person.html` and the ES modules in `third-person/` form an isolated Babylon.js technical proof. They do not modify or replace the legacy entry point at `index.html`.
+
+The proof currently demonstrates:
+
+- one shared Babylon.js scene and depth buffer for a modular brick passage, Moon Arch, traversal obstacles, placeholder Witch, placeholder dragon, animated exit gate, and lightning;
+- an authoritative six-checkpoint route from the Moon Arch through required jump and crouch obstacles, the combat arena, dragon defeat, and the unlocked exit;
+- a substepped capsule controller with camera-relative locomotion, normalized diagonals, sprint, buffered jump, coyote time, landing state, crouch clearance, ground probing, and wall sliding;
+- exploration and precision cameras with configurable framing, shoulder switching that anchors the current aim point, wall and side probes, fast inward correction, slower recovery, occlusion detection, and proximity fade;
+- a deliberately primitive full-body Witch with procedural locomotion states and a staff parented to `RightHand_StaffSocket`;
+- camera-ray intent plus an independently validated staff-orb ray, world obstruction, authoritative dragon health, defeat state, and gate unlock;
+- named desktop and independent landscape-touch inputs, safe pointer-lock recovery, portrait input blocking, safe-area-aware HUD placement, and runtime diagnostics.
+
+The proof deliberately does not claim final character or creature rigs, authored animation clips, production art, frost, Aegis Orb, pickups, map, pouch, settings UI, real-device performance qualification, or all criteria listed below. Its purpose is to retire architectural risk before production asset work begins.
 
 ## Camera specification
 

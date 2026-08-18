@@ -86,36 +86,73 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
   let crouchWeight = 0;
   let castWeight = 0;
   let castUntil = 0;
+  let animationState = 'IDLE';
+  let previousAnimationState = 'IDLE';
+  let transitionWeight = 1;
+  let visibility = 1;
 
   return {
     root,
     meshes,
     orb,
     setCast(time) { castUntil = time + .42; },
-    setVisibility(value) { for (const mesh of meshes) mesh.visibility = value; },
-    getOrbPosition() { return orb.getAbsolutePosition().clone(); },
-    update(state, deltaTime, time) {
+    setVisibility(value) {
+      visibility = value;
+      for (const mesh of meshes) mesh.visibility = value;
+    },
+    getOrbPosition() {
+      orb.computeWorldMatrix(true);
+      return orb.getAbsolutePosition().clone();
+    },
+    update(state, input, deltaTime, time) {
       root.position.copyFrom(state.position);
       root.rotation.y = state.facingYaw;
+      const requestedState = time < castUntil
+        ? 'CAST LIGHTNING'
+        : state.stateLabel;
+      if (requestedState !== animationState) {
+        previousAnimationState = animationState;
+        animationState = requestedState;
+        transitionWeight = 0;
+      }
+      transitionWeight = damp(transitionWeight, 1, .09, deltaTime);
       moveWeight = damp(moveWeight, state.speed > .05 ? 1 : 0, .09, deltaTime);
       crouchWeight = damp(crouchWeight, state.crouched ? 1 : 0, .12, deltaTime);
       castWeight = damp(castWeight, time < castUntil ? 1 : 0, time < castUntil ? .06 : .16, deltaTime);
       gait += deltaTime * (5.2 + state.speed * 1.4) * moveWeight;
       const stride = Math.sin(gait) * moveWeight;
-      leftLeg.rotation.x = stride * .58;
-      rightLeg.rotation.x = -stride * .58;
-      leftArm.rotation.x = -stride * .42;
-      rightArm.rotation.x = stride * .28 - castWeight * 1.24;
+      const sprintWeight = state.stateLabel === 'SPRINT' ? 1 : 0;
+      const airborne = !state.grounded ? 1 : 0;
+      const landingWeight = state.stateLabel === 'LAND' ? 1 : 0;
+      const aimWeight = input.aiming ? 1 : 0;
+      const strideScale = .58 + sprintWeight * .24;
+      leftLeg.rotation.x = stride * strideScale * (1 - airborne) - airborne * .28 + landingWeight * .22;
+      rightLeg.rotation.x = -stride * strideScale * (1 - airborne) - airborne * .12 + landingWeight * .22;
+      leftArm.rotation.x = -stride * (.42 + sprintWeight * .18) - aimWeight * .18;
+      rightArm.rotation.x = stride * .28 * (1 - aimWeight) - aimWeight * .62 - castWeight * .72;
       rightArm.rotation.z = -castWeight * .2;
-      staffSocket.rotation.x = -castWeight * .18;
+      staffSocket.rotation.x = -aimWeight * .12 - castWeight * .18;
       staffSocket.rotation.z = -.12 + castWeight * .2;
       visual.scaling.y = damp(visual.scaling.y, state.crouched ? .72 : 1, .12, deltaTime);
-      visual.position.y = Math.abs(Math.cos(gait)) * .025 * moveWeight;
+      visual.position.y = Math.abs(Math.cos(gait)) * .025 * moveWeight - landingWeight * .06;
+      visual.rotation.z = damp(visual.rotation.z, Math.sin(gait) * .012 * moveWeight, .1, deltaTime);
       cape.rotation.z = -.08 - stride * .025;
-      cape.rotation.x = state.speed * .015;
+      cape.rotation.x = state.speed * .015 + airborne * .06;
       orbLight.intensity = .58 + Math.sin(time * 6) * .12 + castWeight * 1.2;
       orbMaterial.emissiveColor.set(.48 + castWeight * .35, .2 + castWeight * .28, .72 + castWeight * .2);
       void skirt; void torso;
+    },
+    snapshot() {
+      return {
+        animationState,
+        previousAnimationState,
+        transitionWeight,
+        castWeight,
+        crouchWeight,
+        visibility,
+        staffSocket: staffSocket.name,
+        staffAttached: staff.parent === staffSocket
+      };
     }
   };
 }

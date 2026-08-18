@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#090615" />
     <meta name="description" content="Hunt of the Moon Witch third-person Babylon.js technical proof." />
     <title>Hunt of the Moon Witch — Third-Person Proof</title>
-    <link rel="stylesheet" href="third-person/styles.css?v=20260817-proof-v1" />
+    <link rel="stylesheet" href="third-person/styles.css?v=20260817-qualification-v2" />
   </head>
   <body>
     <main id="proof-shell" aria-label="Hunt of the Moon Witch third-person technical proof">
@@ -34,10 +34,23 @@
           <strong>Runtime telemetry</strong>
           <dl>
             <div><dt>FPS</dt><dd id="debug-fps">—</dd></div>
+            <div><dt>Frame</dt><dd id="debug-frame">—</dd></div>
             <div><dt>Camera</dt><dd id="debug-camera">—</dd></div>
             <div><dt>Player</dt><dd id="debug-player">—</dd></div>
+            <div><dt>Capsule</dt><dd id="debug-capsule">—</dd></div>
             <div><dt>Collision</dt><dd id="debug-collision">—</dd></div>
+            <div><dt>Target</dt><dd id="debug-target">—</dd></div>
+            <div><dt>Scene</dt><dd id="debug-scene">—</dd></div>
+            <div><dt>Budget</dt><dd id="debug-budget">—</dd></div>
+            <div><dt>Render</dt><dd id="debug-render">—</dd></div>
+            <div><dt>Load</dt><dd id="debug-load">—</dd></div>
           </dl>
+        </aside>
+
+        <aside class="route-panel" aria-label="Level 1 route objective">
+          <span>Technical route</span>
+          <strong id="route-objective">Cross the Moon Arch</strong>
+          <small id="route-progress">0 / 6 checkpoints</small>
         </aside>
 
         <div id="look-zone" class="look-zone touch-only" aria-hidden="true"></div>
@@ -76,6 +89,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260817-proof-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260817-qualification-v2"></script>
   </body>
 </html>

@@ -8,6 +8,7 @@ export class LightningCombat {
     this.witch = witch;
     this.dragon = dragon;
     this.cooldownUntil = 0;
+    this.lastTime = 0;
     this.targeted = false;
     this.lastCast = null;
     this.onMessage = () => {};
@@ -18,6 +19,7 @@ export class LightningCombat {
   }
 
   update() {
+    this.lastTime = performance.now() / 1000;
     const ray = this.camera.getAimRay(COMBAT.lightningRange);
     const hit = this.scene.pickWithRay(ray, mesh => mesh.metadata?.aimSurface === true, false);
     this.targeted = Boolean(hit?.hit && hit.pickedMesh?.metadata?.combatTarget?.alive);
@@ -25,7 +27,9 @@ export class LightningCombat {
     this.targetCard.classList.toggle('is-visible', this.targeted || this.dragon.health < this.dragon.maximumHealth);
     this.targetCard.setAttribute('aria-hidden', String(!(this.targeted || this.dragon.health < this.dragon.maximumHealth)));
     this.healthFill.style.transform = `scaleX(${this.dragon.health / this.dragon.maximumHealth})`;
-    this.healthCopy.textContent = `${this.dragon.health} / ${this.dragon.maximumHealth}`;
+    this.healthCopy.textContent = this.dragon.alive
+      ? `${this.dragon.health} / ${this.dragon.maximumHealth}`
+      : 'CONTAINED';
   }
 
   cast(time) {
@@ -44,23 +48,33 @@ export class LightningCombat {
     const origin = this.witch.getOrbPosition();
     const orbVector = intendedPoint.subtract(origin);
     const orbDistance = orbVector.length();
-    const orbRay = new this.BABYLON.Ray(origin, orbVector.scale(1 / Math.max(.001, orbDistance)), orbDistance);
+    const orbRay = new this.BABYLON.Ray(
+      origin,
+      orbVector.scale(1 / Math.max(.001, orbDistance)),
+      orbDistance + COMBAT.staffRayTerminalTolerance
+    );
     const actualHit = this.scene.pickWithRay(orbRay, mesh => mesh.metadata?.aimSurface === true, false);
     const impactPoint = actualHit?.hit ? actualHit.pickedPoint.clone() : intendedPoint;
-    const target = actualHit?.pickedMesh?.metadata?.combatTarget;
+    const intendedTarget = cameraHit?.pickedMesh?.metadata?.combatTarget;
+    const actualTarget = actualHit?.pickedMesh?.metadata?.combatTarget;
+    const sameTarget = Boolean(intendedTarget && actualTarget === intendedTarget);
+    const obstructed = Boolean(intendedTarget && !sameTarget);
 
     this.lastCast = {
       origin: { x: origin.x, y: origin.y, z: origin.z },
       impact: { x: impactPoint.x, y: impactPoint.y, z: impactPoint.z },
       intendedTarget: cameraHit?.pickedMesh?.name || null,
       actualTarget: actualHit?.pickedMesh?.name || null,
-      obstructed: Boolean(cameraHit?.pickedMesh?.metadata?.combatTarget && actualHit?.pickedMesh?.metadata?.kind !== 'dragon')
+      intendedKind: cameraHit?.pickedMesh?.metadata?.kind || null,
+      actualKind: actualHit?.pickedMesh?.metadata?.kind || null,
+      obstructed,
+      resolution: sameTarget ? 'TARGET' : obstructed ? 'OBSTRUCTED' : 'WORLD'
     };
     this.createLightning(origin, impactPoint);
-    if (target?.alive) {
-      target.damage(COMBAT.lightningDamage, time);
-      this.onMessage(target.alive ? `Lightning hit · ${target.health} health remains` : 'Training dragon contained');
-    } else if (cameraHit?.pickedMesh?.metadata?.combatTarget && actualHit?.pickedMesh?.metadata?.kind !== 'dragon') {
+    if (sameTarget && intendedTarget.alive) {
+      intendedTarget.damage(COMBAT.lightningDamage, time);
+      this.onMessage(intendedTarget.alive ? `Lightning hit · ${intendedTarget.health} health remains` : 'Training dragon contained');
+    } else if (obstructed) {
       this.onMessage('The staff is obstructed by the maze');
     } else {
       this.onMessage('Lightning struck the brickwork');
@@ -104,6 +118,27 @@ export class LightningCombat {
     setTimeout(() => {
       for (const line of lines) line.dispose();
       impactLight.dispose();
-    }, 170);
+    }, COMBAT.lightningEffectDuration * 1000);
+  }
+
+  reset() {
+    this.cooldownUntil = 0;
+    this.lastTime = 0;
+    this.targeted = false;
+    this.lastCast = null;
+    this.crosshair.classList.remove('is-targeting');
+    this.targetCard.classList.remove('is-visible');
+    this.targetCard.setAttribute('aria-hidden', 'true');
+    this.healthFill.style.transform = 'scaleX(1)';
+    this.healthCopy.textContent = `${this.dragon.maximumHealth} / ${this.dragon.maximumHealth}`;
+  }
+
+  snapshot() {
+    return {
+      targeted: this.targeted,
+      cooldownRemaining: Math.max(0, this.cooldownUntil - this.lastTime),
+      lastCast: this.lastCast,
+      activeLightningStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('lightning-stream-')).length
+    };
   }
 }
