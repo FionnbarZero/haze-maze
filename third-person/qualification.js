@@ -345,7 +345,7 @@ export class MobileQualificationRecorder {
     const castSignature = state.combat.lastCast ? JSON.stringify(state.combat.lastCast) : '';
     if (castSignature && castSignature !== this.lastCastSignature) {
       this.lastCastSignature = castSignature;
-      this.recordEvent('lightning-cast', state.combat.lastCast);
+      this.recordEvent(`${state.combat.lastCast.spell || 'lightning'}-cast`, state.combat.lastCast);
     }
     if (!this.lastSampleAt || nowMilliseconds - this.lastSampleAt >= 1000) this.captureSample(nowMilliseconds, state);
   }

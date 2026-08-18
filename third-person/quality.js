@@ -1,4 +1,4 @@
-import { PERFORMANCE, QUALITY_TIERS } from './config.js';
+import { PERFORMANCE, QUALITY_TIERS } from './config.js?v=20260818-spells-v1';
 
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 

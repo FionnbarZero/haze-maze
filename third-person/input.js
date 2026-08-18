@@ -1,4 +1,4 @@
-import { DESKTOP_ACTIONS, INPUT } from './config.js';
+import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260818-spells-v1';
 import { clamp } from './utils.js';
 
 export class ProofInput {
@@ -15,6 +15,7 @@ export class ProofInput {
     this.touchSprinting = false;
     this.pointerLocked = false;
     this.onCast = () => {};
+    this.onSelectSpell = () => {};
     this.onShoulder = () => {};
     this.onMessage = () => {};
     this.movePointer = null;
@@ -38,8 +39,9 @@ export class ProofInput {
       if (action === 'jump') this.actions.add('jump');
       if (action === 'crouch') this.toggleCrouch();
       if (action === 'shoulderSwitch') this.onShoulder();
-      if (action === 'selectLightning') this.onMessage('Lightning selected');
-      if (action === 'selectFrost' || action === 'selectAegis') this.onMessage('Only lightning is implemented in this technical proof');
+      if (action === 'selectLightning') this.onSelectSpell('lightning');
+      if (action === 'selectFrost') this.onSelectSpell('frost');
+      if (action === 'selectAegis') this.onSelectSpell('aegis');
     });
     addEventListener('keyup', event => this.keys.delete(event.code));
     addEventListener('blur', () => this.clearHeldInput());
@@ -57,7 +59,10 @@ export class ProofInput {
     this.canvas.addEventListener('click', () => this.requestPointerLock());
     this.canvas.addEventListener('mousedown', event => {
       if (!this.active || this.blocked || event.pointerType === 'touch') return;
-      if (event.button === 0 && document.pointerLockElement === this.canvas) this.onCast();
+      if (event.button === 0) {
+        this.onCast();
+        this.requestPointerLock();
+      }
       if (event.button === 2) this.aiming = true;
     });
     addEventListener('mouseup', event => { if (event.button === 2) this.aiming = false; });
@@ -129,7 +134,15 @@ export class ProofInput {
     lookZone.addEventListener('pointercancel', releaseLook);
     lookZone.addEventListener('lostpointercapture', releaseLook);
 
-    document.querySelector('[data-spell="lightning"]').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.onCast(); });
+    for (const button of document.querySelectorAll('[data-spell]')) {
+      button.addEventListener('pointerdown', event => {
+        event.preventDefault();
+        if (!this.active || this.blocked) return;
+        const spell = button.dataset.spell;
+        this.onSelectSpell(spell);
+        this.onCast(spell);
+      });
+    }
     document.querySelector('#jump-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.actions.add('jump'); });
     document.querySelector('#crouch-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.toggleCrouch(); });
     document.querySelector('#shoulder-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.onShoulder(); });

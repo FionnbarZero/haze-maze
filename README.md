@@ -20,7 +20,7 @@ Then visit `http://localhost:8000`.
 
 With the same local server running, visit `http://localhost:8000/third-person.html`. This separate Babylon.js experiment validates the planned over-the-shoulder camera, traversal, collision, touch layout, and staff-origin lightning without replacing the playable prototype at `index.html`. It loads Babylon.js from the official experimental CDN, so this proof requires an internet connection.
 
-Proof controls: WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, and left click to cast lightning. On landscape touch devices, spells remain on the left, movement remains on the right, and the center region controls the camera.
+Proof controls: WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, 1/2/3 to select lightning, frost, or Aegis, and left click to cast. On landscape touch devices, all three immediate-cast spells remain on the left, movement remains on the right, and the center region controls the camera.
 
 ## Controls
 

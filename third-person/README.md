@@ -10,7 +10,7 @@ This directory is an isolated Babylon.js ES-module experiment for the Level 1 ac
 - `camera.js` owns exploration/aim framing, aim-preserving shoulder switching, smoothing, multi-ray wall collision, side compression, recovery, and occlusion handling.
 - `input.js` maps keyboard, mouse, and independent touch pointers to named gameplay actions.
 - `witch.js` and `dragon.js` build deliberately temporary primitive actors and procedural motion.
-- `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and renders lightning.
+- `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and implements lightning damage, frost freezing, the protective Aegis globe, player health, and the training dragon's close-range strike.
 - `debug.js` reports FPS, frame-time samples, camera state, capsule state, collision, target, gate, animation, and mesh count.
 - `config.js` centralizes specification-derived tuning values; `utils.js` and `targeting.js` contain shared movement and targeting math.
 
@@ -22,16 +22,16 @@ The authoritative route contains six checkpoints:
 2. Jump over the rune relic.
 3. Crouch beneath the low lintel.
 4. Enter the combat arena.
-5. Defeat the training dragon with four lightning hits.
+5. Use the three-spell combat proof and defeat the training dragon with four lightning hits.
 6. Pass through the animated exit gate.
 
 The exit barrier is a real collider while locked. Dragon defeat removes that collider, raises the gate, and enables the final checkpoint.
 
 ## Controls
 
-Desktop uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, the mouse to look, right mouse to aim, and left mouse to cast lightning. Losing pointer lock, browser focus, or page visibility clears held input.
+Desktop uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, the mouse to look, right mouse to aim, 1/2/3 to select lightning/frost/Aegis, and left mouse to cast. The first gameplay click casts and safely requests pointer lock. Losing pointer lock, browser focus, or page visibility clears held input.
 
-On coarse-pointer landscape screens, lightning remains on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
+On coarse-pointer landscape screens, all three immediate-cast spell buttons remain on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
 
 ## Configuration and diagnostics
 
@@ -44,6 +44,8 @@ The browser smoke-test hook at `window.__HMW_THIRD_PERSON_PROOF__` supports dete
 Run the dependency-free targeting math suite with `node --test tests/targeting.test.mjs`. It covers close and normal range, modest off-center assistance, misses, wall precedence, and cast-facing direction.
 
 `tests/third-person-targeting-smoke.mjs` exercises the rendered proof through Chrome DevTools Protocol. Start the repository on port 8766, launch a Chromium browser with remote debugging on port 9223, then run `node tests/third-person-targeting-smoke.mjs`. The optional `HMW_GAME_URL` and `HMW_CDP_ENDPOINT` environment variables select different local endpoints. The browser regression verifies close-range damage, normal-range damage, off-center character rotation, wall rejection, staff-origin evidence, and dragon separation.
+
+`tests/third-person-spells-smoke.mjs` uses the same local endpoints to verify first-click lightning damage, visible health feedback, Frost status and wall rejection, Aegis visibility and damage absorption, unshielded player damage, spell selection, and the spells-left/movement-right landscape-mobile layout.
 
 ## Physical-device qualification
 
@@ -59,6 +61,6 @@ An authorized HTTPS staging URL is preferred because clipboard and browser diagn
 
 ## Scope boundary
 
-This proof intentionally does not contain final character, hair, clothing, dragon, animation, material, or maze art. Frost, the protective globe, enemies, progression, inventory, maps, and the remaining levels stay in the legacy prototype until the 3D foundation meets its acceptance criteria.
+This proof intentionally does not contain final character, hair, clothing, dragon, animation, material, or maze art. The three spells use lightweight technical effects; progression, inventory, maps, and the remaining levels stay in the legacy prototype until the 3D foundation meets its acceptance criteria.
 
 Serve the repository over HTTP and open `/third-person.html`. Babylon.js is loaded from its official CDN for this experiment; a future production migration should pin and self-host the approved engine build. Performance collected from headless software WebGL is useful for regression comparison only and cannot qualify desktop or mobile hardware targets.

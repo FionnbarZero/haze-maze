@@ -1,4 +1,4 @@
-import { WORLD } from './config.js';
+import { WORLD } from './config.js?v=20260818-spells-v1';
 import { hexColor3 } from './utils.js';
 
 export function createWorld(BABYLON, scene, shadowGenerator) {

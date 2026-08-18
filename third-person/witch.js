@@ -86,6 +86,7 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
   let crouchWeight = 0;
   let castWeight = 0;
   let castUntil = 0;
+  let castSpell = 'lightning';
   let animationState = 'IDLE';
   let previousAnimationState = 'IDLE';
   let transitionWeight = 1;
@@ -95,7 +96,10 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
     root,
     meshes,
     orb,
-    setCast(time) { castUntil = time + .42; },
+    setCast(time, spell = 'lightning') {
+      castUntil = time + .42;
+      castSpell = spell;
+    },
     setVisibility(value) {
       visibility = value;
       for (const mesh of meshes) mesh.visibility = value;
@@ -108,7 +112,7 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
       root.position.copyFrom(state.position);
       root.rotation.y = state.facingYaw;
       const requestedState = time < castUntil
-        ? 'CAST LIGHTNING'
+        ? `CAST ${castSpell.toUpperCase()}`
         : state.stateLabel;
       if (requestedState !== animationState) {
         previousAnimationState = animationState;
@@ -148,6 +152,7 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
         previousAnimationState,
         transitionWeight,
         castWeight,
+        castSpell,
         crouchWeight,
         visibility,
         staffSocket: staffSocket.name,

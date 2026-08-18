@@ -1,4 +1,4 @@
-import { COMBAT } from './config.js?v=20260818-targeting-v2';
+import { COMBAT } from './config.js?v=20260818-spells-v1';
 
 export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position) {
   const root = new BABYLON.TransformNode('placeholder-dragon-root', scene);
@@ -25,6 +25,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     collisionHeight: COMBAT.dragonCollisionHeight,
     aimRadius: COMBAT.aimAssistRadius,
     hitUntil: 0,
+    frozenUntil: 0,
+    attackUntil: 0,
     defeatedAt: 0,
     deathProgress: 0,
     state: 'IDLE',
@@ -42,10 +44,27 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       }
       return true;
     },
+    freeze(time, duration = COMBAT.frostDuration) {
+      if (!this.alive) return false;
+      this.frozenUntil = Math.max(this.frozenUntil, time + duration);
+      this.state = 'FROZEN';
+      return true;
+    },
+    isFrozen(time) {
+      return this.alive && time < this.frozenUntil;
+    },
+    attack(time) {
+      if (!this.alive || this.isFrozen(time)) return false;
+      this.attackUntil = time + COMBAT.dragonAttackAnimationDuration;
+      this.state = 'ATTACK';
+      return true;
+    },
     reset() {
       this.health = this.maximumHealth;
       this.alive = true;
       this.hitUntil = 0;
+      this.frozenUntil = 0;
+      this.attackUntil = 0;
       this.defeatedAt = 0;
       this.deathProgress = 0;
       this.state = 'IDLE';
@@ -54,6 +73,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       root.scaling.setAll(1);
       root.setEnabled(true);
       material.emissiveColor = BABYLON.Color3.FromHexString('#12081f');
+      material.diffuseColor = BABYLON.Color3.FromHexString('#49306f');
+      material.specularColor = BABYLON.Color3.FromHexString('#7c5aa4');
     },
     update(time, deltaTime) {
       if (!this.alive) {
@@ -65,15 +86,31 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
           root.setEnabled(false);
           this.state = 'DEFEATED';
         }
+      } else if (this.isFrozen(time)) {
+        this.state = 'FROZEN';
+      } else if (time < this.attackUntil) {
+        this.state = 'ATTACK';
       } else {
         this.state = time < this.hitUntil ? 'HIT' : 'IDLE';
       }
-      material.emissiveColor = time < this.hitUntil
-        ? BABYLON.Color3.FromHexString('#9f3e83')
-        : BABYLON.Color3.FromHexString('#12081f');
-      wingLeft.rotation.z = -.35 + Math.sin(time * 2.7) * .18;
-      wingRight.rotation.z = .35 - Math.sin(time * 2.7) * .18;
-      tailNodes.forEach((node, index) => { node.rotation.y = Math.sin(time * 2 + index * .7) * (.12 + index * .04); });
+      const frozen = this.isFrozen(time);
+      material.diffuseColor = frozen
+        ? BABYLON.Color3.FromHexString('#72b8df')
+        : BABYLON.Color3.FromHexString('#49306f');
+      material.specularColor = frozen
+        ? BABYLON.Color3.FromHexString('#d8f7ff')
+        : BABYLON.Color3.FromHexString('#7c5aa4');
+      material.emissiveColor = frozen
+        ? BABYLON.Color3.FromHexString('#174f77')
+        : time < this.hitUntil
+          ? BABYLON.Color3.FromHexString('#9f3e83')
+          : BABYLON.Color3.FromHexString('#12081f');
+      if (!frozen) {
+        const attacking = time < this.attackUntil ? 1 : 0;
+        wingLeft.rotation.z = -.35 + Math.sin(time * 2.7) * .18 - attacking * .28;
+        wingRight.rotation.z = .35 - Math.sin(time * 2.7) * .18 + attacking * .28;
+        tailNodes.forEach((node, index) => { node.rotation.y = Math.sin(time * 2 + index * .7) * (.12 + index * .04); });
+      }
     },
     snapshot() {
       return {
@@ -81,6 +118,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         maximumHealth: this.maximumHealth,
         alive: this.alive,
         state: this.state,
+        frozen: this.isFrozen(performance.now() / 1000),
+        frozenRemaining: Math.max(0, this.frozenUntil - performance.now() / 1000),
         deathProgress: this.deathProgress,
         enabled: root.isEnabled(),
         aimPoint: this.getAimPoint().asArray(),

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#090615" />
     <meta name="description" content="Moonhollow Quest third-person Babylon.js technical proof." />
     <title>Moonhollow Quest — Third-Person Proof</title>
-    <link rel="stylesheet" href="third-person/styles.css?v=20260818-targeting-v2" />
+    <link rel="stylesheet" href="third-person/styles.css?v=20260818-spells-v1" />
   </head>
   <body>
     <main id="proof-shell" aria-label="Moonhollow Quest third-person technical proof">
@@ -23,11 +23,16 @@
         <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
 
         <aside id="target-card" class="target-card" aria-hidden="true">
-          <div><span>Training dragon</span><strong id="target-health-copy">100 / 100</strong></div>
+          <div><span>Training dragon <em id="target-status"></em></span><strong id="target-health-copy">100 / 100</strong></div>
           <div class="health-track"><i id="target-health-fill"></i></div>
         </aside>
 
-        <div id="spell-readout" class="spell-readout"><span>Selected spell</span><strong>Lightning</strong><small>Left click to cast</small></div>
+        <div id="spell-readout" class="spell-readout"><span>Selected spell</span><strong id="selected-spell-name">Lightning</strong><small id="selected-spell-help">1 / 2 / 3 select · left click casts</small></div>
+        <aside id="player-vitals" class="player-vitals" aria-label="Moon Witch health and protection">
+          <div><span>Moon Witch</span><strong id="player-health-copy">100 / 100</strong></div>
+          <div class="player-health-track"><i id="player-health-fill"></i></div>
+          <small id="aegis-status">Aegis ready</small>
+        </aside>
         <div id="toast" class="toast" role="status"></div>
 
         <aside id="debug-panel" class="debug-panel" aria-label="Technical proof diagnostics">
@@ -56,9 +61,9 @@
         <div id="look-zone" class="look-zone touch-only" aria-hidden="true"></div>
 
         <section class="spell-rack touch-only" aria-label="Spell controls">
-          <button type="button" data-spell="lightning"><b>ϟ</b><span>Lightning</span></button>
-          <button type="button" data-spell="frost" disabled><b>❄</b><span>Frost later</span></button>
-          <button type="button" data-spell="bubble" disabled><b>◯</b><span>Aegis later</span></button>
+          <button type="button" class="is-selected" data-spell="lightning"><b>ϟ</b><span>Lightning</span></button>
+          <button type="button" data-spell="frost"><b>❄</b><span>Frost</span></button>
+          <button type="button" data-spell="aegis"><b>◯</b><span>Aegis</span></button>
         </section>
 
         <div id="move-stick" class="move-stick touch-only" aria-label="Movement joystick"><i></i></div>
@@ -75,7 +80,7 @@
           <h1>Third-person<br />technical proof</h1>
           <p>This intentionally uses temporary geometry to validate camera, collision, movement, and staff-origin aiming.</p>
           <button id="start-proof" type="button">Enter the brick passage <span>→</span></button>
-          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · Right mouse aim · Left click lightning</small>
+          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · 1 / 2 / 3 spells · Left click casts</small>
         </div>
       </section>
 
@@ -89,6 +94,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260818-targeting-v2"></script>
+    <script type="module" src="third-person/main.js?v=20260818-spells-v1"></script>
   </body>
 </html>

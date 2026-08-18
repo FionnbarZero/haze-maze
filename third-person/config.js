@@ -23,6 +23,7 @@ export const CAMERA = Object.freeze({
 });
 
 export const PLAYER = Object.freeze({
+  maximumHealth: 100,
   standingHeight: 1.75,
   crouchingHeight: 1.15,
   radius: 0.32,
@@ -75,10 +76,21 @@ export const DESKTOP_ACTIONS = Object.freeze({
 });
 
 export const COMBAT = Object.freeze({
+  spellRange: 30,
   lightningRange: 30,
   lightningDamage: 25,
   lightningCooldown: 0.38,
   lightningEffectDuration: 0.22,
+  frostCooldown: 4.5,
+  frostDuration: 3.5,
+  frostEffectDuration: 0.34,
+  aegisCooldown: 8,
+  aegisDuration: 5,
+  dragonAttackRange: 2.75,
+  dragonAttackWindup: 0.9,
+  dragonAttackInterval: 1.8,
+  dragonAttackDamage: 15,
+  dragonAttackAnimationDuration: 0.46,
   staffRayTerminalTolerance: 0.12,
   aimAssistRadius: 1.18,
   aimAssistWallTolerance: 0.08,

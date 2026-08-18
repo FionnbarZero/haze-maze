@@ -1,4 +1,4 @@
-import { PERFORMANCE } from './config.js';
+import { PERFORMANCE } from './config.js?v=20260818-spells-v1';
 
 const bytesToMiB = bytes => `${(bytes / 1024 / 1024).toFixed(1)}MiB`;
 
@@ -78,7 +78,7 @@ export class DebugTelemetry {
     this.collision.textContent = cameraState.colliding || cameraState.sideColliding
       ? `CAMERA · ${cameraState.collisionMesh || 'GEOMETRY'}${cameraState.occluded ? ' · OCCLUDED' : ''}`
       : playerState.collision;
-    this.target.textContent = `${dragonState.state} · ${dragonState.health}/${dragonState.maximumHealth} · ${combatState.targeted ? 'LOCK' : 'FREE'}`;
+    this.target.textContent = `${dragonState.state} · ${dragonState.health}/${dragonState.maximumHealth} · ${combatState.selectedSpell.toUpperCase()} · ${combatState.targeted ? 'LOCK' : 'FREE'}`;
     this.sceneCopy.textContent = `${this.latestBudget.meshCount} meshes · gate ${worldState.gate.state} · ${witchState.animationState}`;
     this.budget.textContent = `${this.latestBudget.drawCalls ?? '—'} draws · ${this.latestBudget.activeMaterials}/${this.latestBudget.materialCount} mats · ${this.latestBudget.textureCount} tex`;
     this.render.textContent = `${this.latestBudget.renderWidth}×${this.latestBudget.renderHeight} · ${this.latestBudget.hardwareScaling.toFixed(2)}x · ${bytesToMiB(this.latestBudget.estimatedTextureBytes)}`;

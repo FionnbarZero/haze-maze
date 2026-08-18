@@ -50,7 +50,7 @@ The proof currently demonstrates:
 - camera-ray intent plus an independently validated staff-orb ray, world obstruction, authoritative dragon health, defeat state, and gate unlock;
 - named desktop and independent landscape-touch inputs, safe pointer-lock recovery, portrait input blocking, safe-area-aware HUD placement, and runtime diagnostics.
 
-The proof deliberately does not claim final character or creature rigs, authored animation clips, production art, frost, Aegis Orb, pickups, map, pouch, settings UI, real-device performance qualification, or all criteria listed below. Its purpose is to retire architectural risk before production asset work begins.
+The proof deliberately does not claim final character or creature rigs, authored animation clips, production art, pickups, map, pouch, settings UI, real-device performance qualification, or all criteria listed below. It now includes lightweight technical implementations of lightning damage, frost freezing, Aegis protection, player health, and dragon strikes; these validate gameplay rules rather than final effects or animation. Its purpose is to retire architectural risk before production asset work begins.
 
 ## Camera specification
 

@@ -1,13 +1,13 @@
-import { createWorld } from './world.js?v=20260818-targeting-v2';
-import { createPlaceholderWitch } from './witch.js?v=20260818-targeting-v2';
-import { createPlaceholderDragon } from './dragon.js?v=20260818-targeting-v2';
-import { ProofInput } from './input.js?v=20260818-targeting-v2';
-import { CharacterController } from './controller.js?v=20260818-targeting-v2';
-import { ShoulderCamera } from './camera.js?v=20260818-targeting-v2';
-import { LightningCombat } from './combat.js?v=20260818-targeting-v2';
-import { DebugTelemetry } from './debug.js?v=20260818-targeting-v2';
-import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-targeting-v2';
-import { MobileQualificationRecorder } from './qualification.js?v=20260818-targeting-v2';
+import { createWorld } from './world.js?v=20260818-spells-v1';
+import { createPlaceholderWitch } from './witch.js?v=20260818-spells-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260818-spells-v1';
+import { ProofInput } from './input.js?v=20260818-spells-v1';
+import { CharacterController } from './controller.js?v=20260818-spells-v1';
+import { ShoulderCamera } from './camera.js?v=20260818-spells-v1';
+import { LightningCombat } from './combat.js?v=20260818-spells-v1';
+import { DebugTelemetry } from './debug.js?v=20260818-spells-v1';
+import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-spells-v1';
+import { MobileQualificationRecorder } from './qualification.js?v=20260818-spells-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -81,7 +81,8 @@ try {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 1500);
   };
-  input.onCast = () => combat.cast(performance.now() / 1000);
+  input.onCast = spell => combat.cast(performance.now() / 1000, spell);
+  input.onSelectSpell = spell => combat.selectSpell(spell);
   input.onShoulder = () => {
     shoulderCamera.switchShoulder();
     showMessage(`${shoulderCamera.side === 1 ? 'Right' : 'Left'} shoulder selected`);
@@ -122,6 +123,7 @@ try {
     updateRouteHud(world.snapshot());
     showMessage('Qualification route reset · begin at the Moon Arch');
   };
+  combat.onPlayerDefeated = () => setTimeout(resetTechnicalRoute, 850);
 
   const snapshotProof = () => ({
     ready: scene.isReady(),
@@ -245,7 +247,12 @@ try {
     crouch: () => input.toggleCrouch(),
     setCrouched: value => input.setCrouched(value),
     switchShoulder: () => shoulderCamera.switchShoulder(),
-    castLightning: () => combat.cast(performance.now() / 1000),
+    selectSpell: spell => combat.selectSpell(spell),
+    castSpell: spell => combat.cast(performance.now() / 1000, spell),
+    castLightning: () => combat.cast(performance.now() / 1000, 'lightning'),
+    castFrost: () => combat.cast(performance.now() / 1000, 'frost'),
+    castAegis: () => combat.cast(performance.now() / 1000, 'aegis'),
+    receiveDragonDamage: amount => combat.receiveDragonDamage(amount),
     teleport: (x, y, z) => { controller.teleport(x, y, z); shoulderCamera.snapNextUpdate(); },
     resetRoute: resetTechnicalRoute,
     resetPerformance: () => telemetry.reset(),
