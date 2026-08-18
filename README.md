@@ -1,4 +1,4 @@
-# Hunt of the Moon Witch
+# Moonhollow Quest
 
 An original, mobile-first enchanted maze action game built with modern browser APIs and no dependencies.
 

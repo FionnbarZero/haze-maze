@@ -6,7 +6,7 @@
 
 ## Decision
 
-Hunt of the Moon Witch is a third-person, over-the-shoulder action spellcasting game. The female Moon Witch is the visible player character during exploration and combat. The camera, character controller, aiming model, animations, spells, collision, and future level geometry must be designed around that perspective.
+Moonhollow Quest is a third-person, over-the-shoulder action spellcasting game. The female Moon Witch is the visible player character during exploration and combat. The camera, character controller, aiming model, animations, spells, collision, and future level geometry must be designed around that perspective.
 
 The game is no longer described or designed as a first-person shooter. It may retain fast crosshair-driven spellcasting, but the player fantasy is controlling and watching the Moon Witch move through the maze with her staff in her right hand.
 
