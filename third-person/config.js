@@ -33,6 +33,8 @@ export const PLAYER = Object.freeze({
   jumpVelocity: 6.25,
   turnResponse: 0.1,
   aimTurnResponse: 0.065,
+  castTurnResponse: 0.055,
+  castFacingDuration: 0.52,
   backpedalMultiplier: 0.78,
   maximumSweepStep: 0.055,
   groundProbe: 0.08,
@@ -78,6 +80,11 @@ export const COMBAT = Object.freeze({
   lightningCooldown: 0.38,
   lightningEffectDuration: 0.22,
   staffRayTerminalTolerance: 0.12,
+  aimAssistRadius: 1.18,
+  aimAssistWallTolerance: 0.08,
+  dragonAimHeight: 1.12,
+  dragonCollisionRadius: 1.12,
+  dragonCollisionHeight: 2.25,
   dragonHealth: 100,
   dragonDefeatDuration: 0.9
 });

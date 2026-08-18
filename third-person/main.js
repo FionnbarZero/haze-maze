@@ -1,13 +1,13 @@
-import { createWorld } from './world.js';
-import { createPlaceholderWitch } from './witch.js';
-import { createPlaceholderDragon } from './dragon.js';
-import { ProofInput } from './input.js';
-import { CharacterController } from './controller.js';
-import { ShoulderCamera } from './camera.js';
-import { LightningCombat } from './combat.js';
-import { DebugTelemetry } from './debug.js';
-import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js';
-import { MobileQualificationRecorder } from './qualification.js';
+import { createWorld } from './world.js?v=20260818-targeting-v2';
+import { createPlaceholderWitch } from './witch.js?v=20260818-targeting-v2';
+import { createPlaceholderDragon } from './dragon.js?v=20260818-targeting-v2';
+import { ProofInput } from './input.js?v=20260818-targeting-v2';
+import { CharacterController } from './controller.js?v=20260818-targeting-v2';
+import { ShoulderCamera } from './camera.js?v=20260818-targeting-v2';
+import { LightningCombat } from './combat.js?v=20260818-targeting-v2';
+import { DebugTelemetry } from './debug.js?v=20260818-targeting-v2';
+import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-targeting-v2';
+import { MobileQualificationRecorder } from './qualification.js?v=20260818-targeting-v2';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -60,11 +60,12 @@ try {
   const witch = createPlaceholderWitch(BABYLON, scene, shadowGenerator);
   const dragon = createPlaceholderDragon(BABYLON, scene, shadowGenerator, world.dragonPosition);
   const controller = new CharacterController(BABYLON, world);
+  controller.addDynamicObstacle(dragon);
   const mobile = matchMedia('(pointer:coarse)').matches;
   const shoulderCamera = new ShoulderCamera(BABYLON, scene, world, mobile);
   shoulderCamera.addBlockers(dragon.meshes);
   const input = new ProofInput(canvas);
-  const combat = new LightningCombat(BABYLON, scene, shoulderCamera, witch, dragon);
+  const combat = new LightningCombat(BABYLON, scene, shoulderCamera, witch, dragon, controller);
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
   const routePanel = document.querySelector('.route-panel');

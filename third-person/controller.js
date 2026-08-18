@@ -1,5 +1,6 @@
-import { PERFORMANCE, PLAYER } from './config.js';
+import { PERFORMANCE, PLAYER } from './config.js?v=20260818-targeting-v2';
 import { circleIntersectsBox, dampAngle, verticalRangesOverlap } from './utils.js';
+import { facingYawToward } from './targeting.js?v=20260818-targeting-v2';
 
 export class CharacterController {
   constructor(BABYLON, world) {
@@ -23,14 +24,30 @@ export class CharacterController {
     this.didJump = false;
     this.didCrouch = false;
     this.sprinting = false;
+    this.dynamicObstacles = [];
+    this.castFacingYaw = null;
+    this.castFacingRemaining = 0;
   }
 
   get height() {
     return this.crouched ? PLAYER.crouchingHeight : PLAYER.standingHeight;
   }
 
+  addDynamicObstacle(obstacle) {
+    if (!this.dynamicObstacles.includes(obstacle)) this.dynamicObstacles.push(obstacle);
+  }
+
+  requestCastFacing(target) {
+    const yaw = facingYawToward(this.position, target);
+    if (yaw === null) return false;
+    this.castFacingYaw = yaw;
+    this.castFacingRemaining = PLAYER.castFacingDuration;
+    return true;
+  }
+
   update(input, cameraYaw, deltaTime) {
     const dt = Math.min(PERFORMANCE.maximumSimulationDelta, deltaTime);
+    this.castFacingRemaining = Math.max(0, this.castFacingRemaining - dt);
     this.landedThisFrame = false;
     this.landingRemaining = Math.max(0, this.landingRemaining - dt);
     if (input.consume('jump')) this.jumpBufferRemaining = PLAYER.jumpBuffer;
@@ -89,7 +106,9 @@ export class CharacterController {
     this.speed = dt ? travelled / dt : 0;
     this.collisionState = collided ? `SLIDING · ${collisionName || 'GEOMETRY'}` : 'CLEAR';
 
-    if (desiredDirection.lengthSquared() > .001) {
+    if (this.castFacingRemaining > 0 && this.castFacingYaw !== null) {
+      this.facingYaw = dampAngle(this.facingYaw, this.castFacingYaw, PLAYER.castTurnResponse, dt);
+    } else if (desiredDirection.lengthSquared() > .001) {
       const targetYaw = input.aiming ? cameraYaw : Math.atan2(desiredDirection.x, desiredDirection.z);
       this.facingYaw = dampAngle(
         this.facingYaw,
@@ -182,6 +201,18 @@ export class CharacterController {
         return false;
       }
     }
+    for (const obstacle of this.dynamicObstacles) {
+      if (!obstacle.alive || !obstacle.root?.isEnabled()) continue;
+      const obstacleY = obstacle.root.position.y;
+      const obstacleHeight = obstacle.collisionHeight || Infinity;
+      if (y >= obstacleY + obstacleHeight - .015 || y + height <= obstacleY + .015) continue;
+      const minimumDistance = PLAYER.radius + (obstacle.collisionRadius || 0);
+      const deltaX = x - obstacle.root.position.x;
+      const deltaZ = z - obstacle.root.position.z;
+      if (deltaX * deltaX + deltaZ * deltaZ >= minimumDistance * minimumDistance) continue;
+      this.lastCollision = obstacle.collisionName || obstacle.root.name || 'ACTOR';
+      return false;
+    }
     return true;
   }
 
@@ -193,6 +224,8 @@ export class CharacterController {
     this.jumpBufferRemaining = 0;
     this.landingRemaining = 0;
     this.collisionState = 'CLEAR';
+    this.castFacingYaw = null;
+    this.castFacingRemaining = 0;
   }
 
   reset(x = PLAYER.start.x, y = PLAYER.start.y, z = PLAYER.start.z) {
@@ -207,6 +240,8 @@ export class CharacterController {
     this.didJump = false;
     this.didCrouch = false;
     this.sprinting = false;
+    this.castFacingYaw = null;
+    this.castFacingRemaining = 0;
   }
 
   snapshot() {
@@ -226,7 +261,10 @@ export class CharacterController {
       lastLandingSpeed: this.lastLandingSpeed,
       maximumAirHeight: this.maximumAirHeight,
       didJump: this.didJump,
-      didCrouch: this.didCrouch
+      didCrouch: this.didCrouch,
+      castFacingActive: this.castFacingRemaining > 0,
+      castFacingYaw: this.castFacingYaw,
+      dynamicObstacleCount: this.dynamicObstacles.filter(obstacle => obstacle.alive).length
     };
   }
 }

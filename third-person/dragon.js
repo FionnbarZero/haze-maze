@@ -1,4 +1,4 @@
-import { COMBAT } from './config.js';
+import { COMBAT } from './config.js?v=20260818-targeting-v2';
 
 export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position) {
   const root = new BABYLON.TransformNode('placeholder-dragon-root', scene);
@@ -20,10 +20,17 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     health: COMBAT.dragonHealth,
     maximumHealth: COMBAT.dragonHealth,
     alive: true,
+    collisionName: 'TRAINING DRAGON',
+    collisionRadius: COMBAT.dragonCollisionRadius,
+    collisionHeight: COMBAT.dragonCollisionHeight,
+    aimRadius: COMBAT.aimAssistRadius,
     hitUntil: 0,
     defeatedAt: 0,
     deathProgress: 0,
     state: 'IDLE',
+    getAimPoint() {
+      return root.position.add(new BABYLON.Vector3(0, COMBAT.dragonAimHeight, 0));
+    },
     damage(amount, time) {
       if (!this.alive) return false;
       this.health = Math.max(0, this.health - amount);
@@ -75,7 +82,9 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         alive: this.alive,
         state: this.state,
         deathProgress: this.deathProgress,
-        enabled: root.isEnabled()
+        enabled: root.isEnabled(),
+        aimPoint: this.getAimPoint().asArray(),
+        collisionRadius: this.collisionRadius
       };
     }
   };

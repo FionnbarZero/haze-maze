@@ -6,13 +6,13 @@ This directory is an isolated Babylon.js ES-module experiment for the Level 1 ac
 
 - `main.js` composes the scene and exposes a purpose-built browser smoke-test hook.
 - `world.js` builds the temporary brick route, required traversal obstacles, Moon Arch, dragon arena, animated gate, route checkpoints, and collision registry.
-- `controller.js` owns the substepped camera-relative capsule, wall sliding, buffered jumping, landing, crouching, ground probing, and standing-clearance checks.
+- `controller.js` owns the substepped camera-relative capsule, wall and actor separation, buffered jumping, landing, crouching, ground probing, standing-clearance checks, and smooth cast-facing requests.
 - `camera.js` owns exploration/aim framing, aim-preserving shoulder switching, smoothing, multi-ray wall collision, side compression, recovery, and occlusion handling.
 - `input.js` maps keyboard, mouse, and independent touch pointers to named gameplay actions.
 - `witch.js` and `dragon.js` build deliberately temporary primitive actors and procedural motion.
-- `combat.js` resolves crosshair intent, validates the path from the staff orb, and renders lightning.
+- `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and renders lightning.
 - `debug.js` reports FPS, frame-time samples, camera state, capsule state, collision, target, gate, animation, and mesh count.
-- `config.js` centralizes specification-derived tuning values; `utils.js` contains shared math.
+- `config.js` centralizes specification-derived tuning values; `utils.js` and `targeting.js` contain shared movement and targeting math.
 
 ## Technical route
 
@@ -38,6 +38,12 @@ On coarse-pointer landscape screens, lightning remains on the left, movement rem
 `config.js` contains the camera, controller, input, combat, world, and performance tuning values, plus the physical-key-to-named-action bindings. The on-screen diagnostics display FPS and 1% low, average and p95 frame time, frame spikes, boom and shoulder distance, player and capsule state, collision/occlusion, dragon and gate state, mesh and triangle counts, draw calls, active materials, textures, estimated decoded texture memory, render resolution, JavaScript heap where supported, and cold-load milestones.
 
 The browser smoke-test hook at `window.__HMW_THIRD_PERSON_PROOF__` supports deterministic inspection and route automation. It is proof instrumentation, not a production game API.
+
+## Targeting regression checks
+
+Run the dependency-free targeting math suite with `node --test tests/targeting.test.mjs`. It covers close and normal range, modest off-center assistance, misses, wall precedence, and cast-facing direction.
+
+`tests/third-person-targeting-smoke.mjs` exercises the rendered proof through Chrome DevTools Protocol. Start the repository on port 8766, launch a Chromium browser with remote debugging on port 9223, then run `node tests/third-person-targeting-smoke.mjs`. The optional `HMW_GAME_URL` and `HMW_CDP_ENDPOINT` environment variables select different local endpoints. The browser regression verifies close-range damage, normal-range damage, off-center character rotation, wall rejection, staff-origin evidence, and dragon separation.
 
 ## Physical-device qualification
 
