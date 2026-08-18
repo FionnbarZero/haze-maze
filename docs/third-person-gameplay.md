@@ -3,6 +3,7 @@
 - Status: Accepted
 - Decision date: 2026-08-17
 - Implementation state: Level 1 Babylon.js technical proof implemented beside the legacy prototype; production migration not yet accepted
+- Platform priority: Windows and Mac desktop browsers; further mobile development deferred as of 2026-08-18
 
 ## Decision
 
@@ -10,7 +11,9 @@ Moonhollow Quest is a third-person, over-the-shoulder action spellcasting game. 
 
 The game is no longer described or designed as a first-person shooter. It may retain fast crosshair-driven spellcasting, but the player fantasy is controlling and watching the Moon Witch move through the maze with her staff in her right hand.
 
-This decision does not convert the legacy prototype to a full 3D engine. The existing build remains the playable migration baseline until a Babylon.js Level 1 vertical slice satisfies the acceptance criteria in this document. An isolated technical proof now validates the core camera, traversal, input, and lightning-combat architecture without replacing that baseline.
+This decision does not convert the legacy prototype itself to a full 3D engine. That build remains preserved at `legacy.html` as a playable migration reference. The Babylon.js Level 1 technical proof is now the homepage, but production migration is not accepted until the vertical slice satisfies the acceptance criteria in this document.
+
+Desktop computers are the primary development platform. Keyboard and mouse, desktop presentation, desktop performance, and the complete desktop experience govern current acceptance decisions. Existing landscape-mobile controls and diagnostics remain preserved, but additional mobile refinement and qualification are deferred and do not limit desktop camera, environment, animation, interface, or rendering design.
 
 ## Experience goals
 
@@ -21,7 +24,7 @@ The third-person implementation must make the following qualities legible at nor
 - Her right hand visibly grips the staff, and the staff orb is the source of offensive spell effects.
 - Camera motion feels controlled in narrow maze corridors and never passes through walls.
 - A centered crosshair remains a dependable statement of where a spell will land.
-- Desktop and landscape-mobile controls express the same gameplay intentions.
+- Desktop keyboard and mouse controls express every required gameplay intention reliably, with named actions ready for future gamepad mapping.
 - The Witch, dragon, spell, and environment share one camera, lighting model, depth buffer, and collision world.
 
 ## Current prototype boundary
@@ -38,7 +41,7 @@ The visible character, locomotion intent, staff pose, spell rules, maze logic, H
 
 ## Level 1 technical-proof checkpoint
 
-`third-person.html` and the ES modules in `third-person/` form an isolated Babylon.js technical proof. They do not modify or replace the legacy entry point at `index.html`.
+`index.html`, its direct alias at `third-person.html`, and the ES modules in `third-person/` form the Babylon.js technical proof. The former hybrid raycaster/WebGL game remains preserved at `legacy.html`.
 
 The proof currently demonstrates:
 
@@ -66,7 +69,7 @@ The default camera uses the Witch's right shoulder. This places her primarily in
 | Boom distance | 3.6 m behind the pivot |
 | Shoulder offset | 0.62 m to camera-right |
 | Vertical offset | 0.25 m above the pivot |
-| Vertical field of view | 60° desktop; 64° landscape mobile |
+| Vertical field of view | 60° desktop; preserved mobile setting 64° pending future qualification |
 | Pitch range | 50° downward to 35° upward |
 | Yaw range | Unrestricted |
 | Look sensitivity | Configurable independently for mouse and touch |
@@ -75,7 +78,7 @@ At rest and during ordinary locomotion, the intended framing shows the Witch fro
 
 ### Precision-aim camera
 
-Holding the desktop aim input or the equivalent optional mobile focus input eases the camera to a 3.05 m boom, 0.72 m shoulder offset, and 54° field of view. Precision aim is not required to cast; it provides finer target selection and a clearer staff-to-target line.
+Holding the desktop aim input eases the camera to a 3.05 m boom, 0.72 m shoulder offset, and 54° field of view. Precision aim is not required to cast; it provides finer target selection and a clearer staff-to-target line. The existing optional mobile focus behavior remains preserved for future evaluation.
 
 The transition takes approximately 160 ms with an ease-in/ease-out curve. Releasing aim returns to exploration framing in approximately 220 ms. The crosshair does not jump during the transition.
 
@@ -109,7 +112,7 @@ Primary Level 1 corridors should target at least 2.4 m of clear width, with deli
 
 Right shoulder is the default. A manual shoulder-switch action mirrors the horizontal offset without changing the crosshair or spell aim point. Automatic shoulder assistance may temporarily reduce or mirror the offset near a blocking wall, but it must not repeatedly switch sides without player intent.
 
-The most recently selected shoulder is saved. Shoulder switching must be available through a remappable desktop action and an optional mobile HUD control.
+The most recently selected shoulder is saved. Shoulder switching must be available through a remappable desktop action. The existing optional mobile HUD control remains preserved.
 
 ## Character locomotion and facing
 
@@ -168,7 +171,7 @@ Casting supports limited locomotion through an upper-body animation layer. More 
 - Large or fast targets may use a small sphere cast to improve usability.
 - A target must be within spell range, inside the permitted aim-assist cone, and unobstructed by world geometry.
 - Aim assistance never selects through a wall and favors crosshair proximity before distance.
-- Mobile aim assistance begins with a configurable 6° acquisition cone and weaker 10° friction region. Both require playtesting.
+- The preserved mobile aim-assistance baseline uses a configurable 6° acquisition cone and weaker 10° friction region; further playtesting is deferred.
 - Desktop mouse defaults to minimal aim assistance, with an accessibility option to increase it.
 - The selected target receives restrained feedback through the existing crosshair state and health bar rather than an opaque full-screen lock-on effect.
 - Damage, freeze, shield absorption, and death are authoritative gameplay events shared by animation, sound, particles, and UI.
@@ -193,9 +196,9 @@ Casting supports limited locomotion through an upper-body animation layer. More 
 
 Q/E and arrow-key turning may remain as optional digital-camera aliases for accessibility, but they are not the primary third-person control model. Losing pointer lock, browser focus, or visibility clears held input. Clicking the game view reacquires pointer lock without an unhandled promise rejection.
 
-## Landscape-mobile controls
+## Preserved landscape-mobile controls (deferred)
 
-The established side layout remains a product requirement:
+The existing mobile implementation is preserved as a compatibility baseline rather than a current production acceptance target:
 
 - Spell controls remain on the left.
 - The movement joystick remains on the right.
@@ -208,6 +211,8 @@ The established side layout remains a product requirement:
 - Safe-area insets and multiple landscape aspect ratios are tested explicitly.
 
 Portrait orientation is unsupported for active play. The orientation overlay must pause or block gameplay input rather than merely covering the scene.
+
+Do not remove or intentionally break these controls. Additional touch tuning, interface refinement, real-device qualification, and mobile-specific feature work remain in the deferred mobile backlog in [Game Fundamentals](game-fundamentals.md#deferred-mobile-backlog).
 
 ## Accessibility and comfort settings
 
@@ -268,7 +273,8 @@ Hair and cape use authored secondary bones or a lightweight spring system with c
 | Spell identities, cooldown concepts, freeze, and shield rules | Retain and adapt | Move targeting and effects into 3D queries and world-space presentation |
 | Dragon health, mastery, gate condition, berries, map, and pouch | Retain and adapt | Separate configuration and state from the current renderer |
 | HUD information architecture | Retain and adapt | Preserve concepts while adding settings and third-person prompts |
-| Desktop and mobile input intentions | Retain and adapt | Route through named actions rather than direct DOM-to-state coupling |
+| Desktop input intentions | Retain and adapt | Route keyboard and mouse through named actions and keep the mapping ready for future gamepad support |
+| Existing mobile input intentions | Preserve and defer | Keep the current landscape-touch implementation without allowing it to constrain desktop systems |
 | Canvas raycaster | Replace | Babylon.js camera, meshes, materials, lighting, and depth become authoritative |
 | Billboard dragons, pickups, and obstacles | Replace | Use rigged or static 3D assets with shared world collision and depth |
 | Screen-space WebGL Witch overlay | Replace | Use one skinned GLB character inside the Babylon scene |
@@ -309,7 +315,6 @@ The vertical slice is accepted only when all of the following are demonstrated i
 ### Input and usability
 
 - Desktop mouse look, WASD movement, pointer-lock loss/recovery, aiming, casting, jumping, crouching, map, pouch, and shoulder switching work through named actions.
-- Landscape-mobile spells-left/movement-right layout supports simultaneous movement, look, and casting.
 - No invisible touch layer intercepts desktop mouse input.
 - A representative narrow viewport with a fine pointer keeps touch-only controls inert.
 - Sensitivity, inverted look, camera shake, aim assist, and shoulder preference persist locally.
@@ -317,10 +322,21 @@ The vertical slice is accepted only when all of the following are demonstrated i
 ### Performance and quality
 
 - Representative desktop hardware sustains 60 frames per second in the acceptance encounter.
-- Supported mobile targets sustain at least 30 frames per second, with 60 as the preferred target.
 - The initial vertical-slice download target is no more than 35 MB compressed, subject to asset-quality review.
 - Mesh, texture, animation, and particle budgets are recorded from real target devices rather than assumed.
 - There are no uncaught startup, pointer-lock, asset-loading, or context-loss errors during the smoke-test route.
+
+## Deferred mobile acceptance backlog
+
+Mobile acceptance no longer gates the desktop Level 1 vertical slice. When mobile development resumes, qualification must return to at least these requirements:
+
+- the spells-left/movement-right layout supports simultaneous movement, look, and casting;
+- touch targets, camera sensitivity, aim assistance, safe-area placement, and interruption recovery are comfortable on representative real devices;
+- the selected minimum supported tier sustains at least 30 frames per second, with 60 preferred on capable devices;
+- mobile download, decoded asset, memory, render-resolution, thermal, battery, and stability budgets are measured rather than inferred;
+- the complete route is validated on the agreed iPhone and Android device matrix before mobile release claims are made.
+
+The fuller deferred list is maintained in [Game Fundamentals](game-fundamentals.md#deferred-mobile-backlog). Existing mobile code, instrumentation, and historical test results remain preserved in the meantime.
 
 ## Risks and unresolved implementation choices
 
@@ -332,7 +348,6 @@ The perspective decision is final, but these implementation details require prot
 - The minimum corridor width that balances maze tension with camera stability
 - Final rig topology, hair-card approach, cape bones, and secondary-motion budget
 - Dragon navigation choice: generated grid A* versus baked navigation data
-- Exact mobile performance tier and downloadable asset budget
 - Whether quick-cast keys coexist with select-then-left-click spell controls by default
 
 These are tuning and implementation decisions. They do not reopen the adopted third-person perspective.

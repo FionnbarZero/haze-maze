@@ -1,10 +1,16 @@
 # Moonhollow Quest
 
-An original, mobile-first enchanted maze action game built with modern browser APIs.
+An original, desktop-first enchanted maze action game built with modern browser APIs.
 
 The homepage runs the third-person Babylon.js version, with an over-the-shoulder camera and the Moon Witch visible during exploration and combat. The former hybrid raycaster/WebGL game remains available at `legacy.html`; see the [third-person gameplay decision and specification](docs/third-person-gameplay.md) for the target camera, controls, animation, aiming, and Level 1 vertical-slice requirements.
 
 Beginning a new hunt plays a short cinematic transition in which the Moon Witch walks through a glowing stone Moon Arch before control passes to the player.
+
+## Platform direction
+
+Moonhollow Quest now prioritizes Windows and Mac desktop browsers, keyboard and mouse controls, desktop-quality graphics, and the complete desktop gameplay experience. Gamepad support is a future target.
+
+The existing landscape-mobile controls, responsive presentation, diagnostic instrumentation, and device-test records remain preserved as a compatibility prototype. Further mobile optimization, touch-control refinement, qualification, and mobile-specific feature work are deferred; phone limitations no longer set the quality or design ceiling for desktop development.
 
 ## Play
 

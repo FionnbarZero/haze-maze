@@ -2,8 +2,15 @@
 
 - Status: Draft for discussion
 - Genre: Third-person fantasy action-adventure RPG
-- Primary platform: Mobile browser in landscape, with desktop support
+- Primary platform: Windows and Mac desktop browsers
+- Secondary platform: Landscape mobile browsers (development paused; existing prototype preserved)
 - Perspective: Third-person over the Moon Witch's shoulder
+
+## Platform direction
+
+Moonhollow Quest is now designed and developed for desktop computers first. Keyboard and mouse are the primary control scheme, desktop hardware establishes the visual and performance ceiling, and future gamepad support should be considered in the input architecture. The complete narrative, exploration, puzzle, economy, progression, and combat experience should be proven on Windows and Mac desktop browsers before platform expansion.
+
+The existing landscape-mobile build remains a useful compatibility prototype and body of test evidence. Its touch controls, responsive code, safe-area handling, instrumentation, and qualification records must be preserved, but new mobile-specific features and optimization are paused. Shared systems should remain portable when that does not compromise the desktop experience; phone screen size, touch ergonomics, and mobile rendering limits no longer constrain desktop gameplay or visual design.
 
 ## High concept
 
@@ -161,7 +168,7 @@ Store inventories may change with story progress, location, or completed charact
 
 ## Inventory and pouch
 
-The pouch is the primary inventory interface. It visually resembles an opened physical fantasy pouch while remaining fast and legible on a phone.
+The pouch is the primary inventory interface. It visually resembles an opened physical fantasy pouch while remaining fast and legible at normal desktop viewing distances.
 
 Items are grouped by purpose: healing, power-ups, quest items, valuables, and tools. Selecting an item shows its name, effect, sale status, and available actions. Usable items require a deliberate selection; quest items and passive valuables cannot be consumed accidentally.
 
@@ -193,18 +200,29 @@ The Moon Witch should have a defined personality and relationships rather than s
 
 ## Controls and presentation
 
-Landscape mobile is the primary control constraint:
+Desktop keyboard and mouse are the primary control standard:
 
-- spell controls remain on the left;
-- movement remains on the right;
-- the central open area controls the camera;
-- jump, crouch, interaction, pouch, and map remain reachable without blocking simultaneous movement, looking, and casting;
-- interaction prompts use one consistent action and name the intended object or character;
-- cinematics, store screens, the pouch, map, and dialogue temporarily release gameplay touches safely;
-- portrait orientation blocks and pauses active play;
-- safe-area insets, notches, interruptions, and browser resume are supported.
+- WASD provides camera-relative movement and the mouse provides precise camera and crosshair control;
+- named actions cover sprint, jump, crouch, interaction, aiming, casting, spell selection, shoulder switching, map, pouch, and pause;
+- pointer-lock entry, exit, focus loss, and recovery behave predictably;
+- cinematics, stores, the pouch, map, dialogue, and pause release gameplay input safely;
+- interfaces remain readable across common desktop resolutions and window sizes;
+- new input systems remain action-based so future gamepad support does not require rewriting gameplay rules.
 
-Desktop provides equivalent named actions through keyboard and mouse. Neither platform should receive a mechanically easier or more complete version of the game.
+The preserved landscape-mobile interface continues to place spells on the left, movement on the right, and touch look in the center. It is not a current production acceptance target, and mobile ergonomics or performance must not reduce the completeness of the desktop game.
+
+## Deferred mobile backlog
+
+The following work remains deliberately deferred until mobile development is formally resumed:
+
+- further touch-control tuning, including joystick dead zones, sensitivity, simultaneous touches, handedness, and thumb fatigue;
+- phone-specific interface refinement, touch-target sizing, finger occlusion, portrait blocking, and safe-area or notch layout;
+- qualification across supported iPhone and Android tiers, browsers, aspect ratios, orientation changes, interruptions, and context recovery;
+- mobile render-quality tiers, dynamic resolution, download budgets, memory limits, thermal behavior, battery impact, and sustained performance;
+- mobile accessibility, control remapping, aim assistance, and gameplay-parity review;
+- production release criteria and a minimum supported mobile-device specification.
+
+Existing mobile code, instrumentation, and test records must remain intact while this backlog is paused.
 
 ## Game state and saving
 
@@ -231,19 +249,19 @@ Before building ten levels or commissioning final assets, Level 1 should prove a
 9. Complete a short cinematic resolution and unlock the exit.
 10. Finish the level, reload, and confirm that all permanent progress was saved correctly.
 
-Proxy art is sufficient for this slice. It should be comfortable and completable on representative mobile hardware before final Witch, dragon, cinematic, spell, store, or environment assets enter production.
+Proxy art is sufficient for this slice. It should be comfortable, stable, and completable on representative Windows and Mac desktop hardware before final Witch, dragon, cinematic, spell, store, or environment assets enter production. Mobile qualification does not currently gate desktop asset or feature development.
 
 ## Fundamental success criteria
 
 The foundation is ready for broader content production when:
 
 - a new player understands the immediate objective and can navigate without developer help;
-- movement, camera control, interaction, and all three spells remain dependable on desktop and landscape mobile;
+- movement, camera control, interaction, and all three spells remain dependable with desktop keyboard and mouse;
 - every required gate explains its condition and opens consistently;
 - the complete quest, economy, combat, and level-completion loop survives saving and reloading;
 - no quest item can be lost or sold in a way that blocks progress;
 - dragon combat is readable at close and medium range and cannot be bypassed through collision or wall-targeting errors;
-- the vertical slice meets the agreed minimum-device performance and stability targets;
+- the vertical slice meets the agreed desktop performance and stability targets;
 - additional levels can be assembled from reusable room, quest, gate, item, store, encounter, and save-system definitions rather than copied custom code.
 
 ## Open design decisions
@@ -259,4 +277,4 @@ The following choices should be resolved through short design discussions and pr
 - Which spell interactions are universal enough for players to learn and predict across all levels?
 - How long should one level, one play session, and the complete game be?
 - What happens after the 100-point spell-power milestone, and how many progression tiers are needed?
-- How much inventory management supports the fantasy before it becomes friction on mobile?
+- How much inventory management supports the fantasy before it becomes friction during desktop play?
