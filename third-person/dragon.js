@@ -1,4 +1,4 @@
-import { COMBAT } from './config.js?v=20260818-spells-v1';
+import { COMBAT } from './config.js?v=20260818-rewards-v1';
 
 export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position) {
   const root = new BABYLON.TransformNode('placeholder-dragon-root', scene);

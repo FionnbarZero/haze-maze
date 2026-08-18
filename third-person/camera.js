@@ -1,4 +1,4 @@
-import { CAMERA } from './config.js?v=20260818-spells-v1';
+import { CAMERA } from './config.js?v=20260818-rewards-v1';
 import { clamp, damp } from './utils.js';
 
 export class ShoulderCamera {

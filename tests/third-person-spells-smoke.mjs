@@ -133,6 +133,98 @@ await resetAt(0, 7.35);
 await delay(1150);
 const unshieldedAfter = await snapshot();
 
+const berryRouteStart = await snapshot();
+const firstBerryPosition = berryRouteStart.inventory.pickups[0].position;
+await resetAt(firstBerryPosition.x, firstBerryPosition.z);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.healthBerries === 1');
+const berryCollected = await snapshot();
+const berryCollectedHud = await evaluate(`({
+  count: document.querySelector('#hud-berry-count').textContent,
+  pouchCount: document.querySelector('#pouch-berry-count').textContent
+})`);
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.receiveDragonDamage(40); true');
+await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyP', key: 'p' })); true`);
+await delay(100);
+await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyW', key: 'w' })); true`);
+const pouchOpen = await snapshot();
+const pouchOpenHud = await evaluate(`({
+  hidden: document.querySelector('#pouch-overlay').getAttribute('aria-hidden'),
+  openClass: document.querySelector('#pouch-overlay').classList.contains('is-open'),
+  useDisabled: document.querySelector('#use-health-berry').disabled,
+  action: document.querySelector('#berry-action-copy').textContent
+})`);
+await evaluate(`document.querySelector('#use-health-berry').click(); true`);
+await delay(100);
+const berryUsed = await snapshot();
+const berryUsedHud = await evaluate(`({
+  playerHealth: document.querySelector('#player-health-copy').textContent,
+  count: document.querySelector('#hud-berry-count').textContent
+})`);
+await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyP', key: 'p' })); true`);
+await delay(80);
+const pouchClosed = await snapshot();
+const pouchClosedHud = await evaluate(`({
+  hidden: document.querySelector('#pouch-overlay').getAttribute('aria-hidden'),
+  openClass: document.querySelector('#pouch-overlay').classList.contains('is-open')
+})`);
+
+await resetAt(firstBerryPosition.x, firstBerryPosition.z);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.healthBerries === 1');
+await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyP', key: 'p' })); true`);
+await delay(80);
+await evaluate(`document.querySelector('#use-health-berry').click(); true`);
+await delay(80);
+const fullHealthBerry = await snapshot();
+
+const rewardLayout = await snapshot();
+const chestPosition = rewardLayout.inventory.chest.position;
+await resetAt(chestPosition.x, chestPosition.z);
+await waitFor(`window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.gold === ${rewardLayout.inventory.chest.amount}`);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.chest.openProgress > .8');
+const chestCollected = await snapshot();
+const chestHud = await evaluate(`({
+  hud: document.querySelector('#hud-gold-count').textContent,
+  pouch: document.querySelector('#pouch-gold-count').textContent
+})`);
+
+const lightningPotionPosition = rewardLayout.inventory.powerups.find(pickup => pickup.type === 'lightning').position;
+await resetAt(lightningPotionPosition.x, lightningPotionPosition.z);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.lightningPotions === 1');
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); true');
+await delay(80);
+const lightningPotionStored = await snapshot();
+const lightningPotionPouch = await evaluate(`({
+  count: document.querySelector('#pouch-lightning-potion-count').textContent,
+  disabled: document.querySelector('#use-lightning-potion').disabled
+})`);
+await evaluate(`document.querySelector('#use-lightning-potion').click(); true`);
+await delay(80);
+const lightningPotionUsed = await snapshot();
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); true');
+await aimAtDragon();
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castLightning(); true');
+await delay(280);
+const empoweredLightning = await snapshot();
+const empoweredLightningHud = await evaluate(`document.querySelector('#powerup-status').textContent`);
+
+const aegisPotionPosition = rewardLayout.inventory.powerups.find(pickup => pickup.type === 'aegis').position;
+await resetAt(aegisPotionPosition.x, aegisPotionPosition.z);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.aegisPotions === 1');
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); true');
+await delay(80);
+const aegisPotionStored = await snapshot();
+const aegisPotionPouch = await evaluate(`({
+  count: document.querySelector('#pouch-aegis-potion-count').textContent,
+  disabled: document.querySelector('#use-aegis-potion').disabled
+})`);
+await evaluate(`document.querySelector('#use-aegis-potion').click(); true`);
+await delay(80);
+const aegisPotionUsed = await snapshot();
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); window.__HMW_THIRD_PERSON_PROOF__.castAegis(); true');
+await delay(120);
+const empoweredAegis = await snapshot();
+const empoweredAegisHud = await evaluate(`document.querySelector('#aegis-status').textContent`);
+
 await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.selectSpell('frost'); true`);
 const controls = await evaluate(`({
   enabledSpells: [...document.querySelectorAll('.spell-rack button[data-spell]')].filter(button => !button.disabled).map(button => button.dataset.spell),
@@ -198,6 +290,61 @@ const checks = {
     && aegisAfter.combat.playerHealth === aegisAfter.combat.playerMaximumHealth,
   unshieldedStrikeDamaged: unshieldedAfter.combat.playerHealth < unshieldedAfter.combat.playerMaximumHealth
     && unshieldedAfter.combat.damageTaken >= 15,
+  berryPickupCollected: berryCollected.inventory.healthBerries === 1
+    && berryCollected.inventory.pickups[0].collected
+    && berryCollectedHud.count === '1 berry'
+    && berryCollectedHud.pouchCount === '1 berry',
+  pKeyOpenedPouch: pouchOpen.inventory.open
+    && pouchOpen.input.modalOpen
+    && pouchOpenHud.hidden === 'false'
+    && pouchOpenHud.openClass
+    && !pouchOpenHud.useDisabled,
+  pouchPausedMovement: pouchOpen.input.movement.y === 0
+    && !pouchOpen.input.heldActions.includes('moveForward'),
+  berryRestoredHealth: pouchOpen.combat.playerHealth === 60
+    && berryUsed.combat.playerHealth === 90
+    && berryUsed.inventory.healthBerries === 0
+    && berryUsed.inventory.totalUsed === 1
+    && berryUsedHud.playerHealth === '90 / 100'
+    && berryUsedHud.count === '0 berries',
+  pKeyClosedPouch: !pouchClosed.inventory.open
+    && !pouchClosed.input.modalOpen
+    && pouchClosedHud.hidden === 'true'
+    && !pouchClosedHud.openClass,
+  fullHealthPreservedBerry: fullHealthBerry.combat.playerHealth === 100
+    && fullHealthBerry.inventory.healthBerries === 1
+    && fullHealthBerry.inventory.totalUsed === 0,
+  cornerChestAwardedGold: chestCollected.inventory.chest.opened
+    && chestCollected.inventory.chest.openProgress > .8
+    && chestCollected.inventory.gold === 50
+    && chestHud.hud === '50 gold'
+    && chestHud.pouch === '50 gold',
+  lightningPotionStoredInPouch: lightningPotionStored.inventory.lightningPotions === 1
+    && lightningPotionStored.inventory.powerups.find(pickup => pickup.type === 'lightning')?.collected
+    && lightningPotionPouch.count === '1 potion'
+    && !lightningPotionPouch.disabled,
+  lightningPotionActivated: lightningPotionUsed.inventory.lightningPotions === 0
+    && lightningPotionUsed.inventory.totalPotionsUsed === 1
+    && lightningPotionUsed.combat.powerups.lightningActive
+    && lightningPotionUsed.combat.powerups.lightningDamageMultiplier === 2,
+  lightningPotionDoubledDamage: empoweredLightning.dragon.health === 50
+    && empoweredLightning.combat.lastCast?.spell === 'lightning'
+    && empoweredLightning.combat.lastCast?.damage === 50
+    && empoweredLightning.combat.lastCast?.damageMultiplier === 2
+    && empoweredLightningHud.startsWith('Lightning ×2'),
+  aegisPotionStoredInPouch: aegisPotionStored.inventory.aegisPotions === 1
+    && aegisPotionStored.inventory.powerups.find(pickup => pickup.type === 'aegis')?.collected
+    && aegisPotionPouch.count === '1 potion'
+    && !aegisPotionPouch.disabled,
+  aegisPotionPrimed: aegisPotionUsed.inventory.aegisPotions === 0
+    && aegisPotionUsed.inventory.totalPotionsUsed === 1
+    && aegisPotionUsed.combat.powerups.aegisPrimed,
+  aegisPotionDoubledDuration: empoweredAegis.combat.aegis.active
+    && empoweredAegis.combat.aegis.duration === 10
+    && empoweredAegis.combat.aegis.remaining > 9
+    && !empoweredAegis.combat.aegis.boostPrimed
+    && empoweredAegis.combat.lastCast?.durationMultiplier === 2
+    && empoweredAegisHud.startsWith('Aegis active'),
   allMobileSpellsEnabled: ['aegis', 'frost', 'lightning'].every(spell => controls.enabledSpells.includes(spell)),
   spellSelectionVisible: controls.selectedButton === 'frost' && controls.readout === 'Frost',
   mobileLandscapeLayout: mobileLayout.coarsePointer && mobileLayout.landscape
@@ -219,6 +366,34 @@ console.log(JSON.stringify({
     blockedFrost: { combat: blockedFrostAfter.combat, dragon: blockedFrostAfter.dragon },
     aegis: aegisAfter.combat,
     unshielded: unshieldedAfter.combat,
+    pouch: {
+      collected: berryCollected.inventory,
+      collectedHud: berryCollectedHud,
+      open: pouchOpen,
+      openHud: pouchOpenHud,
+      used: berryUsed,
+      usedHud: berryUsedHud,
+      closed: pouchClosed.inventory,
+      closedHud: pouchClosedHud,
+      fullHealth: fullHealthBerry.inventory
+    },
+    rewards: {
+      chest: { inventory: chestCollected.inventory, hud: chestHud },
+      lightningPotion: {
+        stored: lightningPotionStored.inventory,
+        pouch: lightningPotionPouch,
+        used: lightningPotionUsed,
+        cast: empoweredLightning,
+        hud: empoweredLightningHud
+      },
+      aegisPotion: {
+        stored: aegisPotionStored.inventory,
+        pouch: aegisPotionPouch,
+        used: aegisPotionUsed,
+        cast: empoweredAegis,
+        hud: empoweredAegisHud
+      }
+    },
     controls,
     mobile: { before: mobileBefore.combat, after: mobileAfter.combat, dragon: mobileAfter.dragon, layout: mobileLayout },
     errors: cdp.errors

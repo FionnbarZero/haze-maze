@@ -70,15 +70,34 @@ export const DESKTOP_ACTIONS = Object.freeze({
   ControlLeft: 'crouch',
   ControlRight: 'crouch',
   KeyV: 'shoulderSwitch',
+  KeyP: 'pouch',
   Digit1: 'selectLightning',
   Digit2: 'selectFrost',
   Digit3: 'selectAegis'
+});
+
+export const POUCH = Object.freeze({
+  healthBerryRestore: 30,
+  pickupRadius: 1.05,
+  chestPickupRadius: 1.35,
+  berryBushes: Object.freeze([
+    Object.freeze({ id: 'corridor', x: -1.62, y: 0, z: 2.1 }),
+    Object.freeze({ id: 'arena-west', x: -4.65, y: 0, z: 8.15 }),
+    Object.freeze({ id: 'arena-east', x: 4.65, y: 0, z: 12.05 })
+  ]),
+  goldChest: Object.freeze({ id: 'arena-northwest', x: -6.35, y: 0, z: 13.15, gold: 50 }),
+  powerups: Object.freeze([
+    Object.freeze({ id: 'storm-tonic', type: 'lightning', x: 5.8, y: 0, z: 5.05 }),
+    Object.freeze({ id: 'aegis-tonic', type: 'aegis', x: -5.85, y: 0, z: 10.45 })
+  ])
 });
 
 export const COMBAT = Object.freeze({
   spellRange: 30,
   lightningRange: 30,
   lightningDamage: 25,
+  lightningPotionDamageMultiplier: 2,
+  lightningPotionDuration: 15,
   lightningCooldown: 0.38,
   lightningEffectDuration: 0.22,
   frostCooldown: 4.5,
@@ -86,6 +105,7 @@ export const COMBAT = Object.freeze({
   frostEffectDuration: 0.34,
   aegisCooldown: 8,
   aegisDuration: 5,
+  aegisPotionDurationMultiplier: 2,
   dragonAttackRange: 2.75,
   dragonAttackWindup: 0.9,
   dragonAttackInterval: 1.8,

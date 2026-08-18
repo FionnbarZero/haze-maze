@@ -1,5 +1,5 @@
-import { COMBAT, PLAYER } from './config.js?v=20260818-spells-v1';
-import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-spells-v1';
+import { COMBAT, PLAYER } from './config.js?v=20260818-rewards-v1';
+import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
   lightning: Object.freeze({ label: 'Lightning', cooldown: COMBAT.lightningCooldown, targeted: true }),
@@ -28,6 +28,9 @@ export class LightningCombat {
     this.playerMaximumHealth = PLAYER.maximumHealth;
     this.playerHealth = PLAYER.maximumHealth;
     this.aegisUntil = 0;
+    this.lightningBoostUntil = 0;
+    this.aegisBoostPrimed = false;
+    this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
     this.aegisAbsorbedHits = 0;
     this.damageTaken = 0;
@@ -48,6 +51,7 @@ export class LightningCombat {
     this.playerHealthFill = document.querySelector('#player-health-fill');
     this.playerHealthCopy = document.querySelector('#player-health-copy');
     this.aegisStatus = document.querySelector('#aegis-status');
+    this.powerupStatus = document.querySelector('#powerup-status');
     this.aegis = this.createAegisGlobe();
     this.updateSpellSelection(false);
   }
@@ -330,6 +334,35 @@ export class LightningCombat {
     return true;
   }
 
+  restorePlayerHealth(amount) {
+    if (this.playerDefeated || amount <= 0) return 0;
+    const restored = Math.min(amount, this.playerMaximumHealth - this.playerHealth);
+    if (restored <= 0) return 0;
+    this.playerHealth += restored;
+    this.playerVitals.classList.add('is-healed');
+    setTimeout(() => this.playerVitals.classList.remove('is-healed'), 260);
+    this.updatePlayerHud(this.lastTime);
+    return restored;
+  }
+
+  lightningBoostActive(time = performance.now() / 1000) {
+    return time < this.lightningBoostUntil;
+  }
+
+  activateLightningBoost(time = performance.now() / 1000) {
+    if (this.lightningBoostActive(time)) return false;
+    this.lightningBoostUntil = time + COMBAT.lightningPotionDuration;
+    this.updatePlayerHud(time);
+    return true;
+  }
+
+  primeAegisBoost() {
+    if (this.aegisBoostPrimed) return false;
+    this.aegisBoostPrimed = true;
+    this.updatePlayerHud(this.lastTime);
+    return true;
+  }
+
   updatePlayerHud(time) {
     this.playerHealthFill.style.transform = `scaleX(${this.playerHealth / this.playerMaximumHealth})`;
     this.playerHealthCopy.textContent = `${this.playerHealth} / ${this.playerMaximumHealth}`;
@@ -341,6 +374,13 @@ export class LightningCombat {
       : cooldown > 0
         ? `Aegis recharging · ${cooldown.toFixed(1)}s`
         : 'Aegis ready';
+    const powerups = [];
+    if (this.lightningBoostActive(time)) {
+      powerups.push(`Lightning ×${COMBAT.lightningPotionDamageMultiplier} · ${(this.lightningBoostUntil - time).toFixed(1)}s`);
+    }
+    if (this.aegisBoostPrimed) powerups.push(`Next Aegis ×${COMBAT.aegisPotionDurationMultiplier}`);
+    this.powerupStatus.textContent = powerups.length ? powerups.join(' · ') : 'No powerup active';
+    this.playerVitals.classList.toggle('is-powered', powerups.length > 0);
   }
 
   cast(time, requestedSpell = this.selectedSpell) {
@@ -365,6 +405,10 @@ export class LightningCombat {
       intendedTarget ? intendedTarget.getAimPoint() : solution.intendedPoint
     );
 
+    const lightningMultiplier = spell === 'lightning' && this.lightningBoostActive(time)
+      ? COMBAT.lightningPotionDamageMultiplier
+      : 1;
+    const lightningDamage = COMBAT.lightningDamage * lightningMultiplier;
     this.lastCast = {
       spell,
       origin: { x: path.origin.x, y: path.origin.y, z: path.origin.z },
@@ -378,6 +422,8 @@ export class LightningCombat {
       obstructed,
       aimMode: solution.mode,
       targetEntryDistance: solution.targetEntryDistance,
+      damageMultiplier: spell === 'lightning' ? lightningMultiplier : 1,
+      damage: spell === 'lightning' && intendedTarget && !obstructed ? lightningDamage : 0,
       resolution: intendedTarget && !obstructed
         ? solution.mode === 'ASSISTED' ? 'TARGET_ASSISTED' : 'TARGET'
         : obstructed
@@ -390,9 +436,9 @@ export class LightningCombat {
 
     if (intendedTarget && !obstructed && intendedTarget.alive) {
       if (spell === 'lightning') {
-        intendedTarget.damage(COMBAT.lightningDamage, time);
+        intendedTarget.damage(lightningDamage, time);
         this.onMessage(intendedTarget.alive
-          ? `Lightning hit · ${intendedTarget.health} health remains`
+          ? `Lightning${lightningMultiplier > 1 ? ' ×2' : ''} hit · ${intendedTarget.health} health remains`
           : 'Training dragon contained');
       } else {
         intendedTarget.freeze(time, COMBAT.frostDuration);
@@ -405,12 +451,17 @@ export class LightningCombat {
     } else {
       this.onMessage(`${SPELLS[spell].label} struck the brickwork`);
     }
+    this.updateTargetHud();
     return true;
   }
 
   castAegis(time) {
     this.witch.setCast(time, 'aegis');
-    this.aegisUntil = time + COMBAT.aegisDuration;
+    const durationMultiplier = this.aegisBoostPrimed ? COMBAT.aegisPotionDurationMultiplier : 1;
+    const duration = COMBAT.aegisDuration * durationMultiplier;
+    this.aegisBoostPrimed = false;
+    this.lastAegisDuration = duration;
+    this.aegisUntil = time + duration;
     const origin = this.witch.getOrbPosition();
     this.lastCast = {
       spell: 'aegis',
@@ -423,10 +474,13 @@ export class LightningCombat {
       obstructed: false,
       aimMode: 'SELF',
       targetEntryDistance: 0,
+      durationMultiplier,
+      duration,
       resolution: 'SELF'
     };
     this.updateAegis(time);
-    this.onMessage(`Aegis Globe active · ${COMBAT.aegisDuration.toFixed(0)}s protection`);
+    this.updatePlayerHud(time);
+    this.onMessage(`Aegis Globe${durationMultiplier > 1 ? ' ×2' : ''} active · ${duration.toFixed(0)}s protection`);
     return true;
   }
 
@@ -504,6 +558,9 @@ export class LightningCombat {
     this.lastCast = null;
     this.playerHealth = this.playerMaximumHealth;
     this.aegisUntil = 0;
+    this.lightningBoostUntil = 0;
+    this.aegisBoostPrimed = false;
+    this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
     this.aegisAbsorbedHits = 0;
     this.damageTaken = 0;
@@ -543,8 +600,19 @@ export class LightningCombat {
       aegis: {
         active: this.lastTime < this.aegisUntil,
         remaining: Math.max(0, this.aegisUntil - this.lastTime),
+        duration: this.lastAegisDuration,
+        boostPrimed: this.aegisBoostPrimed,
         absorbedHits: this.aegisAbsorbedHits,
         visible: this.aegis.mesh.isEnabled()
+      },
+      powerups: {
+        lightningActive: this.lightningBoostActive(this.lastTime),
+        lightningRemaining: Math.max(0, this.lightningBoostUntil - this.lastTime),
+        lightningDamageMultiplier: this.lightningBoostActive(this.lastTime)
+          ? COMBAT.lightningPotionDamageMultiplier
+          : 1,
+        aegisPrimed: this.aegisBoostPrimed,
+        aegisDurationMultiplier: this.aegisBoostPrimed ? COMBAT.aegisPotionDurationMultiplier : 1
       },
       dragonInAttackRange: this.dragonInAttackRange,
       activeLightningStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('lightning-stream-')).length,

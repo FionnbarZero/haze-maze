@@ -1,6 +1,6 @@
 # Level 1 third-person technical proof
 
-This directory is an isolated Babylon.js ES-module experiment for the Level 1 acceptance criteria in [`docs/third-person-gameplay.md`](../docs/third-person-gameplay.md). The legacy game remains rooted at `index.html`; `third-person.html` is the proof entry point.
+This directory contains the isolated Babylon.js ES-module architecture used by the homepage and the direct proof entry point at `third-person.html`. The former hybrid raycaster/WebGL game remains preserved at `legacy.html`.
 
 ## Modules
 
@@ -11,6 +11,7 @@ This directory is an isolated Babylon.js ES-module experiment for the Level 1 ac
 - `input.js` maps keyboard, mouse, and independent touch pointers to named gameplay actions.
 - `witch.js` and `dragon.js` build deliberately temporary primitive actors and procedural motion.
 - `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and implements lightning damage, frost freezing, the protective Aegis globe, player health, and the training dragon's close-range strike.
+- `inventory.js` builds the greybox berry bushes, corner treasure chest, gold reward, potion pickups, and clickable field-pouch inventory, then applies their effects through the combat system.
 - `debug.js` reports FPS, frame-time samples, camera state, capsule state, collision, target, gate, animation, and mesh count.
 - `config.js` centralizes specification-derived tuning values; `utils.js` and `targeting.js` contain shared movement and targeting math.
 
@@ -27,9 +28,11 @@ The authoritative route contains six checkpoints:
 
 The exit barrier is a real collider while locked. Dragon defeat removes that collider, raises the gate, and enables the final checkpoint.
 
+Optional greybox rewards exercise the emerging inventory and economy loop without gating the route. A chest in the arena's northwest corner opens on approach and awards 50 gold. The amber Storm potion can be collected and deliberately used from the pouch to double lightning damage for 15 seconds. The blue Aegis potion primes the next protective globe to last twice its normal duration. Golden berries remain collectible healing items.
+
 ## Controls
 
-Desktop uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, the mouse to look, right mouse to aim, 1/2/3 to select lightning/frost/Aegis, and left mouse to cast. The first gameplay click casts and safely requests pointer lock. Losing pointer lock, browser focus, or page visibility clears held input.
+Desktop uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, P to open the pouch, the mouse to look, right mouse to aim, 1/2/3 to select lightning/frost/Aegis, and left mouse to cast. The first gameplay click casts and safely requests pointer lock. Losing pointer lock, browser focus, or page visibility clears held input.
 
 On coarse-pointer landscape screens, all three immediate-cast spell buttons remain on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
 
@@ -45,7 +48,7 @@ Run the dependency-free targeting math suite with `node --test tests/targeting.t
 
 `tests/third-person-targeting-smoke.mjs` exercises the rendered proof through Chrome DevTools Protocol. Start the repository on port 8766, launch a Chromium browser with remote debugging on port 9223, then run `node tests/third-person-targeting-smoke.mjs`. The optional `HMW_GAME_URL` and `HMW_CDP_ENDPOINT` environment variables select different local endpoints. The browser regression verifies close-range damage, normal-range damage, off-center character rotation, wall rejection, staff-origin evidence, and dragon separation.
 
-`tests/third-person-spells-smoke.mjs` uses the same local endpoints to verify first-click lightning damage, visible health feedback, Frost status and wall rejection, Aegis visibility and damage absorption, unshielded player damage, spell selection, and the spells-left/movement-right landscape-mobile layout.
+`tests/third-person-spells-smoke.mjs` uses the same local endpoints to verify first-click lightning damage, visible health feedback, Frost status and wall rejection, Aegis visibility and damage absorption, unshielded player damage, berry healing, pouch behavior, chest gold, both potion effects, spell selection, and the preserved spells-left/movement-right landscape-mobile layout.
 
 ## Physical-device qualification
 
@@ -61,6 +64,6 @@ An authorized HTTPS staging URL is preferred because clipboard and browser diagn
 
 ## Scope boundary
 
-This proof intentionally does not contain final character, hair, clothing, dragon, animation, material, or maze art. The three spells use lightweight technical effects; progression, inventory, maps, and the remaining levels stay in the legacy prototype until the 3D foundation meets its acceptance criteria.
+This proof intentionally does not contain final character, hair, clothing, dragon, animation, material, or maze art. The three spells and collectible rewards use lightweight technical effects; persistence, stores, broader progression, maps, and the remaining levels stay outside this greybox until their foundations are proven.
 
 Serve the repository over HTTP and open `/third-person.html`. Babylon.js is loaded from its official CDN for this experiment; a future production migration should pin and self-host the approved engine build. Performance collected from headless software WebGL is useful for regression comparison only and cannot qualify desktop or mobile hardware targets.

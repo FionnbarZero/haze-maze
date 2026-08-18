@@ -1,4 +1,4 @@
-import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260818-spells-v1';
+import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260818-rewards-v1';
 import { clamp } from './utils.js';
 
 export class ProofInput {
@@ -14,9 +14,11 @@ export class ProofInput {
     this.crouched = false;
     this.touchSprinting = false;
     this.pointerLocked = false;
+    this.modalOpen = false;
     this.onCast = () => {};
     this.onSelectSpell = () => {};
     this.onShoulder = () => {};
+    this.onPouch = () => {};
     this.onMessage = () => {};
     this.movePointer = null;
     this.lookPointer = null;
@@ -34,6 +36,11 @@ export class ProofInput {
       const action = DESKTOP_ACTIONS[event.code];
       if (!action) return;
       event.preventDefault();
+      if (action === 'pouch') {
+        if (!event.repeat) this.onPouch();
+        return;
+      }
+      if (this.modalOpen) return;
       this.keys.add(event.code);
       if (event.repeat) return;
       if (action === 'jump') this.actions.add('jump');
@@ -47,7 +54,7 @@ export class ProofInput {
     addEventListener('blur', () => this.clearHeldInput());
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearHeldInput(); });
     document.addEventListener('mousemove', event => {
-      if (!this.active || this.blocked || document.pointerLockElement !== this.canvas) return;
+      if (!this.active || this.blocked || this.modalOpen || document.pointerLockElement !== this.canvas) return;
       this.lookDelta.x += event.movementX * INPUT.mouseSensitivity;
       this.lookDelta.y += event.movementY * INPUT.mouseSensitivity * (INPUT.invertVertical ? -1 : 1);
     });
@@ -58,7 +65,7 @@ export class ProofInput {
     document.addEventListener('pointerlockerror', () => this.clearHeldInput());
     this.canvas.addEventListener('click', () => this.requestPointerLock());
     this.canvas.addEventListener('mousedown', event => {
-      if (!this.active || this.blocked || event.pointerType === 'touch') return;
+      if (!this.active || this.blocked || this.modalOpen || event.pointerType === 'touch') return;
       if (event.button === 0) {
         this.onCast();
         this.requestPointerLock();
@@ -98,7 +105,7 @@ export class ProofInput {
       knob.style.transform = '';
     };
     moveStick.addEventListener('pointerdown', event => {
-      if (!this.active || this.blocked) return;
+      if (!this.active || this.blocked || this.modalOpen) return;
       event.preventDefault();
       this.movePointer = event.pointerId;
       try { moveStick.setPointerCapture(event.pointerId); } catch {}
@@ -114,7 +121,7 @@ export class ProofInput {
     let lookY = 0;
     const releaseLook = event => { if (event.pointerId === this.lookPointer) this.lookPointer = null; };
     lookZone.addEventListener('pointerdown', event => {
-      if (!this.active || this.blocked) return;
+      if (!this.active || this.blocked || this.modalOpen) return;
       event.preventDefault();
       this.lookPointer = event.pointerId;
       lookX = event.clientX;
@@ -137,15 +144,15 @@ export class ProofInput {
     for (const button of document.querySelectorAll('[data-spell]')) {
       button.addEventListener('pointerdown', event => {
         event.preventDefault();
-        if (!this.active || this.blocked) return;
+        if (!this.active || this.blocked || this.modalOpen) return;
         const spell = button.dataset.spell;
         this.onSelectSpell(spell);
         this.onCast(spell);
       });
     }
-    document.querySelector('#jump-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.actions.add('jump'); });
-    document.querySelector('#crouch-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.toggleCrouch(); });
-    document.querySelector('#shoulder-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked) this.onShoulder(); });
+    document.querySelector('#jump-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.modalOpen) this.actions.add('jump'); });
+    document.querySelector('#crouch-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.modalOpen) this.toggleCrouch(); });
+    document.querySelector('#shoulder-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.modalOpen) this.onShoulder(); });
   }
 
   start() {
@@ -156,7 +163,7 @@ export class ProofInput {
   }
 
   requestPointerLock() {
-    if (!this.active || this.blocked || !matchMedia('(pointer:fine)').matches || document.pointerLockElement === this.canvas) return;
+    if (!this.active || this.blocked || this.modalOpen || !matchMedia('(pointer:fine)').matches || document.pointerLockElement === this.canvas) return;
     try {
       const request = this.canvas.requestPointerLock?.();
       request?.catch?.(() => this.clearHeldInput());
@@ -173,6 +180,12 @@ export class ProofInput {
   setCrouched(value) {
     this.crouched = Boolean(value);
     document.querySelector('#crouch-control').classList.toggle('is-active', this.crouched);
+  }
+
+  setModalOpen(value) {
+    this.modalOpen = Boolean(value);
+    this.clearHeldInput();
+    if (this.modalOpen && document.pointerLockElement) document.exitPointerLock?.();
   }
 
   updateBlockedState() {

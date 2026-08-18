@@ -1,13 +1,14 @@
-import { createWorld } from './world.js?v=20260818-spells-v1';
-import { createPlaceholderWitch } from './witch.js?v=20260818-spells-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260818-spells-v1';
-import { ProofInput } from './input.js?v=20260818-spells-v1';
-import { CharacterController } from './controller.js?v=20260818-spells-v1';
-import { ShoulderCamera } from './camera.js?v=20260818-spells-v1';
-import { LightningCombat } from './combat.js?v=20260818-spells-v1';
-import { DebugTelemetry } from './debug.js?v=20260818-spells-v1';
-import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-spells-v1';
-import { MobileQualificationRecorder } from './qualification.js?v=20260818-spells-v1';
+import { createWorld } from './world.js?v=20260818-rewards-v1';
+import { createPlaceholderWitch } from './witch.js?v=20260818-rewards-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260818-rewards-v1';
+import { ProofInput } from './input.js?v=20260818-rewards-v1';
+import { CharacterController } from './controller.js?v=20260818-rewards-v1';
+import { ShoulderCamera } from './camera.js?v=20260818-rewards-v1';
+import { LightningCombat } from './combat.js?v=20260818-rewards-v1';
+import { PouchInventory } from './inventory.js?v=20260818-rewards-v1';
+import { DebugTelemetry } from './debug.js?v=20260818-rewards-v1';
+import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-rewards-v1';
+import { MobileQualificationRecorder } from './qualification.js?v=20260818-rewards-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -66,6 +67,7 @@ try {
   shoulderCamera.addBlockers(dragon.meshes);
   const input = new ProofInput(canvas);
   const combat = new LightningCombat(BABYLON, scene, shoulderCamera, witch, dragon, controller);
+  const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat);
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
   const routePanel = document.querySelector('.route-panel');
@@ -87,8 +89,11 @@ try {
     shoulderCamera.switchShoulder();
     showMessage(`${shoulderCamera.side === 1 ? 'Right' : 'Left'} shoulder selected`);
   };
+  input.onPouch = () => inventory.toggle();
   input.onMessage = showMessage;
   combat.onMessage = showMessage;
+  inventory.onMessage = showMessage;
+  inventory.onOpenChange = open => input.setModalOpen(open);
 
   const updateRouteHud = worldState => {
     const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'dragon', 'exit'];
@@ -104,7 +109,7 @@ try {
     document.querySelector('#hud').classList.add('is-active');
     input.start();
     qualification?.recordEvent('gameplay-start');
-    showMessage('Walk through the Moon Arch · jump the relic · crouch beneath the lintel');
+    showMessage('Cross the Moon Arch · find the corner chest and arena potions · P opens the pouch');
   };
   document.querySelector('#start-proof').addEventListener('click', startProof);
 
@@ -117,6 +122,7 @@ try {
     world.reset();
     dragon.reset();
     combat.reset();
+    inventory.reset();
     controller.reset();
     shoulderCamera.setLook(0, 0);
     shoulderCamera.snapNextUpdate();
@@ -135,6 +141,7 @@ try {
       blocked: input.blocked,
       movement: input.movementAxes(),
       heldActions: input.heldActionNames(),
+      modalOpen: input.modalOpen,
       coarsePointer: matchMedia('(pointer:coarse)').matches
     },
     player: controller.snapshot(),
@@ -142,6 +149,7 @@ try {
     witch: witch.snapshot(),
     dragon: dragon.snapshot(),
     combat: combat.snapshot(),
+    inventory: inventory.snapshot(),
     world: world.snapshot(),
     performance: telemetry.snapshot(),
     quality: qualityController.snapshot(),
@@ -170,6 +178,7 @@ try {
     witch.update(controller, input, deltaTime, now);
     dragon.update(now, deltaTime);
     combat.update();
+    inventory.update(now, deltaTime);
     const routeEvents = world.update(controller, dragon, deltaTime);
     const worldState = world.snapshot();
     for (const event of routeEvents) showMessage(event.message);
@@ -253,6 +262,10 @@ try {
     castFrost: () => combat.cast(performance.now() / 1000, 'frost'),
     castAegis: () => combat.cast(performance.now() / 1000, 'aegis'),
     receiveDragonDamage: amount => combat.receiveDragonDamage(amount),
+    togglePouch: () => inventory.toggle(),
+    useHealthBerry: () => inventory.useHealthBerry(),
+    useLightningPotion: () => inventory.useLightningPotion(),
+    useAegisPotion: () => inventory.useAegisPotion(),
     teleport: (x, y, z) => { controller.teleport(x, y, z); shoulderCamera.snapNextUpdate(); },
     resetRoute: resetTechnicalRoute,
     resetPerformance: () => telemetry.reset(),

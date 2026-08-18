@@ -1,6 +1,6 @@
-import { PERFORMANCE, PLAYER } from './config.js?v=20260818-spells-v1';
+import { PERFORMANCE, PLAYER } from './config.js?v=20260818-rewards-v1';
 import { circleIntersectsBox, dampAngle, verticalRangesOverlap } from './utils.js';
-import { facingYawToward } from './targeting.js?v=20260818-spells-v1';
+import { facingYawToward } from './targeting.js?v=20260818-rewards-v1';
 
 export class CharacterController {
   constructor(BABYLON, world) {

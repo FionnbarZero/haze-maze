@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#090615" />
     <meta name="description" content="Play Moonhollow Quest, a third-person Babylon.js spellcasting adventure." />
     <title>Moonhollow Quest</title>
-    <link rel="stylesheet" href="third-person/styles.css?v=20260818-spells-v1" />
+    <link rel="stylesheet" href="third-person/styles.css?v=20260818-rewards-v1" />
   </head>
   <body>
     <main id="proof-shell" aria-label="Moonhollow Quest game">
@@ -32,7 +32,9 @@
           <div><span>Moon Witch</span><strong id="player-health-copy">100 / 100</strong></div>
           <div class="player-health-track"><i id="player-health-fill"></i></div>
           <small id="aegis-status">Aegis ready</small>
+          <small id="powerup-status">No powerup active</small>
         </aside>
+        <div class="pouch-hint"><kbd>P</kbd><span>Pouch</span><strong id="hud-berry-count">0 berries</strong><em id="hud-gold-count">0 gold</em></div>
         <div id="toast" class="toast" role="status"></div>
 
         <aside id="debug-panel" class="debug-panel" aria-label="Technical proof diagnostics">
@@ -74,13 +76,46 @@
         </div>
       </section>
 
+      <section id="pouch-overlay" class="pouch-overlay" aria-hidden="true">
+        <article class="pouch-panel" role="dialog" aria-modal="true" aria-labelledby="pouch-title">
+          <header>
+            <div><small>Moon Witch inventory</small><h2 id="pouch-title">Field pouch</h2></div>
+            <button id="close-pouch" type="button" aria-label="Close pouch">×</button>
+          </header>
+          <div class="pouch-lining">
+            <p>Collected provisions</p>
+            <button id="use-health-berry" class="pouch-item" type="button" disabled>
+              <span class="berry-icon" aria-hidden="true"><i></i><i></i><i></i><b></b></span>
+              <span><strong>Golden health berries</strong><small id="berry-action-copy">Find a glowing bush in the maze</small></span>
+              <em id="pouch-berry-count">0 berries</em>
+            </button>
+            <button id="use-lightning-potion" class="pouch-item" type="button" disabled>
+              <span class="potion-icon potion-icon-lightning" aria-hidden="true"><i></i><b></b></span>
+              <span><strong>Storm potion</strong><small id="lightning-potion-action-copy">Find the amber storm potion in the arena</small></span>
+              <em id="pouch-lightning-potion-count">0 potions</em>
+            </button>
+            <button id="use-aegis-potion" class="pouch-item" type="button" disabled>
+              <span class="potion-icon potion-icon-aegis" aria-hidden="true"><i></i><b></b></span>
+              <span><strong>Blue Aegis potion</strong><small id="aegis-potion-action-copy">Find the blue potion in the arena</small></span>
+              <em id="pouch-aegis-potion-count">0 potions</em>
+            </button>
+            <div class="pouch-item pouch-treasure" aria-label="Collected gold">
+              <span class="coin-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span><strong>Chest gold</strong><small>Spendable treasure collected from the maze</small></span>
+              <em id="pouch-gold-count">0 gold</em>
+            </div>
+          </div>
+          <footer>Click a collected item to use it <span>Press P to close</span></footer>
+        </article>
+      </section>
+
       <section id="start-overlay" class="start-overlay">
         <div>
           <p>Level 1 · Camera and traversal study</p>
           <h1>Third-person<br />technical proof</h1>
           <p>This intentionally uses temporary geometry to validate camera, collision, movement, and staff-origin aiming.</p>
           <button id="start-proof" type="button">Enter the brick passage <span>→</span></button>
-          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · 1 / 2 / 3 spells · Left click casts</small>
+          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · P pouch · 1 / 2 / 3 spells · Left click casts</small>
         </div>
       </section>
 
@@ -94,6 +129,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260818-spells-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260818-rewards-v1"></script>
   </body>
 </html>

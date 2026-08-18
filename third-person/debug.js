@@ -1,4 +1,4 @@
-import { PERFORMANCE } from './config.js?v=20260818-spells-v1';
+import { PERFORMANCE } from './config.js?v=20260818-rewards-v1';
 
 const bytesToMiB = bytes => `${(bytes / 1024 / 1024).toFixed(1)}MiB`;
 
