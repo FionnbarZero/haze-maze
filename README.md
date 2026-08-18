@@ -1,8 +1,8 @@
 # Moonhollow Quest
 
-An original, mobile-first enchanted maze action game built with modern browser APIs and no dependencies.
+An original, mobile-first enchanted maze action game built with modern browser APIs.
 
-The production direction is formally a third-person, over-the-shoulder spellcasting game with the Moon Witch visible during exploration and combat. The current hybrid raycaster/WebGL prototype remains the playable migration baseline; see the [third-person gameplay decision and specification](docs/third-person-gameplay.md) for the target camera, controls, animation, aiming, and Level 1 vertical-slice requirements.
+The homepage runs the third-person Babylon.js version, with an over-the-shoulder camera and the Moon Witch visible during exploration and combat. The former hybrid raycaster/WebGL game remains available at `legacy.html`; see the [third-person gameplay decision and specification](docs/third-person-gameplay.md) for the target camera, controls, animation, aiming, and Level 1 vertical-slice requirements.
 
 Beginning a new hunt plays a short cinematic transition in which the Moon Witch walks through a glowing stone Moon Arch before control passes to the player.
 
@@ -16,9 +16,9 @@ python3 -m http.server 8000
 
 Then visit `http://localhost:8000`.
 
-### Isolated third-person technical proof
+### Babylon.js game
 
-With the same local server running, visit `http://localhost:8000/third-person.html`. This separate Babylon.js experiment validates the planned over-the-shoulder camera, traversal, collision, touch layout, and staff-origin lightning without replacing the playable prototype at `index.html`. It loads Babylon.js from the official experimental CDN, so this proof requires an internet connection.
+The homepage at `http://localhost:8000/` serves the Babylon.js game. The previous game is preserved at `http://localhost:8000/legacy.html`, while `http://localhost:8000/third-person.html` remains available as a direct alias for the Babylon.js version. Babylon.js loads from its official CDN, so the game requires an internet connection.
 
 Proof controls: WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, 1/2/3 to select lightning, frost, or Aegis, and left click to cast. On landscape touch devices, all three immediate-cast spells remain on the left, movement remains on the right, and the center region controls the camera.
 
