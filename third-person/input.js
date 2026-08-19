@@ -195,6 +195,7 @@ export class ProofInput {
 
   clearHeldInput() {
     this.keys.clear();
+    this.actions.clear();
     this.move.x = 0;
     this.move.y = 0;
     this.touchSprinting = false;
@@ -241,5 +242,9 @@ export class ProofInput {
 
   heldActionNames() {
     return [...new Set([...this.keys].map(code => DESKTOP_ACTIONS[code]).filter(Boolean))];
+  }
+
+  pendingActionNames() {
+    return [...this.actions];
   }
 }

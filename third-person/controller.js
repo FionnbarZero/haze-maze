@@ -52,6 +52,7 @@ export class CharacterController {
     this.landingRemaining = Math.max(0, this.landingRemaining - dt);
     if (input.consume('jump')) this.jumpBufferRemaining = PLAYER.jumpBuffer;
     else this.jumpBufferRemaining = Math.max(0, this.jumpBufferRemaining - dt);
+    input.consume('crouchChanged');
 
     if (input.crouched) {
       this.crouched = true;

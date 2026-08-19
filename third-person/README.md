@@ -50,6 +50,8 @@ Run the dependency-free targeting math suite with `node --test tests/targeting.t
 
 `tests/third-person-spells-smoke.mjs` uses the same local endpoints to verify first-click lightning damage, visible health feedback, Frost status and wall rejection, Aegis visibility and damage absorption, unshielded player damage, berry healing, pouch behavior, chest gold, both potion effects, spell selection, and the preserved spells-left/movement-right landscape-mobile layout.
 
+`tests/third-person-input-smoke.mjs` verifies that opening the pouch, losing focus or pointer lock, and resetting the route discard queued one-shot actions while ordinary jumping and crouching still resume normally.
+
 ## Physical-device qualification
 
 Add `qualification=1` and a quality preset to the URL to enable the field-test recorder without changing the ordinary proof:

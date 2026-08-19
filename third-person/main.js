@@ -1,8 +1,8 @@
 import { createWorld } from './world.js?v=20260818-rewards-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260818-rewards-v1';
 import { createPlaceholderDragon } from './dragon.js?v=20260818-rewards-v1';
-import { ProofInput } from './input.js?v=20260818-rewards-v1';
-import { CharacterController } from './controller.js?v=20260818-rewards-v1';
+import { ProofInput } from './input.js?v=20260818-inputqueue-v1';
+import { CharacterController } from './controller.js?v=20260818-inputqueue-v1';
 import { ShoulderCamera } from './camera.js?v=20260818-rewards-v1';
 import { LightningCombat } from './combat.js?v=20260818-rewards-v1';
 import { PouchInventory } from './inventory.js?v=20260818-rewards-v1';
@@ -141,6 +141,7 @@ try {
       blocked: input.blocked,
       movement: input.movementAxes(),
       heldActions: input.heldActionNames(),
+      pendingActions: input.pendingActionNames(),
       modalOpen: input.modalOpen,
       coarsePointer: matchMedia('(pointer:coarse)').matches
     },
