@@ -1,6 +1,22 @@
 import { CAMERA } from './config.js?v=20260818-rewards-v1';
 import { clamp, damp } from './utils.js';
 
+const SHOULDER_STORAGE_KEY = 'moonWitchShoulder';
+
+function storedShoulderSide() {
+  try {
+    return Number(globalThis.localStorage?.getItem(SHOULDER_STORAGE_KEY)) === -1 ? -1 : 1;
+  } catch {
+    return 1;
+  }
+}
+
+function storeShoulderSide(side) {
+  try {
+    globalThis.localStorage?.setItem(SHOULDER_STORAGE_KEY, String(side));
+  } catch {}
+}
+
 export class ShoulderCamera {
   constructor(BABYLON, scene, world, mobile = false) {
     this.BABYLON = BABYLON;
@@ -15,7 +31,7 @@ export class ShoulderCamera {
     this.mobile = mobile;
     this.yaw = 0;
     this.pitch = -.08;
-    this.side = Number(localStorage.getItem('moonWitchShoulder')) === -1 ? -1 : 1;
+    this.side = storedShoulderSide();
     this.actualDistance = CAMERA.explorationDistance;
     this.desiredDistance = CAMERA.explorationDistance;
     this.actualBoom = CAMERA.explorationDistance;
@@ -57,7 +73,7 @@ export class ShoulderCamera {
       ? hit.pickedPoint.clone()
       : ray.origin.add(ray.direction.scale(30));
     this.side *= -1;
-    localStorage.setItem('moonWitchShoulder', String(this.side));
+    storeShoulderSide(this.side);
   }
 
   snapNextUpdate() {

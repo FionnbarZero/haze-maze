@@ -240,6 +240,7 @@
     state.mapOpen = false;
     state.pouchOpen = false;
     state.mobileCrouch = false;
+    $('#crouch-button').classList.remove('is-active');
     $('#mini-map').classList.remove('is-visible');
     $('#map-button').classList.remove('is-active');
     $('#map-button').setAttribute('aria-expanded', 'false');
@@ -913,6 +914,7 @@
     state.keys.clear();
     state.player.vx=0;state.player.vy=0;state.player.turnVelocity=0;state.player.moving=false;
     state.joystick.x=0;state.joystick.y=0;state.joystick.pointer=null;
+    state.lookPointer=null;
     const joystickKnob=$('#joystick i');if(joystickKnob)joystickKnob.style.transform='';
   }
 
@@ -939,11 +941,18 @@
   }
 
   addEventListener('resize',resize);
+  const heldGameplayKeys=new Set(['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','KeyC','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','ShiftLeft','ShiftRight','ControlLeft','ControlRight']);
   addEventListener('keydown',event=>{
     if(state.introActive){event.preventDefault();return;}
-    if(state.running&&['KeyW','KeyA','KeyS','KeyD','KeyQ','KeyE','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight','ControlLeft','ControlRight'].includes(event.code))event.preventDefault();
-    state.keys.add(event.code);
-    if(event.code==='Digit1')cast('lightning');if(event.code==='Digit2')cast('frost');if(event.code==='Digit3')cast('bubble');if(event.code==='Space'&&!event.repeat){event.preventDefault();jump();}if(event.code==='KeyM'&&!event.repeat)toggleMap();if(event.code==='KeyP'&&!event.repeat)togglePouch();if(event.code==='Escape'&&state.running){if(state.pouchOpen)togglePouch(false);else setPaused(!state.paused);}
+    if(event.code==='Escape'&&state.running){event.preventDefault();if(state.pouchOpen)togglePouch(false);else setPaused(!state.paused);return;}
+    if(event.code==='KeyP'&&!event.repeat&&state.running&&!state.paused&&!state.finished){event.preventDefault();togglePouch();return;}
+    if(event.code==='KeyM'&&!event.repeat&&state.running&&!state.paused&&!state.finished){event.preventDefault();toggleMap();return;}
+    if(!state.running||state.paused||state.pouchOpen||state.finished)return;
+    if(heldGameplayKeys.has(event.code)){event.preventDefault();state.keys.add(event.code);}
+    if(event.code==='Digit1')cast('lightning');
+    if(event.code==='Digit2')cast('frost');
+    if(event.code==='Digit3')cast('bubble');
+    if(event.code==='Space'&&!event.repeat){event.preventDefault();jump();}
   });
   addEventListener('keyup',event=>state.keys.delete(event.code));
   addEventListener('blur',haltMovement);

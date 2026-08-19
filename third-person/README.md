@@ -5,7 +5,7 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 ## Modules
 
 - `main.js` composes the scene, assigns the selected local Witch, keeps the optional simulated remote Witch behind `?party=simulated`, and exposes a purpose-built browser smoke-test hook.
-- `character-selection.js` owns the system-voiced Coven leader briefing, synchronized captions, automatic transition into the two-step Purple/Green Witch choice, named opening actions, confirmation state, and gamepad-ready action boundary.
+- `character-selection.js` owns the system-voiced Coven leader briefing, synchronized captions, automatic transition into the two-step four-Witch choice, named opening actions, confirmation state, and gamepad-ready action boundary.
 - `world.js` builds the temporary brick route, entrance Moon Gate, required traversal obstacles, dragon arena, technical exit barrier, route checkpoints, and collision registry.
 - `controller.js` owns the substepped camera-relative capsule, wall and actor separation, buffered jumping, landing, crouching, ground probing, standing-clearance checks, and smooth cast-facing requests.
 - `camera.js` owns exploration/aim framing, aim-preserving shoulder switching, smoothing, multi-ray wall collision, side compression, recovery, and occlusion handling.
@@ -13,21 +13,23 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 - `witch.js` and `dragon.js` build deliberately temporary primitive actors and procedural motion. The Witch builder accepts named palettes so every color witch can share one presentation and animation contract.
 - `remote-player.js` consumes snapshot-shaped teammate state and smooths it independently from local input. Its temporary 10 Hz Green Witch feed can later be replaced by LAN messages without changing the replica.
 - `green-witch.js` owns the Green Witch's health and two unlocked ability templates: two-arm Vine Trap control and smart-targeted Restore healing.
-- `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and implements lightning damage, frost freezing, the protective Aegis globe, player health, and the training dragon's close-range strike.
+- `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and implements Purple storm magic, Frost control and damage, Fire offense and creature-blocking protection, player health, and the training dragon's close-range strike.
 - `inventory.js` builds the greybox berry bushes, corner treasure chest, gold reward, potion pickups, and clickable field-pouch inventory, then applies their effects through the combat system.
 - `debug.js` reports FPS, frame-time samples, camera state, capsule state, collision, target, gate, animation, and mesh count.
 - `config.js` centralizes specification-derived tuning values; `utils.js` and `targeting.js` contain shared movement and targeting math.
 
 ## Technical route
 
-The authoritative route contains six checkpoints:
+The authoritative route records eight checkpoints:
 
 1. Cross the Moon Gate after confirming a Witch.
 2. Jump over the rune relic.
 3. Crouch beneath the low lintel.
 4. Enter the combat arena.
-5. Use the three-spell combat proof and defeat the training dragon with four lightning hits.
-6. Pass through the animated exit gate.
+5. Defeat the first stationary guardian, which drops a rune and opens the second chamber.
+6. Enter the opened second chamber.
+7. Defeat its moving guardian and recover the complete three-rune set.
+8. Pass through the animated exit gate.
 
 The exit barrier is a real collider while locked. Three collectible gate runes are required to remove it: one is hidden beside the western trees and one falls from each defeated dragon. Defeating the second dragon without collecting the complete rune set leaves the barrier locked; the assembled set raises the gate and enables the final checkpoint.
 
@@ -37,7 +39,7 @@ Optional greybox rewards continue to exercise the emerging inventory and economy
 
 ## Controls
 
-The opening accepts Enter or a mouse/trackpad click on **Hear the Coven briefing** to permit computer audio. A dedicated Coven leader speaks the briefing through the browser's system voice while a compact caption follows each line; its speech session is explicitly released before character selection so no narration audio remains active in gameplay. Left/Right and A/D then navigate, Enter selects and confirms in separate steps, and Escape steps back. Desktop gameplay uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, P to open the pouch, the mouse to look, right mouse to aim, number keys to select the local Witch's spells, and O to cast. Purple starts with Lightning in the selection copy and retains all three proof spells for regression testing; her staff must be equipped to cast. Green starts with Vine Trap; Restore is presented as the next XP unlock while remaining available in the two-spell technical template. A left click now only captures the pointer for mouse-look. Losing pointer lock, browser focus, or page visibility clears held input. Solo is the default and shows only the selected Witch. The optional `?party=simulated` test mode preserves the snapshot-driven teammate; when Green is simulated, its panel also exposes `G` for Vine Trap and `H` for Smart Restore.
+The opening accepts Enter or a mouse/trackpad click on **Hear the Coven briefing** to permit computer audio. A dedicated Coven leader speaks the briefing through the browser's system voice while a compact caption follows each line; its speech session is explicitly released before character selection so no narration audio remains active in gameplay. Left/Right and A/D then navigate all four Witches, Enter selects and confirms in separate steps, and Escape steps back. Desktop gameplay uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, P to open the pouch, the mouse to look, right mouse to aim, number keys to select the local Witch's spells, and O to cast. Purple starts with Lightning and retains all three storm-proof spells for regression testing; her staff must be equipped to cast. Green starts with Vine Trap, with Restore available in the two-spell technical template. Frost starts with control-focused Freeze and a damaging Ice Lance. Fire starts with a damaging Fireball and a five-second Fire Ring that repels the dragon and prevents creature damage while active. A left click only captures the pointer for mouse-look. Losing pointer lock, browser focus, or page visibility clears held input. Solo is the default and shows only the selected Witch. The optional `?party=simulated` test mode preserves the snapshot-driven Green teammate for Purple, Frost, and Fire; when Green is local, Purple is the simulated teammate.
 
 On coarse-pointer landscape screens, all three immediate-cast spell buttons remain on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
 
@@ -59,7 +61,9 @@ Run the dependency-free targeting math suite with `node --test tests/targeting.t
 
 `tests/third-person-green-witch-smoke.mjs` verifies the simulated LAN snapshot stream and interpolation, distinct Green Witch presentation and nameplate, two unlocked ability templates, two-arm Vine Trap visuals and dragon restraint, self and friend Restore modes, smart wounded-friend selection, party HUD feedback, and runtime stability.
 
-`tests/third-person-character-selection-smoke.mjs` verifies that the dedicated Coven leader replaces the playable Witch previews during the exact briefing, the selection waits for narration completion, the leader gives way to both choice previews, mouse and keyboard selection preserve the deliberately separate confirmation step, solo play shows one local Witch, Green's starting ability works, and the player controls the Moon Gate crossing. `?narration=instant` makes the spoken sequence deterministic for automation without changing the ordinary player flow.
+`tests/third-person-elemental-witches-smoke.mjs` verifies all four selection cards, deliberate Frost confirmation, solo Frost and Fire presentation, their exact two-spell loadouts, non-damaging Freeze, damaging Ice Lance and Fireball attacks, Fire Ring damage immunity and creature repulsion, HUD feedback, and runtime stability.
+
+`tests/third-person-character-selection-smoke.mjs` verifies that the dedicated Coven leader replaces the playable Witch previews during the exact briefing, the selection waits for narration completion, the leader gives way to all four choice previews, mouse and keyboard selection preserve the deliberately separate confirmation step, solo play shows one local Witch, Green's starting ability works, and the player controls the Moon Gate crossing. `?narration=instant` makes the spoken sequence deterministic for automation without changing the ordinary player flow.
 
 `tests/third-person-spells-smoke.mjs` uses the same local endpoints to verify O-key lightning damage, visible health feedback, Frost status and wall rejection, Aegis visibility and damage absorption, unshielded player damage, berry healing, pouch behavior, chest gold, both potion effects, spell selection, and the preserved spells-left/movement-right landscape-mobile layout.
 
@@ -79,6 +83,6 @@ An authorized HTTPS staging URL is preferred because clipboard and browser diagn
 
 ## Scope boundary
 
-This proof intentionally does not contain final character, hair, clothing, dragon, animation, material, or maze art. The Purple Witch spells, Green Witch ability templates, and collectible rewards use lightweight technical effects. Both Green Witch spells are unlocked for testing; XP acquisition and spell locking, real networking, persistence, stores, broader progression, maps, and the remaining levels stay outside this greybox until their foundations are proven.
+This proof intentionally does not contain final character, hair, clothing, dragon, animation, material, or maze art. Purple, Green, Frost, and Fire use shared placeholder Witch geometry, distinct palettes, and lightweight technical spell effects. All current ability templates are unlocked for testing; XP acquisition and spell locking, real networking, persistence, stores, broader progression, maps, and the remaining levels stay outside this greybox until their foundations are proven.
 
 Serve the repository over HTTP and open `/third-person.html`. Babylon.js is loaded from its official CDN for this experiment; a future production migration should pin and self-host the approved engine build. Performance collected from headless software WebGL is useful for regression comparison only and cannot qualify desktop or mobile hardware targets.

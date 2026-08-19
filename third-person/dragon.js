@@ -146,7 +146,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         this.state = time < this.hitUntil ? 'HIT' : 'IDLE';
       }
 
-      if (patrolEnabled && !this.isFrozen(time) && !this.isRestrained(time)) {
+      if (this.alive && patrolEnabled && !this.isFrozen(time) && !this.isRestrained(time)) {
         const now = time;
         if (now < patrolWaitUntil) {
           this.state = 'PATROL_WAIT';
@@ -192,7 +192,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         : time < this.hitUntil
           ? BABYLON.Color3.FromHexString('#9f3e83')
           : BABYLON.Color3.FromHexString('#12081f');
-      if (!frozen && !restrained) {
+      if (this.alive && !frozen && !restrained) {
         const attacking = time < this.attackUntil ? 1 : 0;
         wingLeft.rotation.z = -.35 + Math.sin(time * 2.7) * .18 - attacking * .28;
         wingRight.rotation.z = .35 - Math.sin(time * 2.7) * .18 + attacking * .28;

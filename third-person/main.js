@@ -1,15 +1,15 @@
 import { createWorld } from './world.js?v=20260819-purple-progression-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260819-purple-progression-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260818-witchselect-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260819-runtime-audit-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
-import { ShoulderCamera } from './camera.js?v=20260818-witchselect-v1';
+import { ShoulderCamera } from './camera.js?v=20260819-runtime-audit-v1';
 import { LightningCombat } from './combat.js?v=20260819-elemental-witches-v1';
 import { PouchInventory } from './inventory.js?v=20260819-elemental-witches-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
-import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260818-witchselect-v1';
+import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260819-runtime-audit-v1';
 import { GreenWitchAbilities } from './green-witch.js?v=20260819-elemental-witches-v1';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
 
@@ -173,6 +173,7 @@ try {
   });
   const greenSimulation = new SimulatedTeammateFeed(greenReplica, initialPlayerState);
   greenSimulation.setEnabled(simulatedPartyEnabled);
+  greenReplica.setEnabled(simulatedPartyEnabled);
   const companionCharacterId = characterId => characterId === 'green' ? 'purple' : 'green';
   let selectedCharacter = 'purple';
   let localWitch = purpleWitch;
@@ -315,6 +316,7 @@ try {
     }
     greenReplica.setPresentation(remoteWitch);
     greenSimulation.setEnabled(simulatedPartyEnabled);
+    greenReplica.setEnabled(simulatedPartyEnabled);
     if (simulatedPartyEnabled) greenSimulation.reset(controller.snapshot());
     combat.setCharacter(characterId, localWitch, PLAYABLE_WITCHES[characterId].name);
     combat.setSpellcastingEnabled(characterId !== 'green');

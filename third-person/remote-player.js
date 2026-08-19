@@ -8,8 +8,8 @@ const lerpAngle = (current, target, response, deltaTime) => {
   return current + wrapped * (1 - Math.exp(-deltaTime / Math.max(.0001, response)));
 };
 
-const normalizedSnapshot = (snapshot, fallback, receivedAt) => ({
-  sequence: Math.max(fallback.sequence + 1, Math.floor(finite(snapshot.sequence, fallback.sequence + 1))),
+const normalizedSnapshot = (snapshot = {}, fallback, receivedAt) => ({
+  sequence: Number.isFinite(snapshot.sequence) ? Math.floor(snapshot.sequence) : fallback.sequence + 1,
   sentAt: finite(snapshot.sentAt, receivedAt),
   position: {
     x: finite(snapshot.position?.x ?? snapshot.x, fallback.position.x),
@@ -84,6 +84,7 @@ export class RemotePlayerReplica {
   }
 
   update(deltaTime, time) {
+    if (!this.enabled) return;
     const target = this.latest.position;
     this.renderPosition.x = damp(this.renderPosition.x, target.x, GREEN_WITCH.interpolationResponse, deltaTime);
     this.renderPosition.y = damp(this.renderPosition.y, target.y, GREEN_WITCH.interpolationResponse, deltaTime);
@@ -162,7 +163,6 @@ export class SimulatedTeammateFeed {
 
   setEnabled(value) {
     this.enabled = Boolean(value);
-    this.replica.setEnabled(this.enabled);
   }
 
   update(time, player) {
