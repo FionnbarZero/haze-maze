@@ -1,4 +1,4 @@
-import { COMBAT } from './config.js?v=20260818-rewards-v1';
+import { COMBAT } from './config.js?v=20260818-greenwitch-v1';
 
 export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position) {
   const root = new BABYLON.TransformNode('placeholder-dragon-root', scene);
@@ -26,6 +26,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     aimRadius: COMBAT.aimAssistRadius,
     hitUntil: 0,
     frozenUntil: 0,
+    restrainedUntil: 0,
     attackUntil: 0,
     defeatedAt: 0,
     deathProgress: 0,
@@ -50,11 +51,20 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       this.state = 'FROZEN';
       return true;
     },
+    restrain(time, duration) {
+      if (!this.alive) return false;
+      this.restrainedUntil = Math.max(this.restrainedUntil, time + duration);
+      this.state = 'VINEBOUND';
+      return true;
+    },
     isFrozen(time) {
       return this.alive && time < this.frozenUntil;
     },
+    isRestrained(time) {
+      return this.alive && time < this.restrainedUntil;
+    },
     attack(time) {
-      if (!this.alive || this.isFrozen(time)) return false;
+      if (!this.alive || this.isFrozen(time) || this.isRestrained(time)) return false;
       this.attackUntil = time + COMBAT.dragonAttackAnimationDuration;
       this.state = 'ATTACK';
       return true;
@@ -64,6 +74,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       this.alive = true;
       this.hitUntil = 0;
       this.frozenUntil = 0;
+      this.restrainedUntil = 0;
       this.attackUntil = 0;
       this.defeatedAt = 0;
       this.deathProgress = 0;
@@ -86,6 +97,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
           root.setEnabled(false);
           this.state = 'DEFEATED';
         }
+      } else if (this.isRestrained(time)) {
+        this.state = 'VINEBOUND';
       } else if (this.isFrozen(time)) {
         this.state = 'FROZEN';
       } else if (time < this.attackUntil) {
@@ -94,18 +107,25 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         this.state = time < this.hitUntil ? 'HIT' : 'IDLE';
       }
       const frozen = this.isFrozen(time);
-      material.diffuseColor = frozen
+      const restrained = this.isRestrained(time);
+      material.diffuseColor = restrained
+        ? BABYLON.Color3.FromHexString('#356a45')
+        : frozen
         ? BABYLON.Color3.FromHexString('#72b8df')
         : BABYLON.Color3.FromHexString('#49306f');
-      material.specularColor = frozen
+      material.specularColor = restrained
+        ? BABYLON.Color3.FromHexString('#b9f4b6')
+        : frozen
         ? BABYLON.Color3.FromHexString('#d8f7ff')
         : BABYLON.Color3.FromHexString('#7c5aa4');
-      material.emissiveColor = frozen
+      material.emissiveColor = restrained
+        ? BABYLON.Color3.FromHexString('#123d20')
+        : frozen
         ? BABYLON.Color3.FromHexString('#174f77')
         : time < this.hitUntil
           ? BABYLON.Color3.FromHexString('#9f3e83')
           : BABYLON.Color3.FromHexString('#12081f');
-      if (!frozen) {
+      if (!frozen && !restrained) {
         const attacking = time < this.attackUntil ? 1 : 0;
         wingLeft.rotation.z = -.35 + Math.sin(time * 2.7) * .18 - attacking * .28;
         wingRight.rotation.z = .35 - Math.sin(time * 2.7) * .18 + attacking * .28;
@@ -120,6 +140,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         state: this.state,
         frozen: this.isFrozen(performance.now() / 1000),
         frozenRemaining: Math.max(0, this.frozenUntil - performance.now() / 1000),
+        restrained: this.isRestrained(performance.now() / 1000),
+        restrainedRemaining: Math.max(0, this.restrainedUntil - performance.now() / 1000),
         deathProgress: this.deathProgress,
         enabled: root.isEnabled(),
         aimPoint: this.getAimPoint().asArray(),

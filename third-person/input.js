@@ -1,4 +1,4 @@
-import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260818-rewards-v1';
+import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260818-greenwitch-v1';
 import { clamp } from './utils.js';
 
 export class ProofInput {
@@ -19,6 +19,8 @@ export class ProofInput {
     this.onSelectSpell = () => {};
     this.onShoulder = () => {};
     this.onPouch = () => {};
+    this.onGreenVine = () => {};
+    this.onGreenRestore = () => {};
     this.onMessage = () => {};
     this.movePointer = null;
     this.lookPointer = null;
@@ -49,6 +51,8 @@ export class ProofInput {
       if (action === 'selectLightning') this.onSelectSpell('lightning');
       if (action === 'selectFrost') this.onSelectSpell('frost');
       if (action === 'selectAegis') this.onSelectSpell('aegis');
+      if (action === 'greenVineDemo') this.onGreenVine();
+      if (action === 'greenRestoreDemo') this.onGreenRestore();
     });
     addEventListener('keyup', event => this.keys.delete(event.code));
     addEventListener('blur', () => this.clearHeldInput());

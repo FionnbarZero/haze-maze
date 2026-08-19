@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#090615" />
     <meta name="description" content="Play Moonhollow Quest, a third-person Babylon.js spellcasting adventure." />
     <title>Moonhollow Quest</title>
-    <link rel="stylesheet" href="third-person/styles.css?v=20260818-rewards-v1" />
+    <link rel="stylesheet" href="third-person/styles.css?v=20260818-greenwitch-v1" />
   </head>
   <body>
     <main id="proof-shell" aria-label="Moonhollow Quest game">
@@ -28,8 +28,8 @@
         </aside>
 
         <div id="spell-readout" class="spell-readout"><span>Selected spell</span><strong id="selected-spell-name">Lightning</strong><small id="selected-spell-help">1 / 2 / 3 select · left click casts</small></div>
-        <aside id="player-vitals" class="player-vitals" aria-label="Moon Witch health and protection">
-          <div><span>Moon Witch</span><strong id="player-health-copy">100 / 100</strong></div>
+        <aside id="player-vitals" class="player-vitals" aria-label="Purple Witch health and protection">
+          <div><span>Purple Witch</span><strong id="player-health-copy">100 / 100</strong></div>
           <div class="player-health-track"><i id="player-health-fill"></i></div>
           <small id="aegis-status">Aegis ready</small>
           <small id="powerup-status">No powerup active</small>
@@ -60,6 +60,18 @@
           <small id="route-progress">0 / 6 checkpoints</small>
         </aside>
 
+        <aside id="green-witch-party" class="party-panel" aria-label="Simulated Green Witch teammate">
+          <header><span>Simulated LAN teammate</span><strong>Green Witch</strong></header>
+          <div><span>Health</span><strong id="green-witch-health-copy">100 / 100</strong></div>
+          <div class="party-health-track"><i id="green-witch-health-fill"></i></div>
+          <small id="green-witch-status">Two-spell ability template ready</small>
+          <small id="green-restore-target">Restore target · Self</small>
+          <div class="party-actions">
+            <button id="green-vine-demo" type="button"><kbd>G</kbd> Vine Trap</button>
+            <button id="green-restore-demo" type="button"><kbd>H</kbd> Smart Restore</button>
+          </div>
+        </aside>
+
         <div id="look-zone" class="look-zone touch-only" aria-hidden="true"></div>
 
         <section class="spell-rack touch-only" aria-label="Spell controls">
@@ -79,7 +91,7 @@
       <section id="pouch-overlay" class="pouch-overlay" aria-hidden="true">
         <article class="pouch-panel" role="dialog" aria-modal="true" aria-labelledby="pouch-title">
           <header>
-            <div><small>Moon Witch inventory</small><h2 id="pouch-title">Field pouch</h2></div>
+            <div><small>Purple Witch inventory</small><h2 id="pouch-title">Field pouch</h2></div>
             <button id="close-pouch" type="button" aria-label="Close pouch">×</button>
           </header>
           <div class="pouch-lining">
@@ -115,7 +127,7 @@
           <h1>Third-person<br />technical proof</h1>
           <p>This intentionally uses temporary geometry to validate camera, collision, movement, and staff-origin aiming.</p>
           <button id="start-proof" type="button">Enter the brick passage <span>→</span></button>
-          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · P pouch · 1 / 2 / 3 spells · Left click casts</small>
+          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · P pouch · 1 / 2 / 3 spells · Left click casts · G / H teammate spell demos</small>
         </div>
       </section>
 
@@ -129,6 +141,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260818-inputqueue-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260818-greenwitch-v1"></script>
   </body>
 </html>

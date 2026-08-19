@@ -1,14 +1,16 @@
-import { createWorld } from './world.js?v=20260818-rewards-v1';
-import { createPlaceholderWitch } from './witch.js?v=20260818-rewards-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260818-rewards-v1';
-import { ProofInput } from './input.js?v=20260818-inputqueue-v1';
-import { CharacterController } from './controller.js?v=20260818-inputqueue-v1';
-import { ShoulderCamera } from './camera.js?v=20260818-rewards-v1';
-import { LightningCombat } from './combat.js?v=20260818-rewards-v1';
-import { PouchInventory } from './inventory.js?v=20260818-rewards-v1';
-import { DebugTelemetry } from './debug.js?v=20260818-rewards-v1';
-import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-rewards-v1';
-import { MobileQualificationRecorder } from './qualification.js?v=20260818-rewards-v1';
+import { createWorld } from './world.js?v=20260818-greenwitch-v1';
+import { createPlaceholderWitch } from './witch.js?v=20260818-greenwitch-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260818-greenwitch-v1';
+import { ProofInput } from './input.js?v=20260818-greenwitch-v1';
+import { CharacterController } from './controller.js?v=20260818-greenwitch-v1';
+import { ShoulderCamera } from './camera.js?v=20260818-greenwitch-v1';
+import { LightningCombat } from './combat.js?v=20260818-greenwitch-v1';
+import { PouchInventory } from './inventory.js?v=20260818-greenwitch-v1';
+import { DebugTelemetry } from './debug.js?v=20260818-greenwitch-v1';
+import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-greenwitch-v1';
+import { MobileQualificationRecorder } from './qualification.js?v=20260818-greenwitch-v1';
+import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260818-greenwitch-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260818-greenwitch-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -61,12 +63,43 @@ try {
   const witch = createPlaceholderWitch(BABYLON, scene, shadowGenerator);
   const dragon = createPlaceholderDragon(BABYLON, scene, shadowGenerator, world.dragonPosition);
   const controller = new CharacterController(BABYLON, world);
+  const greenWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, {
+    id: 'green-witch',
+    label: 'Green Witch',
+    palette: {
+      primary: '#1f5b35',
+      primaryLight: '#388455',
+      accent: '#76b95d',
+      hair: '#453724',
+      hairEmissive: '#0f160b',
+      leather: '#324128',
+      wood: '#58492c',
+      orb: '#e4ffd5',
+      orbEmissive: '#42ad58',
+      orbCast: '#c8ff9e',
+      orbLight: '#7dff91',
+      label: '#c5ffd0'
+    }
+  });
+  const initialPlayerState = controller.snapshot();
+  const greenReplica = new RemotePlayerReplica(BABYLON, greenWitch, {
+    sequence: 0,
+    sentAt: performance.now() / 1000,
+    position: { x: 1.15, y: 0, z: -9.85 },
+    facingYaw: initialPlayerState.facingYaw,
+    speed: 0,
+    grounded: true,
+    crouched: false,
+    state: 'IDLE'
+  });
+  const greenSimulation = new SimulatedTeammateFeed(greenReplica, initialPlayerState);
   controller.addDynamicObstacle(dragon);
   const mobile = matchMedia('(pointer:coarse)').matches;
   const shoulderCamera = new ShoulderCamera(BABYLON, scene, world, mobile);
   shoulderCamera.addBlockers(dragon.meshes);
   const input = new ProofInput(canvas);
   const combat = new LightningCombat(BABYLON, scene, shoulderCamera, witch, dragon, controller);
+  const greenAbilities = new GreenWitchAbilities(BABYLON, scene, greenWitch, witch, dragon, combat);
   const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat);
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
@@ -93,7 +126,12 @@ try {
   input.onMessage = showMessage;
   combat.onMessage = showMessage;
   inventory.onMessage = showMessage;
+  greenAbilities.onMessage = showMessage;
   inventory.onOpenChange = open => input.setModalOpen(open);
+  input.onGreenVine = () => greenAbilities.castVineTrap(performance.now() / 1000);
+  input.onGreenRestore = () => greenAbilities.castSmartRestore(performance.now() / 1000);
+  document.querySelector('#green-vine-demo').addEventListener('click', () => input.onGreenVine());
+  document.querySelector('#green-restore-demo').addEventListener('click', () => input.onGreenRestore());
 
   const updateRouteHud = worldState => {
     const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'dragon', 'exit'];
@@ -124,6 +162,8 @@ try {
     combat.reset();
     inventory.reset();
     controller.reset();
+    greenAbilities.reset();
+    greenSimulation.reset(controller.snapshot());
     shoulderCamera.setLook(0, 0);
     shoulderCamera.snapNextUpdate();
     updateRouteHud(world.snapshot());
@@ -148,6 +188,12 @@ try {
     player: controller.snapshot(),
     camera: shoulderCamera.snapshot(input.aiming),
     witch: witch.snapshot(),
+    greenWitch: {
+      replica: greenReplica.snapshot(),
+      simulation: greenSimulation.snapshot(),
+      presentation: greenWitch.snapshot(),
+      abilities: greenAbilities.snapshot()
+    },
     dragon: dragon.snapshot(),
     combat: combat.snapshot(),
     inventory: inventory.snapshot(),
@@ -177,8 +223,12 @@ try {
     controller.update(input, shoulderCamera.yaw, deltaTime);
     shoulderCamera.update(controller, input, deltaTime, witch);
     witch.update(controller, input, deltaTime, now);
+    const currentPlayerState = controller.snapshot();
+    greenSimulation.update(now, currentPlayerState);
+    greenReplica.update(deltaTime, now);
     dragon.update(now, deltaTime);
     combat.update();
+    greenAbilities.update(now);
     inventory.update(now, deltaTime);
     const routeEvents = world.update(controller, dragon, deltaTime);
     const worldState = world.snapshot();
@@ -262,6 +312,15 @@ try {
     castLightning: () => combat.cast(performance.now() / 1000, 'lightning'),
     castFrost: () => combat.cast(performance.now() / 1000, 'frost'),
     castAegis: () => combat.cast(performance.now() / 1000, 'aegis'),
+    castGreenVine: () => greenAbilities.castVineTrap(performance.now() / 1000),
+    castGreenRestore: (target = 'smart') => target === 'smart'
+      ? greenAbilities.castSmartRestore(performance.now() / 1000)
+      : greenAbilities.castRestore(performance.now() / 1000, target === 'friend'),
+    setGreenRestoreFriendTargeted: value => greenAbilities.setFriendTargeted(value),
+    damageGreenWitch: amount => greenAbilities.receiveDamage(amount),
+    resetGreenWitch: () => greenAbilities.reset(),
+    setGreenSimulationEnabled: value => greenSimulation.setEnabled(value),
+    receiveGreenSnapshot: snapshot => greenReplica.receiveSnapshot(snapshot),
     receiveDragonDamage: amount => combat.receiveDragonDamage(amount),
     togglePouch: () => inventory.toggle(),
     useHealthBerry: () => inventory.useHealthBerry(),

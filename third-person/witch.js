@@ -1,8 +1,26 @@
-import { damp } from './utils.js';
+import { damp } from './utils.js?v=20260818-greenwitch-v1';
 
-export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
-  const root = new BABYLON.TransformNode('placeholder-witch-root', scene);
-  const visual = new BABYLON.TransformNode('placeholder-witch-visual', scene);
+export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options = {}) {
+  const id = options.id || 'witch';
+  const named = suffix => `${id}-${suffix}`;
+  const palette = {
+    primary: '#5d227e',
+    primaryLight: '#8c3bab',
+    accent: '#c34f93',
+    skin: '#d69b82',
+    hair: '#8f2f20',
+    hairEmissive: '#160402',
+    leather: '#4b2a22',
+    wood: '#6f4628',
+    orb: '#eadcff',
+    orbEmissive: '#8b45d6',
+    orbCast: '#dfb8ff',
+    orbLight: '#bd82ff',
+    label: '#eadcff',
+    ...options.palette
+  };
+  const root = new BABYLON.TransformNode(id === 'witch' ? 'placeholder-witch-root' : `${id}-root`, scene);
+  const visual = new BABYLON.TransformNode(id === 'witch' ? 'placeholder-witch-visual' : `${id}-visual`, scene);
   visual.parent = root;
   const meshes = [];
 
@@ -13,14 +31,16 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
     result.specularColor = new BABYLON.Color3(.18, .12, .2);
     return result;
   };
-  const purple = material('witch-purple-temp', '#5d227e');
-  const purpleLight = material('witch-purple-light-temp', '#8c3bab');
-  const pink = material('witch-pink-temp', '#c34f93');
-  const skin = material('witch-skin-temp', '#d69b82');
-  const hair = material('witch-hair-temp', '#8f2f20', '#160402');
-  const leather = material('witch-leather-temp', '#4b2a22');
-  const wood = material('witch-staff-temp', '#6f4628');
-  const orbMaterial = material('witch-orb-temp', '#eadcff', '#8b45d6');
+  const purple = material(named('primary-temp'), palette.primary);
+  const purpleLight = material(named('primary-light-temp'), palette.primaryLight);
+  const pink = material(named('accent-temp'), palette.accent);
+  const skin = material(named('skin-temp'), palette.skin);
+  const hair = material(named('hair-temp'), palette.hair, palette.hairEmissive);
+  const leather = material(named('leather-temp'), palette.leather);
+  const wood = material(named('staff-temp'), palette.wood);
+  const orbMaterial = material(named('orb-temp'), palette.orb, palette.orbEmissive);
+  const orbBaseColor = BABYLON.Color3.FromHexString(palette.orbEmissive);
+  const orbCastColor = BABYLON.Color3.FromHexString(palette.orbCast);
 
   const addMesh = (mesh, parent, position, meshMaterial) => {
     mesh.parent = parent;
@@ -32,52 +52,52 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
     return mesh;
   };
 
-  const skirt = addMesh(BABYLON.MeshBuilder.CreateCylinder('witch-skirt', { height: .72, diameterTop: .58, diameterBottom: 1.02, tessellation: 18 }, scene), visual, new BABYLON.Vector3(0, .78, 0), purple);
-  const torso = addMesh(BABYLON.MeshBuilder.CreateCylinder('witch-torso', { height: .58, diameterTop: .62, diameterBottom: .72, tessellation: 16 }, scene), visual, new BABYLON.Vector3(0, 1.22, 0), purpleLight);
-  const belt = addMesh(BABYLON.MeshBuilder.CreateTorus('witch-belt', { diameter: .69, thickness: .07, tessellation: 22 }, scene), visual, new BABYLON.Vector3(0, .98, 0), leather);
+  const skirt = addMesh(BABYLON.MeshBuilder.CreateCylinder(named('skirt'), { height: .72, diameterTop: .58, diameterBottom: 1.02, tessellation: 18 }, scene), visual, new BABYLON.Vector3(0, .78, 0), purple);
+  const torso = addMesh(BABYLON.MeshBuilder.CreateCylinder(named('torso'), { height: .58, diameterTop: .62, diameterBottom: .72, tessellation: 16 }, scene), visual, new BABYLON.Vector3(0, 1.22, 0), purpleLight);
+  const belt = addMesh(BABYLON.MeshBuilder.CreateTorus(named('belt'), { diameter: .69, thickness: .07, tessellation: 22 }, scene), visual, new BABYLON.Vector3(0, .98, 0), leather);
   belt.rotation.x = Math.PI / 2;
-  const head = addMesh(BABYLON.MeshBuilder.CreateSphere('witch-head', { diameter: .39, segments: 18 }, scene), visual, new BABYLON.Vector3(0, 1.62, .01), skin);
+  const head = addMesh(BABYLON.MeshBuilder.CreateSphere(named('head'), { diameter: .39, segments: 18 }, scene), visual, new BABYLON.Vector3(0, 1.62, .01), skin);
   head.scaling.y = 1.12;
-  const hood = addMesh(BABYLON.MeshBuilder.CreateTorus('witch-hood', { diameter: .55, thickness: .12, tessellation: 24 }, scene), visual, new BABYLON.Vector3(0, 1.64, -.035), pink);
+  const hood = addMesh(BABYLON.MeshBuilder.CreateTorus(named('hood'), { diameter: .55, thickness: .12, tessellation: 24 }, scene), visual, new BABYLON.Vector3(0, 1.64, -.035), pink);
   hood.rotation.x = Math.PI / 2;
 
   for (const [x, y, z, scale] of [[-.16,1.72,-.12,.22],[.12,1.75,-.14,.24],[-.23,1.56,-.16,.25],[.2,1.54,-.15,.26],[-.12,1.4,-.17,.23],[.15,1.34,-.17,.22]]) {
-    const curl = addMesh(BABYLON.MeshBuilder.CreateSphere(`witch-curl-${meshes.length}`, { diameter: 1, segments: 10 }, scene), visual, new BABYLON.Vector3(x, y, z), hair);
+    const curl = addMesh(BABYLON.MeshBuilder.CreateSphere(named(`curl-${meshes.length}`), { diameter: 1, segments: 10 }, scene), visual, new BABYLON.Vector3(x, y, z), hair);
     curl.scaling.set(scale * .72, scale, scale * .62);
   }
 
-  const cape = addMesh(BABYLON.MeshBuilder.CreatePlane('witch-cape', { width: 1.08, height: 1.2, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene), visual, new BABYLON.Vector3(-.05, 1.03, -.24), pink);
+  const cape = addMesh(BABYLON.MeshBuilder.CreatePlane(named('cape'), { width: 1.08, height: 1.2, sideOrientation: BABYLON.Mesh.DOUBLESIDE }, scene), visual, new BABYLON.Vector3(-.05, 1.03, -.24), pink);
   cape.rotation.y = Math.PI;
   cape.rotation.z = -.08;
 
-  const leftLeg = new BABYLON.TransformNode('witch-left-leg', scene);
-  const rightLeg = new BABYLON.TransformNode('witch-right-leg', scene);
+  const leftLeg = new BABYLON.TransformNode(named('left-leg'), scene);
+  const rightLeg = new BABYLON.TransformNode(named('right-leg'), scene);
   leftLeg.parent = visual; rightLeg.parent = visual;
   leftLeg.position.set(-.2, .65, 0); rightLeg.position.set(.2, .65, 0);
   for (const [node, side] of [[leftLeg, -1], [rightLeg, 1]]) {
-    addMesh(BABYLON.MeshBuilder.CreateCylinder(`witch-leg-${side}`, { height: .64, diameter: .2, tessellation: 12 }, scene), node, new BABYLON.Vector3(0, -.3, 0), leather);
-    const boot = addMesh(BABYLON.MeshBuilder.CreateBox(`witch-boot-${side}`, { width: .24, height: .22, depth: .38 }, scene), node, new BABYLON.Vector3(0, -.63, .08), leather);
+    addMesh(BABYLON.MeshBuilder.CreateCylinder(named(`leg-${side}`), { height: .64, diameter: .2, tessellation: 12 }, scene), node, new BABYLON.Vector3(0, -.3, 0), leather);
+    const boot = addMesh(BABYLON.MeshBuilder.CreateBox(named(`boot-${side}`), { width: .24, height: .22, depth: .38 }, scene), node, new BABYLON.Vector3(0, -.63, .08), leather);
     boot.rotation.x = -.08;
   }
 
-  const leftArm = new BABYLON.TransformNode('witch-left-arm', scene);
-  const rightArm = new BABYLON.TransformNode('witch-right-arm', scene);
+  const leftArm = new BABYLON.TransformNode(named('left-arm'), scene);
+  const rightArm = new BABYLON.TransformNode(named('right-arm'), scene);
   leftArm.parent = visual; rightArm.parent = visual;
   leftArm.position.set(-.42, 1.38, 0); rightArm.position.set(.42, 1.38, 0);
-  addMesh(BABYLON.MeshBuilder.CreateCapsule('witch-left-sleeve', { height: .62, radius: .11, tessellation: 12 }, scene), leftArm, new BABYLON.Vector3(0, -.27, 0), purpleLight);
-  addMesh(BABYLON.MeshBuilder.CreateCapsule('witch-right-sleeve', { height: .62, radius: .11, tessellation: 12 }, scene), rightArm, new BABYLON.Vector3(0, -.27, 0), purpleLight);
-  addMesh(BABYLON.MeshBuilder.CreateSphere('witch-left-hand', { diameter: .16, segments: 10 }, scene), leftArm, new BABYLON.Vector3(0, -.58, 0), skin);
-  addMesh(BABYLON.MeshBuilder.CreateSphere('witch-right-hand', { diameter: .16, segments: 10 }, scene), rightArm, new BABYLON.Vector3(0, -.58, 0), skin);
+  addMesh(BABYLON.MeshBuilder.CreateCapsule(named('left-sleeve'), { height: .62, radius: .11, tessellation: 12 }, scene), leftArm, new BABYLON.Vector3(0, -.27, 0), purpleLight);
+  addMesh(BABYLON.MeshBuilder.CreateCapsule(named('right-sleeve'), { height: .62, radius: .11, tessellation: 12 }, scene), rightArm, new BABYLON.Vector3(0, -.27, 0), purpleLight);
+  const leftHand = addMesh(BABYLON.MeshBuilder.CreateSphere(named('left-hand'), { diameter: .16, segments: 10 }, scene), leftArm, new BABYLON.Vector3(0, -.58, 0), skin);
+  const rightHand = addMesh(BABYLON.MeshBuilder.CreateSphere(named('right-hand'), { diameter: .16, segments: 10 }, scene), rightArm, new BABYLON.Vector3(0, -.58, 0), skin);
 
-  const staffSocket = new BABYLON.TransformNode('RightHand_StaffSocket', scene);
+  const staffSocket = new BABYLON.TransformNode(id === 'witch' ? 'RightHand_StaffSocket' : `${id}-RightHand_StaffSocket`, scene);
   staffSocket.parent = rightArm;
   staffSocket.position.set(.05, -.58, .02);
-  const staff = addMesh(BABYLON.MeshBuilder.CreateCylinder('witch-staff', { height: 1.62, diameterTop: .055, diameterBottom: .085, tessellation: 12 }, scene), staffSocket, new BABYLON.Vector3(0, .25, 0), wood);
+  const staff = addMesh(BABYLON.MeshBuilder.CreateCylinder(named('staff'), { height: 1.62, diameterTop: .055, diameterBottom: .085, tessellation: 12 }, scene), staffSocket, new BABYLON.Vector3(0, .25, 0), wood);
   staff.rotation.z = -.08;
-  const orb = addMesh(BABYLON.MeshBuilder.CreateSphere('witch-staff-orb', { diameter: .25, segments: 16 }, scene), staffSocket, new BABYLON.Vector3(-.065, 1.08, 0), orbMaterial);
-  const orbLight = new BABYLON.PointLight('witch-orb-light', new BABYLON.Vector3(0, 0, 0), scene);
+  const orb = addMesh(BABYLON.MeshBuilder.CreateSphere(named('staff-orb'), { diameter: .25, segments: 16 }, scene), staffSocket, new BABYLON.Vector3(-.065, 1.08, 0), orbMaterial);
+  const orbLight = new BABYLON.PointLight(named('orb-light'), new BABYLON.Vector3(0, 0, 0), scene);
   orbLight.parent = orb;
-  orbLight.diffuse = BABYLON.Color3.FromHexString('#bd82ff');
+  orbLight.diffuse = BABYLON.Color3.FromHexString(palette.orbLight);
   orbLight.intensity = .65;
   orbLight.range = 4;
 
@@ -91,6 +111,26 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
   let previousAnimationState = 'IDLE';
   let transitionWeight = 1;
   let visibility = 1;
+
+  let nameplate = null;
+  if (options.label) {
+    const labelTexture = new BABYLON.DynamicTexture(named('nameplate-texture'), { width: 512, height: 96 }, scene, true);
+    labelTexture.hasAlpha = true;
+    labelTexture.drawText(options.label.toUpperCase(), null, 62, '700 34px system-ui', palette.label, 'transparent', true);
+    const labelMaterial = new BABYLON.StandardMaterial(named('nameplate-material'), scene);
+    labelMaterial.diffuseTexture = labelTexture;
+    labelMaterial.opacityTexture = labelTexture;
+    labelMaterial.emissiveColor = BABYLON.Color3.FromHexString(palette.label).scale(.68);
+    labelMaterial.disableLighting = true;
+    labelMaterial.backFaceCulling = false;
+    nameplate = BABYLON.MeshBuilder.CreatePlane(named('nameplate'), { width: 1.75, height: .33 }, scene);
+    nameplate.parent = root;
+    nameplate.position.set(0, 2.2, 0);
+    nameplate.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+    nameplate.material = labelMaterial;
+    nameplate.isPickable = false;
+    meshes.push(nameplate);
+  }
 
   return {
     root,
@@ -107,6 +147,14 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
     getOrbPosition() {
       orb.computeWorldMatrix(true);
       return orb.getAbsolutePosition().clone();
+    },
+    getHandPositions() {
+      leftHand.computeWorldMatrix(true);
+      rightHand.computeWorldMatrix(true);
+      return {
+        left: leftHand.getAbsolutePosition().clone(),
+        right: rightHand.getAbsolutePosition().clone()
+      };
     },
     update(state, input, deltaTime, time) {
       root.position.copyFrom(state.position);
@@ -143,7 +191,7 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
       cape.rotation.z = -.08 - stride * .025;
       cape.rotation.x = state.speed * .015 + airborne * .06;
       orbLight.intensity = .58 + Math.sin(time * 6) * .12 + castWeight * 1.2;
-      orbMaterial.emissiveColor.set(.48 + castWeight * .35, .2 + castWeight * .28, .72 + castWeight * .2);
+      orbMaterial.emissiveColor.copyFrom(BABYLON.Color3.Lerp(orbBaseColor, orbCastColor, castWeight));
       void skirt; void torso;
     },
     snapshot() {
@@ -155,6 +203,8 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator) {
         castSpell,
         crouchWeight,
         visibility,
+        label: options.label || null,
+        nameplateVisible: Boolean(nameplate && nameplate.visibility > 0),
         staffSocket: staffSocket.name,
         staffAttached: staff.parent === staffSocket
       };

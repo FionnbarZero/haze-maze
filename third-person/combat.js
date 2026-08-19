@@ -1,4 +1,4 @@
-import { COMBAT, PLAYER } from './config.js?v=20260818-rewards-v1';
+import { COMBAT, PLAYER } from './config.js?v=20260818-greenwitch-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
@@ -263,7 +263,9 @@ export class LightningCombat {
     this.healthCopy.textContent = this.dragon.alive
       ? `${this.dragon.health} / ${this.dragon.maximumHealth}`
       : 'CONTAINED';
-    this.targetStatus.textContent = this.dragon.isFrozen(this.lastTime)
+    this.targetStatus.textContent = this.dragon.isRestrained(this.lastTime)
+      ? `Vinebound ${Math.max(0, this.dragon.restrainedUntil - this.lastTime).toFixed(1)}s`
+      : this.dragon.isFrozen(this.lastTime)
       ? `Frozen ${Math.max(0, this.dragon.frozenUntil - this.lastTime).toFixed(1)}s`
       : this.dragon.state === 'ATTACK'
         ? 'Attacking'
@@ -289,7 +291,7 @@ export class LightningCombat {
   }
 
   updateDragonThreat(time) {
-    if (!this.dragon.alive || this.dragon.isFrozen(time) || this.playerDefeated) {
+    if (!this.dragon.alive || this.dragon.isFrozen(time) || this.dragon.isRestrained(time) || this.playerDefeated) {
       this.dragonInAttackRange = false;
       this.nextDragonAttackAt = 0;
       return;
@@ -326,7 +328,7 @@ export class LightningCombat {
     setTimeout(() => this.playerVitals.classList.remove('is-hit'), 180);
     if (this.playerHealth === 0) {
       this.playerDefeated = true;
-      this.onMessage('The Moon Witch was overwhelmed');
+      this.onMessage('The Purple Witch was overwhelmed');
       this.onPlayerDefeated();
     } else {
       this.onMessage(`Dragon strike · ${this.playerHealth} health remains`);
@@ -467,8 +469,8 @@ export class LightningCombat {
       spell: 'aegis',
       origin: { x: origin.x, y: origin.y, z: origin.z },
       impact: { x: this.controller.position.x, y: this.controller.position.y + .9, z: this.controller.position.z },
-      intendedTarget: 'moon-witch',
-      actualTarget: 'moon-witch',
+      intendedTarget: 'purple-witch',
+      actualTarget: 'purple-witch',
       intendedKind: 'self',
       actualKind: 'self',
       obstructed: false,

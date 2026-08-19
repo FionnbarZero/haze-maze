@@ -73,7 +73,23 @@ export const DESKTOP_ACTIONS = Object.freeze({
   KeyP: 'pouch',
   Digit1: 'selectLightning',
   Digit2: 'selectFrost',
-  Digit3: 'selectAegis'
+  Digit3: 'selectAegis',
+  KeyG: 'greenVineDemo',
+  KeyH: 'greenRestoreDemo'
+});
+
+export const GREEN_WITCH = Object.freeze({
+  maximumHealth: 100,
+  snapshotInterval: 0.1,
+  interpolationResponse: 0.12,
+  companionSideOffset: 1.15,
+  companionForwardOffset: 0.65,
+  vineTrapCooldown: 6,
+  vineTrapDuration: 3.5,
+  vineTrapRange: 7.5,
+  restoreCooldown: 5,
+  restoreAmount: 30,
+  restoreRange: 8
 });
 
 export const POUCH = Object.freeze({
