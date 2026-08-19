@@ -41,21 +41,21 @@ try {
   const qualityController = new AdaptiveQualityController(engine, qualityRequest);
 
   const scene = new BABYLON.Scene(engine);
-  scene.clearColor = BABYLON.Color4.FromHexString('#0a0718ff');
+  scene.clearColor = BABYLON.Color4.FromHexString('#17122aff');
   scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-  scene.fogDensity = .022;
-  scene.fogColor = BABYLON.Color3.FromHexString('#17102a');
-  scene.imageProcessingConfiguration.contrast = 1.12;
-  scene.imageProcessingConfiguration.exposure = 1.02;
+  scene.fogDensity = .0176;
+  scene.fogColor = BABYLON.Color3.FromHexString('#1d152c');
+  scene.imageProcessingConfiguration.contrast = 1.06;
+  scene.imageProcessingConfiguration.exposure = 1.22;
 
   const ambient = new BABYLON.HemisphericLight('moon-ambient', new BABYLON.Vector3(0, 1, 0), scene);
-  ambient.diffuse = BABYLON.Color3.FromHexString('#a894d1');
-  ambient.groundColor = BABYLON.Color3.FromHexString('#21172d');
-  ambient.intensity = .72;
+  ambient.diffuse = BABYLON.Color3.FromHexString('#baaadf');
+  ambient.groundColor = BABYLON.Color3.FromHexString('#2a2138');
+  ambient.intensity = .86;
   const moonLight = new BABYLON.DirectionalLight('moon-key', new BABYLON.Vector3(.35, -1, .45), scene);
   moonLight.position.set(-8, 13, -5);
-  moonLight.diffuse = BABYLON.Color3.FromHexString('#d9d2ff');
-  moonLight.intensity = 1.35;
+  moonLight.diffuse = BABYLON.Color3.FromHexString('#ebe4ff');
+  moonLight.intensity = 1.62;
   const shadowGenerator = new BABYLON.ShadowGenerator(qualityRequest.profile?.shadowMapSize || 1024, moonLight);
   shadowGenerator.usePercentageCloserFiltering = true;
   shadowGenerator.bias = .0005;
