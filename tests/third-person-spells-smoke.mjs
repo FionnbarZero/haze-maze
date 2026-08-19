@@ -107,9 +107,16 @@ await resetAt(0, 4.8);
 await aimAtDragon();
 const lightningBefore = await snapshot();
 await evaluate(`document.querySelector('#render-canvas').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })); true`);
+await delay(120);
+const leftClickAfter = await snapshot();
+await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyO', key: 'o' })); true`);
 await delay(280);
 const lightningAfter = await snapshot();
-const lightningHud = await evaluate(`({ health: document.querySelector('#target-health-copy').textContent, spell: document.querySelector('#selected-spell-name').textContent })`);
+const lightningHud = await evaluate(`({
+  health: document.querySelector('#target-health-copy').textContent,
+  spell: document.querySelector('#selected-spell-name').textContent,
+  help: document.querySelector('#selected-spell-help').textContent
+})`);
 
 await resetAt(0, 4.8);
 await aimAtDragon();
@@ -274,10 +281,14 @@ const mobileLayout = await evaluate(`(() => {
 const targetResolution = value => value === 'TARGET' || value === 'TARGET_ASSISTED';
 const checks = {
   lightningWasTargeted: lightningBefore.combat.targeted,
-  firstGameplayClickDamaged: lightningAfter.dragon.health === 75,
+  leftClickDoesNotCast: leftClickAfter.dragon.health === 100
+    && leftClickAfter.combat.lastCast === null,
+  oKeyDamagedDragon: lightningAfter.dragon.health === 75,
   lightningResolvedTarget: lightningAfter.combat.lastCast?.spell === 'lightning'
     && targetResolution(lightningAfter.combat.lastCast?.resolution),
-  lightningHealthVisible: lightningHud.health === '75 / 100' && lightningHud.spell === 'Lightning',
+  lightningHealthVisible: lightningHud.health === '75 / 100'
+    && lightningHud.spell === 'Lightning'
+    && lightningHud.help === '1 / 2 / 3 select · O casts',
   frostDidNotDamage: frostAfter.dragon.health === 100,
   frostAppliedStatus: frostAfter.dragon.frozen && frostAfter.dragon.state === 'FROZEN',
   frostResolvedTarget: frostAfter.combat.lastCast?.spell === 'frost'
@@ -361,7 +372,7 @@ const checks = {
 console.log(JSON.stringify({
   checks,
   evidence: {
-    lightning: { before: lightningBefore.combat, after: lightningAfter.combat, dragon: lightningAfter.dragon, hud: lightningHud },
+    lightning: { before: lightningBefore.combat, afterLeftClick: leftClickAfter.combat, after: lightningAfter.combat, dragon: lightningAfter.dragon, hud: lightningHud },
     frost: { combat: frostAfter.combat, dragon: frostAfter.dragon, hud: frostHud },
     blockedFrost: { combat: blockedFrostAfter.combat, dragon: blockedFrostAfter.dragon },
     aegis: aegisAfter.combat,

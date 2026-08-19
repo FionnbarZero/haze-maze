@@ -99,8 +99,12 @@ const aimAtDragon = async () => {
     await delay(190);
   }
 };
-const clickLightning = async () => {
-  await evaluate(`document.querySelector('#render-canvas').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })); true`);
+const castLightningWithO = async () => {
+  await evaluate(`(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyO', key: 'o' }));
+    window.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code: 'KeyO', key: 'o' }));
+    return true;
+  })()`);
   await delay(430);
   return snapshot();
 };
@@ -113,7 +117,7 @@ await aimAtDragon();
 const healthAfterHits = [];
 const damageAfterHits = [];
 for (let hit = 0; hit < 4; hit += 1) {
-  const state = await clickLightning();
+  const state = await castLightningWithO();
   healthAfterHits.push(state.dragon.health);
   damageAfterHits.push(state.combat.lastCast?.damage);
 }
@@ -124,7 +128,7 @@ const hud = await evaluate(`({
   health: document.querySelector('#target-health-copy').textContent,
   fill: document.querySelector('#target-health-fill').style.transform
 })`);
-await clickLightning();
+await castLightningWithO();
 const afterDuplicateCast = await snapshot();
 
 await resetAt(0, 4.8);
@@ -134,14 +138,14 @@ await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castFrost(); true');
 await delay(250);
 const frozenBeforeLightning = await snapshot();
 await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Digit1', key: '1' })); true`);
-const frostThenLightning = await clickLightning();
+const frostThenLightning = await castLightningWithO();
 
 await resetAt(0, 4.8);
 await aimAtDragon();
 await evaluate(`document.dispatchEvent(new Event('pointerlockchange')); true`);
 await delay(100);
 const afterPointerLockLoss = await snapshot();
-const resumedAfterPointerLockLoss = await clickLightning();
+const resumedAfterPointerLockLoss = await castLightningWithO();
 
 const checks = {
   eachHitDealtConfiguredDamage: damageAfterHits.every(damage => damage === 25),

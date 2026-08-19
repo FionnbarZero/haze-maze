@@ -132,6 +132,8 @@ const greenUi = await evaluate(`({
   selectedSpell: document.querySelector('#selected-spell-name').textContent,
   magicStatus: document.querySelector('#aegis-status').textContent,
   partyIsPurple: document.querySelector('#green-witch-party').classList.contains('is-purple'),
+  partyHidden: document.querySelector('#green-witch-party').hidden,
+  partyDisplay: getComputedStyle(document.querySelector('#green-witch-party')).display,
   teammateDemosHidden: document.querySelector('#green-party-actions').hidden
 })`);
 await delay(350);
@@ -151,7 +153,7 @@ await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().greenWitch.abilities
 await evaluate(`(() => {
   const proof = window.__HMW_THIRD_PERSON_PROOF__;
   proof.selectSpell('vineTrap');
-  proof.castSpell();
+  window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyO', key: 'o' }));
   proof.receiveDragonDamage(30);
   proof.selectSpell('restore');
   proof.setGreenRestoreFriendTargeted(false);
@@ -199,20 +201,23 @@ const checks = {
     && !greenSelected.confirmDisabled,
   separateGreenConfirmation: greenSelected.confirmText === 'Enter Moonhollow as the Green Witch'
     && !greenSelected.snapshot.active,
-  greenLocalPurpleRemote: greenStarted.characterSelection.localCharacter === 'green'
-    && greenStarted.characterSelection.remoteCharacter === 'purple'
+  greenSoloOnly: greenStarted.characterSelection.partyMode === 'SOLO'
+    && greenStarted.characterSelection.localCharacter === 'green'
+    && greenStarted.characterSelection.remoteCharacter === null
     && greenStarted.witch.label === 'Green Witch'
-    && greenStarted.teammate.presentation.label === 'Purple Witch'
-    && greenStarted.teammate.replica.presentation === 'Purple Witch'
+    && greenStarted.witch.visibility === 1
+    && greenStarted.purpleWitch.presentation.visibility === 0
+    && greenStarted.teammate === null
     && greenStarted.combat.playerName === 'Green Witch'
     && !greenStarted.combat.spellcastingEnabled
     && greenStarted.greenWitch.abilities.locallyControlled
+    && !greenStarted.greenWitch.abilities.friendAvailable
     && greenStarted.greenWitch.abilities.selectedSpell === 'vineTrap',
   greenHudBound: greenUi.playerName === 'Green Witch'
-    && greenUi.teammateName === 'Purple Witch'
     && greenUi.selectedSpell === 'Vine Trap'
     && greenUi.magicStatus === 'Plant magic ready'
-    && greenUi.partyIsPurple
+    && greenUi.partyHidden
+    && greenUi.partyDisplay === 'none'
     && greenUi.teammateDemosHidden,
   waitsAtMoonGate: !greenStarted.world.route.arch
     && greenStarted.world.objective === 'Cross the Moon Gate',
@@ -233,10 +238,13 @@ const checks = {
     && !escapedSelection.opening.awaitingConfirmation,
   keyboardSeparateConfirmation: purpleAwaitingConfirmation.opening.awaitingConfirmation
     && !purpleAwaitingConfirmation.active,
-  purpleLocalGreenRemote: purpleStarted.characterSelection.localCharacter === 'purple'
-    && purpleStarted.characterSelection.remoteCharacter === 'green'
+  purpleSoloOnly: purpleStarted.characterSelection.partyMode === 'SOLO'
+    && purpleStarted.characterSelection.localCharacter === 'purple'
+    && purpleStarted.characterSelection.remoteCharacter === null
     && purpleStarted.witch.label === 'Purple Witch'
-    && purpleStarted.teammate.presentation.label === 'Green Witch'
+    && purpleStarted.witch.visibility === 1
+    && purpleStarted.greenWitch.presentation.visibility === 0
+    && purpleStarted.teammate === null
     && purpleStarted.combat.spellcastingEnabled,
   noRuntimeErrors: cdp.errors.length === 0
 };

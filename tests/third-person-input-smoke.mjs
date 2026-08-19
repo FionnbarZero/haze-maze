@@ -104,7 +104,7 @@ const guardedBefore = await snapshot();
 await evaluate(`(() => {
   window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyV', key: 'v' }));
   window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Digit2', key: '2' }));
-  document.querySelector('#render-canvas').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+  window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyO', key: 'o' }));
   return true;
 })()`);
 await delay(250);
@@ -177,7 +177,7 @@ const resumedControlsBefore = await snapshot();
 await evaluate(`(() => {
   window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyV', key: 'v' }));
   window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Digit2', key: '2' }));
-  document.querySelector('#render-canvas').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+  window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyO', key: 'o' }));
   return true;
 })()`);
 await delay(500);

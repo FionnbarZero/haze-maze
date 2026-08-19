@@ -1,4 +1,4 @@
-import { COMBAT, PLAYER } from './config.js?v=20260818-witchselect-v1';
+import { COMBAT, PLAYER } from './config.js?v=20260819-solo-cast-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
@@ -117,8 +117,8 @@ export class LightningCombat {
     const spell = SPELLS[this.selectedSpell];
     this.spellNameCopy.textContent = spell.label;
     this.spellHelpCopy.textContent = spell.targeted
-      ? '1 / 2 / 3 select · left click casts'
-      : 'Self-cast protection · left click casts';
+      ? '1 / 2 / 3 select · O casts'
+      : 'Self-cast protection · O casts';
     for (const button of document.querySelectorAll('.spell-rack button[data-spell]')) {
       button.classList.toggle('is-selected', button.dataset.spell === this.selectedSpell);
     }

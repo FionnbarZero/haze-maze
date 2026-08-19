@@ -1,4 +1,4 @@
-import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260818-greenwitch-v1';
+import { DESKTOP_ACTIONS, INPUT } from './config.js?v=20260819-solo-cast-v1';
 import { clamp } from './utils.js';
 
 export class ProofInput {
@@ -43,6 +43,10 @@ export class ProofInput {
         return;
       }
       if (this.modalOpen) return;
+      if (action === 'cast') {
+        if (!event.repeat) this.onCast();
+        return;
+      }
       this.keys.add(event.code);
       if (event.repeat) return;
       if (action === 'jump') this.actions.add('jump');
@@ -71,7 +75,6 @@ export class ProofInput {
     this.canvas.addEventListener('mousedown', event => {
       if (!this.active || this.blocked || this.modalOpen || event.pointerType === 'touch') return;
       if (event.button === 0) {
-        this.onCast();
         this.requestPointerLock();
       }
       if (event.button === 2) this.aiming = true;

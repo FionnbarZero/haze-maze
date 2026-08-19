@@ -1,20 +1,21 @@
 import { createWorld } from './world.js?v=20260818-witchselect-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260818-witchselect-v1';
 import { createPlaceholderDragon } from './dragon.js?v=20260818-witchselect-v1';
-import { ProofInput } from './input.js?v=20260818-witchselect-v1';
+import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
 import { ShoulderCamera } from './camera.js?v=20260818-witchselect-v1';
-import { LightningCombat } from './combat.js?v=20260818-witchselect-v1';
+import { LightningCombat } from './combat.js?v=20260819-solo-cast-v1';
 import { PouchInventory } from './inventory.js?v=20260818-witchselect-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260818-witchselect-v1';
-import { GreenWitchAbilities } from './green-witch.js?v=20260818-witchselect-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260819-solo-cast-v1';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260818-witchselect-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
+const simulatedPartyEnabled = new URLSearchParams(location.search).get('party') === 'simulated';
 const loading = document.querySelector('#loading');
 const loadingCopy = document.querySelector('#loading-copy');
 
@@ -94,6 +95,7 @@ try {
     state: 'IDLE'
   });
   const greenSimulation = new SimulatedTeammateFeed(greenReplica, initialPlayerState);
+  greenSimulation.setEnabled(simulatedPartyEnabled);
   let selectedCharacter = 'purple';
   let localWitch = purpleWitch;
   let remoteWitch = greenWitch;
@@ -178,7 +180,8 @@ try {
     teammatePanel.setAttribute('aria-label', `Simulated ${remote.name} teammate`);
     playerVitals.classList.toggle('is-green', selectedCharacter === 'green');
     teammatePanel.classList.toggle('is-purple', remoteCharacterId === 'purple');
-    greenPartyActions.hidden = selectedCharacter === 'green';
+    teammatePanel.hidden = !simulatedPartyEnabled;
+    greenPartyActions.hidden = !simulatedPartyEnabled || selectedCharacter === 'green';
     const entries = spellRackPresentation[selectedCharacter];
     for (const [index, button] of touchSpellButtons.entries()) {
       const entry = entries[index];
@@ -203,13 +206,20 @@ try {
     greenWitch.root.scaling.set(1, 1, 1);
     purpleWitch.setPresentationOffset();
     greenWitch.setPresentationOffset();
-    purpleWitch.setNameplateVisible(remoteWitch === purpleWitch);
-    greenWitch.setNameplateVisible(remoteWitch === greenWitch);
+    purpleWitch.setVisibility(characterId === 'purple' || simulatedPartyEnabled ? 1 : 0);
+    greenWitch.setVisibility(characterId === 'green' || simulatedPartyEnabled ? 1 : 0);
+    purpleWitch.setNameplateVisible(simulatedPartyEnabled && remoteWitch === purpleWitch);
+    greenWitch.setNameplateVisible(simulatedPartyEnabled && remoteWitch === greenWitch);
     greenReplica.setPresentation(remoteWitch);
-    greenSimulation.reset(controller.snapshot());
+    greenSimulation.setEnabled(simulatedPartyEnabled);
+    if (simulatedPartyEnabled) greenSimulation.reset(controller.snapshot());
     combat.setWitch(localWitch, PLAYABLE_WITCHES[characterId].name);
     combat.setSpellcastingEnabled(characterId === 'purple');
-    greenAbilities.setMode({ locallyControlled: characterId === 'green', friendWitch: purpleWitch });
+    greenAbilities.setMode({
+      locallyControlled: characterId === 'green',
+      friendWitch: simulatedPartyEnabled ? remoteWitch : localWitch,
+      friendAvailable: simulatedPartyEnabled
+    });
     updateCharacterInterface();
     return true;
   };
@@ -238,6 +248,8 @@ try {
     onConfirm: characterId => startProof(characterId),
     onPreviewChange: (selectedId, focusedId, step) => {
       if (step === 'COMPLETE') return;
+      purpleWitch.setVisibility(1);
+      greenWitch.setVisibility(1);
       purpleWitch.setNameplateVisible(true);
       greenWitch.setNameplateVisible(true);
       const emphasized = selectedId || focusedId || null;
@@ -262,7 +274,7 @@ try {
     inventory.reset();
     controller.reset();
     greenAbilities.reset();
-    greenSimulation.reset(controller.snapshot());
+    if (simulatedPartyEnabled) greenSimulation.reset(controller.snapshot());
     updateCharacterInterface();
     shoulderCamera.setLook(0, 0);
     shoulderCamera.snapNextUpdate();
@@ -276,11 +288,14 @@ try {
     active: input.active,
     opening: openingFlow?.snapshot() || null,
     characterSelection: {
+      partyMode: simulatedPartyEnabled ? 'SIMULATED' : 'SOLO',
       selectedCharacter: openingFlow?.completed ? selectedCharacter : openingFlow?.selectedCharacter || null,
       localCharacter: input.active ? selectedCharacter : null,
-      remoteCharacter: input.active ? selectedCharacter === 'purple' ? 'green' : 'purple' : null,
+      remoteCharacter: input.active && simulatedPartyEnabled ? selectedCharacter === 'purple' ? 'green' : 'purple' : null,
       localName: input.active ? PLAYABLE_WITCHES[selectedCharacter].name : null,
-      remoteName: input.active ? PLAYABLE_WITCHES[selectedCharacter === 'purple' ? 'green' : 'purple'].name : null,
+      remoteName: input.active && simulatedPartyEnabled
+        ? PLAYABLE_WITCHES[selectedCharacter === 'purple' ? 'green' : 'purple'].name
+        : null,
       previewName: !input.active && openingFlow?.selectedCharacter
         ? PLAYABLE_WITCHES[openingFlow.selectedCharacter].name
         : null
@@ -306,12 +321,12 @@ try {
       presentation: greenWitch.snapshot(),
       abilities: greenAbilities.snapshot()
     },
-    teammate: {
+    teammate: simulatedPartyEnabled ? {
       character: selectedCharacter === 'purple' ? 'green' : 'purple',
       replica: greenReplica.snapshot(),
       simulation: greenSimulation.snapshot(),
       presentation: remoteWitch.snapshot()
-    },
+    } : null,
     dragon: dragon.snapshot(),
     combat: combat.snapshot(),
     inventory: inventory.snapshot(),

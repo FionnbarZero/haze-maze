@@ -71,6 +71,7 @@ export const DESKTOP_ACTIONS = Object.freeze({
   ControlRight: 'crouch',
   KeyV: 'shoulderSwitch',
   KeyP: 'pouch',
+  KeyO: 'cast',
   Digit1: 'selectLightning',
   Digit2: 'selectFrost',
   Digit3: 'selectAegis',
