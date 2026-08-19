@@ -164,6 +164,8 @@ Each encounter should have:
 - a clear effect on the maze, such as opening a gate or revealing an objective item;
 - an experience and material reward appropriate to its importance.
 
+A major creature may create or summon smaller threats when that behavior expresses its identity and creates a meaningful battlefield role. Spawned creatures must use bounded, telegraphed waves and a readable active-enemy cap rather than uncontrolled endless spawning. If containment is the encounter objective, every spawned creature needs visible weaken, stagger, and contained states; all character roles must have a baseline way to complete containment, while control and protection specialists perform it more safely or efficiently.
+
 The provisional progression rule remains 10 experience points for each defeated major encounter and a spell-power improvement at 100 points. This value is a balance starting point and should be tested against the intended length and number of encounters.
 
 ## Health and recovery
@@ -238,26 +240,47 @@ The Moon Witch should have a defined personality and relationships rather than s
 
 For the current collaboration-first direction, see [Story & Collaboration Framework](story-collaboration-framework.md).
 
-## Chapter 1 story spine (draft)
+## Chapter 1 story loop (discussion draft)
 
-Use this as the first playable narrative loop and test vehicle for the collaboration model:
+- Working title: **The Hollow Summons**
+- Design status: **Not yet approved for implementation**
+- Provisional critical-path playtime: **45 minutes**
+- Purpose: Establish the emotional mystery, teach the first complete exploration/combat/restoration loop, and prove that collaboration improves outcomes without making solo play useless.
+- Detailed working design: [Chapter 1 — The Hollow Summons](chapter-1-the-hollow-summons.md)
 
-### Act 1: The Hollow summons
+The 45-minute target is a scope and pacing tool for the first complete version, not a permanent maximum. Initial playtests should measure a focused first-time run rather than a developer speed-run. Optional discoveries, relationship scenes, alternate interpretations, and revisits may extend the chapter later without lengthening its required critical path.
 
-1. **Inciting incident:** The coven receives a fractured transmission from a ruined sentinel tower: “The Hollow is moving.” The message is incomplete, and one sender is missing from the final relay.
-2. **Core objective:** Enter the first moon-arched maze to retrieve a missing seal fragment and restore access to a deeper relay node.
-3. **Companion pressure:** The tower indicates a separate route can be stabilized only by a fire-key relic that one witch can wield/understand better.
-4. **Investigation loop:**  
-   - Explore and map the outer maze.  
-   - Gather at least one contradictory clue (e.g., one glyph set claims a blessing, another claims sabotage).  
-   - Report findings at a temporary ally/sanctuary checkpoint.
-5. **Conflict encounter:** Cross two guardian phases (first stationary/small phase, second mobile/more tactical) to unlock the section gate. First phase teaches mechanics; second phase validates map awareness and role timing.
-6. **Twist 1 (soft):** A recovered field log implies the missing relay operator did not disappear—they “withdrew,” and the message route was rewritten on the way out.
-7. **Escalation decision:** Player can progress via:
-   - full co-op setup (safer, more options), or  
-   - solo route (higher risk, fewer tools, slower progression).
-8. **Resolution:** Exit gate unlocks; player returns to coven hub with fragment + partial evidence.
-9. **Payoff:** Chapter ends with the same seal showing a second, unaccounted symbol.
+### Provisional time budget
+
+| Chapter segment | Target |
+| --- | ---: |
+| Coven House introduction and briefing | 5 minutes |
+| Moon Gate and Garden Maze traversal | 10 minutes |
+| Investigation and approach to the Sunken Court | 6 minutes |
+| Briarheart and Briarling containment encounter | 12 minutes |
+| West Tower discovery and moon-seal restoration | 8 minutes |
+| Visible resolution, return, and Chapter 2 hook | 4 minutes |
+| **Total critical path** | **45 minutes** |
+
+### Working terms required by the loop
+
+- **Moonhollow:** An abandoned magical settlement whose homes, gardens, libraries, and defensive paths have been sealed behind a boundary ward since a magical disaster one generation ago.
+- **Sentinel Tower:** Part watchtower, part magical lighthouse, and part district stabilizer. Each tower detects disturbances, keeps nearby maze paths in their intended configuration, and projects one connected section of the boundary ward.
+- **Moon-seal:** A large circular moonstone lens permanently mounted inside a Sentinel Tower. It is not a collectible key. A distorted seal causes its tower to flicker, its district to shift, and its section of the ward to tear.
+- **Ward and Rift:** The ward is the connected boundary projected by the towers. A Rift is a local tear in that boundary; the story does not yet assume that every hostile creature came through it.
+
+### Current playable loop
+
+1. **Coven House — establish the personal reason to go:** Introduce Purple Witch and Green Witch, the nearby settlements endangered by Moonhollow's spreading maze, and the missing Keeper who mentored both witches. Their shared objective is to bring the Keeper home; their different instincts create tension over whether corrupted magic should be destroyed or healed.
+2. **Briefing — state one clear mission:** The Coven Leader plays the Keeper's interrupted warning. The West Sentinel Tower has failed. The witches must enter Moonhollow, find the Keeper, and restore the tower before the local Rift reaches inhabited land. The Coven Leader withholds part of the message, creating suspicion without proving guilt.
+3. **Moon Gate — cross the threshold:** The witches pass through the only stable entrance and see the immediate consequence of the distorted tower: the Garden Maze is moving outside its intended boundaries and the route home is becoming unstable.
+4. **Garden Maze — explore, learn, and investigate:** Players navigate the outer district, learn the visual language of containment circles, and find physical evidence that the Keeper reached the tower alive. Different role strengths create safer or more revealing approaches, but both witches can continue alone.
+5. **Sunken Court — contain Briarheart's outbreak:** Briarheart blocks the tower and releases finite, telegraphed waves of Briarlings. Active Briarlings protect or restore Briarheart, so every one must be weakened, staggered, and contained before the boss's corruption becomes vulnerable again. Green specializes in restraint and recovery; Purple specializes in pressure, interruption, and protection. Solo play uses the same rules with fewer simultaneous threats and longer recovery windows.
+6. **Battle revelation — overturn the briefing's assumption:** Containment reveals that the Briarlings are pieces of Briarheart and that Briarheart is a native guardian, not an invader from the Rift. The black splinter corrupting it carries an authenticated High Coven command pattern, turning an apparent monster attack into evidence of deliberate sabotage.
+7. **West Sentinel Tower — change the rescue mystery:** The tower is empty, but the Keeper left supplies, traces, and a message intentionally. She was not abducted. She received the false command, recognized the sabotage, and entered the deeper maze voluntarily to follow its source.
+8. **Moon-seal restoration — complete the collaborative objective:** The witches remove the corruption, align the fixed seal's physical rings, and attune its magical channels. A group can hold complementary channels simultaneously; a solo witch can charge them sequentially while facing greater pressure.
+9. **Visible resolution — prove the action mattered:** The West Tower relights, its warning beam resumes, the local Rift closes, the Garden Maze settles into stable paths, and the route home opens. The threatened settlements receive temporary safety.
+10. **Return and hook — close one question and open a stronger one:** The witches return to the Coven House with evidence that someone used an authorized Coven channel to sabotage the tower. The Keeper is alive somewhere deeper in Moonhollow, and her final warning makes clear that she does not know whom inside the Coven she can trust.
 
 ### Story logic commitments from this chapter
 
@@ -265,6 +288,31 @@ Use this as the first playable narrative loop and test vehicle for the collabora
 - The twist must change the objective framing, not just add lore flavor.
 - At least one evidence item should point in a false direction, later contradicted by another scene.
 - The chapter should teach the rules needed for the campaign without requiring combat skill perfection.
+- Sentinel Towers and moon-seals must produce visible world changes rather than functioning as unexplained lore or collectible keys.
+
+### Chapter 1 revision gate before implementation
+
+Do not treat this loop as content-locked until the following foundations are deliberately chosen:
+
+1. **Moonhollow truth:** Decide what Moonhollow was before the disaster, what the public believes happened, what actually happened, and why the High Coven sealed rather than destroyed or reclaimed it.
+2. **Emotional center:** Define the Keeper's distinct relationship with each playable witch through at least one remembered act, one unresolved wound, and one reason each witch might doubt her.
+3. **Antagonist logic:** Decide what the hidden antagonist wants from Moonhollow, why they cannot obtain it directly, why they act now, and how sabotaging the West Tower advances their plan even if the witches succeed.
+4. **Character conflict:** Give Purple and Green compatible external goals but meaningfully different beliefs about power, mercy, authority, and the Keeper. Their disagreement must affect player decisions rather than existing only in biography text.
+5. **Mystery chain:** For every clue, record its immediate interpretation, plausible alternate interpretation, actual truth, who planted or left it, and the later scene that pays it off. Red herrings must come from believable motives rather than arbitrary deception.
+6. **Collaboration proof:** Specify one memorable cooperative action in exploration, containment, and seal restoration. Define the mechanically consistent solo version and the benefit gained through coordination.
+7. **Chapter consequence:** Decide what materially changes because of player action, what outcome can vary, what persists into Chapter 2, and what new question creates the desire to continue.
+8. **Scope boundary:** Validate the provisional 45-minute critical path, required scenes, optional discoveries, number of encounter waves, number of new mechanics, and explicit features deferred beyond the greybox.
+
+Before code implementation, rewrite the loop as scene cards. Every required beat must identify:
+
+- the player's immediate goal;
+- the action the player performs rather than merely watches;
+- the new information or relationship change earned by that action;
+- the obstacle or decision that creates tension;
+- the visible world or story consequence;
+- and the question that pulls the player into the next beat.
+
+Read the cards aloud with at least two people taking the witches' roles. A beat that cannot be explained clearly, does not follow from the previous beat with “therefore” or “but,” or leaves players unable to state why they care should be revised on paper before it becomes a coded objective.
 
 ## Controls and presentation
 

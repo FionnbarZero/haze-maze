@@ -44,6 +44,15 @@ This document captures our current design direction so future sessions can conti
   - players see the same public state,
   - but can hold different interpretations/private context.
 
+## Chapter 1 working application
+
+- Purple Witch and Green Witch are the first playable role pairing in the current prototype.
+- Briarheart creates finite waves of smaller Briarlings during the first major encounter.
+- Every Briarling must be weakened and contained; active Briarlings protect Briarheart.
+- Green specializes in restraint and recovery while Purple specializes in pressure, interruption, and protection.
+- Either witch can perform baseline containment alone, with reduced enemy counts and more generous boss recovery windows.
+- Restoring the first Sentinel Tower provides a second collaboration beat: simultaneous magical attunement in co-op or slower sequential attunement in solo play.
+
 ## Open questions to continue iterating
 
 - How many core roles should exist in the baseline party?
