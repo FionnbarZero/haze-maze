@@ -238,6 +238,34 @@ The Moon Witch should have a defined personality and relationships rather than s
 
 For the current collaboration-first direction, see [Story & Collaboration Framework](story-collaboration-framework.md).
 
+## Chapter 1 story spine (draft)
+
+Use this as the first playable narrative loop and test vehicle for the collaboration model:
+
+### Act 1: The Hollow summons
+
+1. **Inciting incident:** The coven receives a fractured transmission from a ruined sentinel tower: “The Hollow is moving.” The message is incomplete, and one sender is missing from the final relay.
+2. **Core objective:** Enter the first moon-arched maze to retrieve a missing seal fragment and restore access to a deeper relay node.
+3. **Companion pressure:** The tower indicates a separate route can be stabilized only by a fire-key relic that one witch can wield/understand better.
+4. **Investigation loop:**  
+   - Explore and map the outer maze.  
+   - Gather at least one contradictory clue (e.g., one glyph set claims a blessing, another claims sabotage).  
+   - Report findings at a temporary ally/sanctuary checkpoint.
+5. **Conflict encounter:** Cross two guardian phases (first stationary/small phase, second mobile/more tactical) to unlock the section gate. First phase teaches mechanics; second phase validates map awareness and role timing.
+6. **Twist 1 (soft):** A recovered field log implies the missing relay operator did not disappear—they “withdrew,” and the message route was rewritten on the way out.
+7. **Escalation decision:** Player can progress via:
+   - full co-op setup (safer, more options), or  
+   - solo route (higher risk, fewer tools, slower progression).
+8. **Resolution:** Exit gate unlocks; player returns to coven hub with fragment + partial evidence.
+9. **Payoff:** Chapter ends with the same seal showing a second, unaccounted symbol.
+
+### Story logic commitments from this chapter
+
+- No permanent dead ends if separated from partner at any point; penalties should be in risk, visibility, or efficiency.
+- The twist must change the objective framing, not just add lore flavor.
+- At least one evidence item should point in a false direction, later contradicted by another scene.
+- The chapter should teach the rules needed for the campaign without requiring combat skill perfection.
+
 ## Controls and presentation
 
 Desktop keyboard and mouse are the primary control standard:
@@ -318,6 +346,8 @@ The following choices should be resolved through short design discussions and pr
 - How long should one level, one play session, and the complete game be?
 - What happens after the 100-point spell-power milestone, and how many progression tiers are needed?
 - How much inventory management supports the fantasy before it becomes friction during desktop play?
+- In Chapter 1, should the first twist be player-led (finding the lie themselves) or delivery-led (forced reveal cutscene), and why?
+- Which route to Chapter 1 exit should be “rewarded” (solo, co-op, or equal by design)?
 - What early clues should stay ambiguous versus confirmed, and how should the villain identity reveal be paced?
 - Which chapter beats are guaranteed twists or reversals without causing replay-frustration?
 - Which characters or paths should feel private/sensitive in the short term and only become public later?
