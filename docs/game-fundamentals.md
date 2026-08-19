@@ -14,9 +14,11 @@ The existing landscape-mobile build remains a useful compatibility prototype and
 
 ## High concept
 
-In *Moonhollow Quest*, the player becomes the Moon Witch, a staff-wielding adventurer exploring enchanted mazes that connect story locations, puzzle chambers, resource pockets, shops, and dragon lairs. Progress comes from understanding each maze, helping or confronting its inhabitants, gathering valuable materials, improving magical abilities, and completing objectives that open the way forward.
+In *Moonhollow Quest*, the player becomes the Moon Witch, a staff-wielding adventurer moving through the ruins and hidden corridors of Moon Hollow. Progress comes from understanding each maze, solving magical and environmental problems, uncovering layered lore, and completing objectives that open the way forward.
 
 The game should combine the immediacy of an action game with the discovery, character encounters, economy, and long-term growth of a narrative RPG. Combat is important, but exploration and problem-solving should be equally meaningful ways to make progress.
+
+The setting is built as a collaborative campaign arc rather than a sequence of isolated runs. The antagonist is currently unknown by design. Information should appear in stages through clues, testimonies, and partial truths so players feel long-term mystery and discovery pressure.
 
 ## Player fantasy
 
@@ -28,7 +30,10 @@ The player should feel like a capable but still-developing Witch who:
 - solves magical and environmental problems rather than fighting everything;
 - discovers valuables, mines crystals, trades intelligently, and prepares for future challenges;
 - forms relationships with recurring characters through story encounters;
-- becomes visibly and mechanically more powerful over the course of the adventure.
+- becomes visibly and mechanically more powerful over the course of the adventure;
+- can rely on coven-mate strengths for better outcomes, while still contributing in solo moments.
+
+The player should understand that party synergy gives access to better options, but not all objectives should become completely impossible without another character present.
 
 ## Design pillars
 
@@ -36,9 +41,13 @@ The player should feel like a capable but still-developing Witch who:
 
 Every maze is a place to understand, not simply a corridor to escape. Landmarks, changing materials, magical effects, sound, lighting, rooms, and the map should help the player form a mental picture of the space. Optional paths reward curiosity without making the required route needlessly confusing.
 
+The level design should also support mystery reading: evidence that suggests more than one interpretation, environmental inconsistencies, and clues that reward revisiting earlier rooms after learning new lore.
+
 ### Purposeful obstacles
 
 Locked passages communicate what kind of solution they require. A passage may open after a puzzle, a recovered quest item, a character interaction, a learned spell, or a completed encounter. Progress should feel earned through observation and mastery rather than arbitrary key hunting.
+
+Some obstacles are intentionally keyed to role strengths (for example: heat-only relics, resonance-only locks, or movement-only bypasses) so the group may temporarily specialize rather than each witch being equal at everything.
 
 ### Expressive spellcasting
 
@@ -48,9 +57,20 @@ The Witch's staff is the center of interaction and combat. Spells must be respon
 
 Story is delivered through exploration, environmental details, found objects, conversations, and cinematic sequences. Important rooms can transition into animated encounters between the Moon Witch and other characters. These scenes should reveal character, change objectives, or create consequences rather than interrupt play without purpose.
 
+Story design should intentionally include:
+
+- delayed reveals,
+- ambiguous witness accounts,
+- evidence that appears contradictory until later scenes,
+- and at least one reveal-beat with meaningful emotional impact each chapter.
+
+Romance and intimate character beats should be optional, with private beats represented as personal rather than loud public spectacle unless the chapter specifically justifies exposure.
+
 ### Meaningful progression
 
 Health, inventory, gold, crystals, experience, spell knowledge, and story progress form one understandable growth system. Rewards should give the player new choices or make previously difficult situations more manageable without eliminating the need for skill.
+
+Growth should feel incremental and reliable: new party members and mechanics increase options, but they should not invalidate previously mastered early gameplay.
 
 ## Core game loop
 
@@ -61,7 +81,7 @@ The repeating player loop is:
 3. Gather berries, gold, saleable discoveries, and mineable crystals.
 4. Meet characters, find clues, and accept or advance tasks.
 5. Solve puzzles or use the appropriate spell to open blocked routes.
-6. Prepare for and survive a dragon encounter or another major challenge.
+6. Prepare for and survive a major encounter (dragon, guardian, beast, or other threat).
 7. Collect the reward, gain experience, and unlock the next route.
 8. Visit a store or sanctuary to buy, sell, prepare, and review the next objective.
 9. Reach the level exit, save progress, and continue the story.
@@ -78,7 +98,7 @@ Room types include:
 - **Puzzle rooms:** Observation, movement, object interaction, or a known spell reveals the solution.
 - **Spell-gated rooms:** A specific learned spell changes the room or opens a route. The required magical language must be visually consistent throughout the game.
 - **Character rooms:** Conversations or animated cinematic sequences advance the narrative and may alter objectives.
-- **Dragon arenas:** Deliberately wider spaces that support readable movement, camera behavior, defensive play, and multiple spell strategies.
+- **Guardian arenas:** Deliberately wider spaces that support readable movement, camera behavior, defensive play, and multiple spell strategies. The threat type can remain a placeholder (dragon, wyrm, construct, etc.) until narrative locking is complete.
 - **Resource rooms:** Optional spaces containing gold, berries, mineable crystals, or saleable discoveries, usually protected by navigation risk or a small challenge.
 - **Store or sanctuary rooms:** Safe spaces for trading, preparation, story reflection, and checkpointing.
 - **Secret rooms:** Optional discoveries that reward careful exploration without blocking the main story.
@@ -93,7 +113,7 @@ A typical room objective might be:
 
 1. Meet a character who explains a problem.
 2. Search a connected maze branch for a named item.
-3. Overcome a puzzle, spell gate, or dragon guarding it.
+3. Overcome a puzzle, spell gate, or guardian that blocks it.
 4. Return the item or use it at a specific location.
 5. Resolve a cinematic interaction and open the next route.
 
@@ -101,32 +121,50 @@ Cinematic sequences may be real-time in-engine scenes or authored video when nec
 
 The initial scope should favor a clear main story with optional character tasks. Deep branching narrative and permanently missable story paths should wait until the core quest and save systems have been proven.
 
+## Collaboration and campaign structure
+
+The game is built around a shared campaign context with synchronized world state:
+
+- One story run is shared rather than splitting into isolated solo campaign branches.
+- Collaboration should open better routes and stronger tactical choices.
+- Solo progression must remain meaningful and viable, but some chapter objectives can prefer specific roles.
+- Failure to collaborate should limit throughput (risk, time-to-completion, tactical options), not create permanent dead ends unless absolutely intended.
+- At least one late-reveal or betrayal beat should be expected in later chapters to support mystery pacing.
+
 ## Staff-based spell system
 
 The initial spell set establishes three distinct tactical roles:
 
 - **Lightning:** Direct damage. It travels from the staff orb to the unobstructed crosshair target and can become more damaging through progression.
-- **Frost:** Control. It temporarily freezes a dragon, changes the creature to a readable ice-blue state, and creates time to reposition, heal, or solve a combat interaction.
+- **Frost:** Control. It temporarily freezes a creature, changes the target to a readable ice-blue state, and creates time to reposition, heal, or solve a combat interaction.
 - **Protective globe:** Defense. It surrounds and follows the Witch, absorbing or reducing incoming danger for a limited period.
 
 Spells use configurable cooldowns, duration, damage, protection, and upgrade values. They should interact with selected maze mechanisms where that use is clearly communicated. A combat upgrade must not silently change puzzle behavior and make an earlier puzzle impossible to understand.
 
 Future spells should add a genuinely new combat or exploration decision rather than duplicate an existing spell with a different color.
 
-## Dragon encounters
+Party balance should create meaning through asymmetric strength:
 
-Dragons are major encounters and narrative creatures, not disposable corridor obstacles. Each encounter should have:
+- one witch may be better in certain environments or tasks,
+- no witch is completely irrelevant outside collaboration,
+- and key progression should reward either solo competence or team execution, depending on chapter intent.
+
+## Major creature encounters
+
+Major creature encounters are major encounters and narrative pressure points, not disposable corridor obstacles. The creature type can be a placeholder in early planning (dragon, wyrm, golem, void-beast, etc.) while the chapter lore resolves.
+
+Each encounter should have:
 
 - a readable introduction and enough room for the third-person camera;
 - telegraphed attacks and fair recovery windows;
 - useful roles for offensive, control, and defensive spells;
-- collision that prevents the Witch and dragon from overlapping;
+- collision that prevents the Witch and creature from overlapping;
 - visible health and status feedback;
 - reactions to damage, freezing, protection, and defeat;
 - a clear effect on the maze, such as opening a gate or revealing an objective item;
 - an experience and material reward appropriate to its importance.
 
-The provisional progression rule remains 10 experience points for each defeated beast and a spell-power improvement at 100 points. This value is a balance starting point and should be tested against the intended length and number of encounters.
+The provisional progression rule remains 10 experience points for each defeated major encounter and a spell-power improvement at 100 points. This value is a balance starting point and should be tested against the intended length and number of encounters.
 
 ## Health and recovery
 
@@ -146,7 +184,7 @@ The game uses several resources with separate purposes:
 | Gold | Maze pickups, tasks, selling items and crystals | Buying goods and services |
 | Crystals | Mineable nodes, discoveries, encounter rewards | Valuable sale goods; possible later magical uses |
 | Found items | Exploration, secrets, tasks, defeated threats | Quest completion, collection, or sale when not protected |
-| Experience | Dragon encounters, major objectives, selected discoveries | Permanent character and spell progression |
+| Experience | Major encounters, major objectives, selected discoveries | Permanent character and spell progression |
 
 Quest items are clearly marked and cannot be sold while required by an active or unresolved quest. The game must distinguish valuable sale goods from objects whose purpose has not yet been discovered.
 
@@ -193,7 +231,7 @@ Each level functions as a story chapter with:
 - characters or environmental clues that establish the local conflict;
 - a task that requires exploration and discovery;
 - a revelation, decision, or confrontation;
-- a dragon or equivalent climax where appropriate;
+- a major guardian or equivalent climax where appropriate;
 - a resolution that changes the world and points toward the next chapter.
 
 The Moon Witch should have a defined personality and relationships rather than serving as a silent camera. Dialogue, animation, and player actions should consistently communicate her motives. The exact degree of dialogue choice, branching outcomes, companions, and moral consequence remains a separate narrative-design decision.
@@ -246,12 +284,12 @@ Before building ten levels or commissioning final assets, Level 1 should prove a
 4. Collect a golden berry, gold, a saleable item, and one mineable crystal.
 5. Use the pouch and complete one purchase and one sale at a store.
 6. Solve one environmental puzzle and open one spell-gated passage.
-7. Use lightning, frost, and the protective globe during a dragon encounter.
-8. Defeat the dragon, receive experience, and recover the objective item.
+7. Use lightning, frost, and the protective globe during a major encounter.
+8. Defeat the encounter, receive experience, and recover the objective item.
 9. Complete a short cinematic resolution and unlock the exit.
 10. Finish the level, reload, and confirm that all permanent progress was saved correctly.
 
-Proxy art is sufficient for this slice. It should be comfortable, stable, and completable on representative Windows and Mac desktop hardware before final Witch, dragon, cinematic, spell, store, or environment assets enter production. Mobile qualification does not currently gate desktop asset or feature development.
+Proxy art is sufficient for this slice. It should be comfortable, stable, and completable on representative Windows and Mac desktop hardware before final Witch, major-encounter cinematic, spell, store, or environment assets enter production. Mobile qualification does not currently gate desktop asset or feature development.
 
 ## Fundamental success criteria
 
@@ -262,7 +300,7 @@ The foundation is ready for broader content production when:
 - every required gate explains its condition and opens consistently;
 - the complete quest, economy, combat, and level-completion loop survives saving and reloading;
 - no quest item can be lost or sold in a way that blocks progress;
-- dragon combat is readable at close and medium range and cannot be bypassed through collision or wall-targeting errors;
+- major-encounter combat is readable at close and medium range and cannot be bypassed through collision or wall-targeting errors;
 - the vertical slice meets the agreed desktop performance and stability targets;
 - additional levels can be assembled from reusable room, quest, gate, item, store, encounter, and save-system definitions rather than copied custom code.
 
@@ -280,3 +318,7 @@ The following choices should be resolved through short design discussions and pr
 - How long should one level, one play session, and the complete game be?
 - What happens after the 100-point spell-power milestone, and how many progression tiers are needed?
 - How much inventory management supports the fantasy before it becomes friction during desktop play?
+- What early clues should stay ambiguous versus confirmed, and how should the villain identity reveal be paced?
+- Which chapter beats are guaranteed twists or reversals without causing replay-frustration?
+- Which characters or paths should feel private/sensitive in the short term and only become public later?
+- What balance points prevent companion dependence from becoming an invisible hard gate?
