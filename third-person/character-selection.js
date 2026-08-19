@@ -22,6 +22,22 @@ export const PLAYABLE_WITCHES = Object.freeze({
     role: 'Control and restoration',
     startingSpell: 'Vine Trap',
     nextUnlock: 'Restore'
+  }),
+  frost: Object.freeze({
+    id: 'frost',
+    name: 'Frost Witch',
+    discipline: 'Ice magic',
+    role: 'Control and damage',
+    startingSpell: 'Freeze',
+    secondSpell: 'Ice Lance'
+  }),
+  fire: Object.freeze({
+    id: 'fire',
+    name: 'Fire Witch',
+    discipline: 'Fire magic',
+    role: 'Damage and defense',
+    startingSpell: 'Fireball',
+    secondSpell: 'Fire Ring'
   })
 });
 

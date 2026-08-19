@@ -1,13 +1,24 @@
-import { COMBAT, PLAYER, POUCH } from './config.js?v=20260819-purple-progression-v1';
+import { COMBAT, PLAYER, POUCH } from './config.js?v=20260819-elemental-witches-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
   lightning: Object.freeze({ label: 'Lightning', cooldown: COMBAT.lightningCooldown, targeted: true }),
   frost: Object.freeze({ label: 'Frost', cooldown: COMBAT.frostCooldown, targeted: true }),
-  aegis: Object.freeze({ label: 'Aegis Globe', cooldown: COMBAT.aegisCooldown, targeted: false })
+  aegis: Object.freeze({ label: 'Aegis Globe', cooldown: COMBAT.aegisCooldown, targeted: false }),
+  freeze: Object.freeze({ label: 'Freeze', cooldown: COMBAT.frostCooldown, targeted: true }),
+  iceLance: Object.freeze({ label: 'Ice Lance', cooldown: COMBAT.iceLanceCooldown, targeted: true }),
+  fireball: Object.freeze({ label: 'Fireball', cooldown: COMBAT.fireballCooldown, targeted: true }),
+  fireRing: Object.freeze({ label: 'Fire Ring', cooldown: COMBAT.fireRingCooldown, targeted: false })
 });
 
-const spellName = value => value in SPELLS ? value : 'lightning';
+export const CHARACTER_LOADOUTS = Object.freeze({
+  purple: Object.freeze(['lightning', 'frost', 'aegis']),
+  frost: Object.freeze(['freeze', 'iceLance']),
+  fire: Object.freeze(['fireball', 'fireRing']),
+  green: Object.freeze([])
+});
+
+const createCooldowns = () => Object.fromEntries(Object.keys(SPELLS).map(spell => [spell, 0]));
 
 export class LightningCombat {
   constructor(BABYLON, scene, camera, witch, dragon, controller) {
@@ -16,10 +27,12 @@ export class LightningCombat {
     this.camera = camera;
     this.witch = witch;
     this.playerName = 'Purple Witch';
+    this.activeCharacter = 'purple';
+    this.loadout = [...CHARACTER_LOADOUTS.purple];
     this.spellcastingEnabled = true;
     this.dragon = dragon;
     this.controller = controller;
-    this.cooldownUntil = { lightning: 0, frost: 0, aegis: 0 };
+    this.cooldownUntil = createCooldowns();
     this.selectedSpell = 'lightning';
     this.lastTime = 0;
     this.targeted = false;
@@ -37,6 +50,10 @@ export class LightningCombat {
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
     this.aegisAbsorbedHits = 0;
+    this.fireRingUntil = 0;
+    this.fireRingHitUntil = 0;
+    this.fireRingAbsorbedHits = 0;
+    this.fireRingRepelledCreatures = 0;
     this.damageTaken = 0;
     this.dragonInAttackRange = false;
     this.nextDragonAttackAt = 0;
@@ -57,6 +74,7 @@ export class LightningCombat {
     this.aegisStatus = document.querySelector('#aegis-status');
     this.powerupStatus = document.querySelector('#powerup-status');
     this.aegis = this.createAegisGlobe();
+    this.fireRing = this.createFireRing();
     this.updateSpellSelection(false);
   }
 
@@ -85,11 +103,53 @@ export class LightningCombat {
     return { mesh, material, light };
   }
 
+  createFireRing() {
+    const material = new this.BABYLON.StandardMaterial('fire-ring-material', this.scene);
+    material.diffuseColor = this.BABYLON.Color3.FromHexString('#ff713d');
+    material.emissiveColor = this.BABYLON.Color3.FromHexString('#ff2b0a');
+    material.specularColor = this.BABYLON.Color3.FromHexString('#ffe19a');
+    material.alpha = .88;
+    const root = new this.BABYLON.TransformNode('witch-fire-ring-root', this.scene);
+    root.parent = this.witch.root;
+    root.position.y = .08;
+    const rings = [0, 1, 2].map(index => {
+      const ring = this.BABYLON.MeshBuilder.CreateTorus(`witch-fire-ring-${index}`, {
+        diameter: COMBAT.fireRingRadius * 2 + index * .12,
+        thickness: .075 + index * .018,
+        tessellation: 48
+      }, this.scene);
+      ring.parent = root;
+      ring.position.y = index * .035;
+      ring.material = material;
+      ring.isPickable = false;
+      return ring;
+    });
+    const light = new this.BABYLON.PointLight('fire-ring-light', new this.BABYLON.Vector3(0, .48, 0), this.scene);
+    light.parent = root;
+    light.diffuse = this.BABYLON.Color3.FromHexString('#ff6a2d');
+    light.range = 6;
+    light.intensity = 0;
+    root.setEnabled(false);
+    return { root, rings, material, light };
+  }
+
   setWitch(witch, playerName = this.playerName) {
     this.witch = witch;
     this.playerName = playerName;
     this.aegis.mesh.parent = witch.root;
     this.aegis.light.parent = witch.root;
+    this.fireRing.root.parent = witch.root;
+  }
+
+  setCharacter(characterId, witch = this.witch, playerName = this.playerName) {
+    if (!CHARACTER_LOADOUTS[characterId]) return false;
+    this.activeCharacter = characterId;
+    this.loadout = [...CHARACTER_LOADOUTS[characterId]];
+    this.setWitch(witch, playerName);
+    this.selectedSpell = this.loadout[0] || 'lightning';
+    this.updateSpellSelection(false);
+    this.updatePlayerHud(this.lastTime);
+    return true;
   }
 
   setGeodeCount(count = 0) {
@@ -115,7 +175,7 @@ export class LightningCombat {
   }
 
   selectSpell(value, announce = true) {
-    const selected = spellName(value);
+    const selected = this.loadout.includes(value) ? value : this.loadout[0] || this.selectedSpell;
     const changed = selected !== this.selectedSpell;
     this.selectedSpell = selected;
     this.updateSpellSelection(announce && changed);
@@ -124,10 +184,11 @@ export class LightningCombat {
 
   updateSpellSelection(announce) {
     const spell = SPELLS[this.selectedSpell];
+    if (!spell) return;
     this.spellNameCopy.textContent = spell.label;
     this.spellHelpCopy.textContent = spell.targeted
-      ? '1 / 2 / 3 select · O casts'
-      : 'Self-cast protection · O casts';
+      ? `${this.loadout.map((_entry, index) => index + 1).join(' / ')} select · O casts`
+      : `${spell.label} protects you · O casts`;
     for (const button of document.querySelectorAll('.spell-rack button[data-spell]')) {
       button.classList.toggle('is-selected', button.dataset.spell === this.selectedSpell);
     }
@@ -277,6 +338,7 @@ export class LightningCombat {
     }
     this.updateTargetHud();
     this.updateAegis(this.lastTime);
+    this.updateFireRing(this.lastTime);
     this.updateDragonThreat(this.lastTime);
     this.updatePlayerHud(this.lastTime);
   }
@@ -287,7 +349,7 @@ export class LightningCombat {
     this.crosshair.classList.toggle('is-obstructed', this.aimState === 'OBSTRUCTED');
     this.crosshair.classList.toggle('is-self-cast', this.aimState === 'SELF');
     this.crosshairLabel.dataset.stateLabel = this.targeted
-      ? this.selectedSpell === 'frost' ? 'FREEZE' : 'HIT'
+      ? ['frost', 'freeze'].includes(this.selectedSpell) ? 'FREEZE' : 'HIT'
       : this.aimState === 'OBSTRUCTED'
         ? 'BLOCKED'
         : this.aimState === 'SELF'
@@ -330,8 +392,49 @@ export class LightningCombat {
     this.aegis.light.intensity = struck ? 2.8 : .55 + pulse * .25;
   }
 
+  updateFireRing(time) {
+    const active = time < this.fireRingUntil;
+    this.fireRing.root.setEnabled(active);
+    if (!active) {
+      this.fireRing.light.intensity = 0;
+      return;
+    }
+    const struck = time < this.fireRingHitUntil;
+    const pulse = .5 + Math.sin(time * 11) * .5;
+    this.fireRing.material.alpha = struck ? 1 : .64 + pulse * .28;
+    this.fireRing.material.emissiveColor = struck
+      ? this.BABYLON.Color3.FromHexString('#fff0a8')
+      : this.BABYLON.Color3.FromHexString('#ff2b0a');
+    this.fireRing.rings.forEach((ring, index) => {
+      ring.rotation.y = time * (index % 2 ? -1.8 : 1.55) + index * .7;
+      ring.position.y = .025 + index * .04 + Math.sin(time * 7 + index) * .025;
+      const scale = 1 + pulse * .018 + index * .012;
+      ring.scaling.set(scale, scale, scale);
+    });
+    this.fireRing.light.intensity = struck ? 3.8 : 1.4 + pulse * .75;
+
+    if (!this.dragon.alive) return;
+    let deltaX = this.dragon.root.position.x - this.controller.position.x;
+    let deltaZ = this.dragon.root.position.z - this.controller.position.z;
+    let distance = Math.hypot(deltaX, deltaZ);
+    const boundary = COMBAT.fireRingRadius + this.dragon.collisionRadius + .08;
+    if (distance >= boundary) return;
+    if (distance < .001) {
+      deltaX = Math.sin(this.controller.facingYaw || 0);
+      deltaZ = Math.cos(this.controller.facingYaw || 0);
+      distance = 1;
+    }
+    this.dragon.teleport(new this.BABYLON.Vector3(
+      this.controller.position.x + deltaX / distance * boundary,
+      this.dragon.root.position.y,
+      this.controller.position.z + deltaZ / distance * boundary
+    ));
+    this.fireRingRepelledCreatures += 1;
+    this.fireRingHitUntil = time + .22;
+  }
+
   updateDragonThreat(time) {
-    if (!this.dragon.alive || this.dragon.isFrozen(time) || this.dragon.isRestrained(time) || this.playerDefeated) {
+    if (!this.dragon.alive || this.dragon.isFrozen(time) || this.dragon.isRestrained(time) || time < this.fireRingUntil || this.playerDefeated) {
       this.dragonInAttackRange = false;
       this.nextDragonAttackAt = 0;
       return;
@@ -356,6 +459,12 @@ export class LightningCombat {
 
   receiveDragonDamage(amount, time = performance.now() / 1000) {
     if (this.playerDefeated || amount <= 0) return false;
+    if (time < this.fireRingUntil) {
+      this.fireRingAbsorbedHits += 1;
+      this.fireRingHitUntil = time + .3;
+      this.onMessage('Fire Ring turned aside the dragon strike');
+      return false;
+    }
     if (time < this.aegisUntil) {
       this.aegisAbsorbedHits += 1;
       this.aegisHitUntil = time + .3;
@@ -414,21 +523,39 @@ export class LightningCombat {
       this.powerupStatus.textContent = 'Vine Trap · Restore';
       return;
     }
-    const active = time < this.aegisUntil;
-    const cooldown = Math.max(0, this.cooldownUntil.aegis - time);
-    this.playerVitals.classList.toggle('is-aegis', active);
-    this.aegisStatus.textContent = active
-      ? `Aegis active · ${(this.aegisUntil - time).toFixed(1)}s`
-      : cooldown > 0
-        ? `Aegis recharging · ${cooldown.toFixed(1)}s`
-        : 'Aegis ready';
+    const aegisActive = time < this.aegisUntil;
+    const fireRingActive = time < this.fireRingUntil;
+    const protectionActive = aegisActive || fireRingActive;
+    this.playerVitals.classList.toggle('is-aegis', protectionActive);
+    if (this.activeCharacter === 'fire') {
+      const cooldown = Math.max(0, this.cooldownUntil.fireRing - time);
+      this.aegisStatus.textContent = fireRingActive
+        ? `Fire Ring active · ${(this.fireRingUntil - time).toFixed(1)}s`
+        : cooldown > 0
+          ? `Fire Ring recharging · ${cooldown.toFixed(1)}s`
+          : 'Fire Ring ready';
+    } else if (this.activeCharacter === 'frost') {
+      this.aegisStatus.textContent = 'Ice magic ready';
+    } else {
+      const cooldown = Math.max(0, this.cooldownUntil.aegis - time);
+      this.aegisStatus.textContent = aegisActive
+        ? `Aegis active · ${(this.aegisUntil - time).toFixed(1)}s`
+        : cooldown > 0
+          ? `Aegis recharging · ${cooldown.toFixed(1)}s`
+          : 'Aegis ready';
+    }
     const powerups = [];
     if (this.lightningBoostActive(time)) {
       powerups.push(`Lightning ×${COMBAT.lightningPotionDamageMultiplier} · ${(this.lightningBoostUntil - time).toFixed(1)}s`);
     }
     if (this.geodeCount) powerups.push(`${this.geodeCount} geode · permanent ×${this.geodeDamageMultiplier.toFixed(1)}`);
     if (this.aegisBoostPrimed) powerups.push(`Next Aegis ×${COMBAT.aegisPotionDurationMultiplier}`);
-    this.powerupStatus.textContent = powerups.length ? powerups.join(' · ') : 'No powerup active';
+    const defaultStatus = this.activeCharacter === 'frost'
+      ? 'Freeze · Ice Lance'
+      : this.activeCharacter === 'fire'
+        ? 'Fireball · Fire Ring'
+        : 'No powerup active';
+    this.powerupStatus.textContent = powerups.length ? powerups.join(' · ') : defaultStatus;
     this.playerVitals.classList.toggle('is-powered', powerups.length > 0);
   }
 
@@ -441,6 +568,7 @@ export class LightningCombat {
     }
     this.cooldownUntil[selected] = time + spell.cooldown;
     if (selected === 'aegis') return this.castAegis(time);
+    if (selected === 'fireRing') return this.castFireRing(time);
     return this.castAtTarget(selected, time);
   }
 
@@ -458,7 +586,15 @@ export class LightningCombat {
       ? COMBAT.lightningPotionDamageMultiplier
       : 1;
     const lightningMultiplier = potionMultiplier * this.geodeDamageMultiplier;
-    const lightningDamage = COMBAT.lightningDamage * lightningMultiplier;
+    const damageMultiplier = spell === 'lightning' ? lightningMultiplier : 1;
+    const baseDamage = spell === 'lightning'
+      ? COMBAT.lightningDamage
+      : spell === 'iceLance'
+        ? COMBAT.iceLanceDamage
+        : spell === 'fireball'
+          ? COMBAT.fireballDamage
+          : 0;
+    const damage = baseDamage * damageMultiplier;
     this.lastCast = {
       spell,
       origin: { x: path.origin.x, y: path.origin.y, z: path.origin.z },
@@ -472,8 +608,8 @@ export class LightningCombat {
       obstructed,
       aimMode: solution.mode,
       targetEntryDistance: solution.targetEntryDistance,
-      damageMultiplier: spell === 'lightning' ? lightningMultiplier : 1,
-      damage: spell === 'lightning' && intendedTarget && !obstructed ? lightningDamage : 0,
+      damageMultiplier,
+      damage: intendedTarget && !obstructed ? damage : 0,
       resolution: intendedTarget && !obstructed
         ? solution.mode === 'ASSISTED' ? 'TARGET_ASSISTED' : 'TARGET'
         : obstructed
@@ -482,19 +618,22 @@ export class LightningCombat {
     };
 
     if (spell === 'lightning') this.createLightning(path.origin, path.impactPoint);
-    else this.createFrost(path.origin, path.impactPoint);
+    else if (['frost', 'freeze'].includes(spell)) this.createFrost(path.origin, path.impactPoint, spell);
+    else if (spell === 'iceLance') this.createIceLance(path.origin, path.impactPoint);
+    else if (spell === 'fireball') this.createFireball(path.origin, path.impactPoint);
 
     if (intendedTarget && !obstructed && intendedTarget.alive) {
-      if (spell === 'lightning') {
-        intendedTarget.damage(lightningDamage, time);
-        this.onMessage(intendedTarget.alive
-          ? `Lightning${lightningMultiplier > 1 ? ` ×${lightningMultiplier.toFixed(1)}` : ''} hit · ${intendedTarget.health} health remains`
-          : 'Training dragon contained');
-      } else {
+      if (['frost', 'freeze'].includes(spell)) {
         intendedTarget.freeze(time, COMBAT.frostDuration);
         this.dragonInAttackRange = false;
         this.nextDragonAttackAt = 0;
-        this.onMessage(`Frost bound the dragon · ${COMBAT.frostDuration.toFixed(1)}s`);
+        this.onMessage(`${SPELLS[spell].label} bound the dragon · ${COMBAT.frostDuration.toFixed(1)}s`);
+      } else {
+        intendedTarget.damage(damage, time);
+        const powerCopy = spell === 'lightning' && lightningMultiplier > 1 ? ` ×${lightningMultiplier.toFixed(1)}` : '';
+        this.onMessage(intendedTarget.alive
+          ? `${SPELLS[spell].label}${powerCopy} hit · ${intendedTarget.health} health remains`
+          : 'Training dragon contained');
       }
     } else if (obstructed) {
       this.onMessage(`The ${SPELLS[spell].label.toLowerCase()} path is blocked by the maze`);
@@ -534,6 +673,33 @@ export class LightningCombat {
     return true;
   }
 
+  castFireRing(time) {
+    this.witch.setCast(time, 'fire ring');
+    this.fireRingUntil = time + COMBAT.fireRingDuration;
+    this.dragonInAttackRange = false;
+    this.nextDragonAttackAt = 0;
+    const origin = this.witch.getOrbPosition();
+    this.lastCast = {
+      spell: 'fireRing',
+      origin: { x: origin.x, y: origin.y, z: origin.z },
+      impact: { x: this.controller.position.x, y: this.controller.position.y, z: this.controller.position.z },
+      intendedTarget: this.playerName.toLowerCase().replaceAll(' ', '-'),
+      actualTarget: this.playerName.toLowerCase().replaceAll(' ', '-'),
+      intendedKind: 'self',
+      actualKind: 'self',
+      obstructed: false,
+      aimMode: 'SELF',
+      targetEntryDistance: 0,
+      duration: COMBAT.fireRingDuration,
+      radius: COMBAT.fireRingRadius,
+      resolution: 'SELF'
+    };
+    this.updateFireRing(time);
+    this.updatePlayerHud(time);
+    this.onMessage(`Fire Ring active · ${COMBAT.fireRingDuration.toFixed(0)}s creature barrier`);
+    return true;
+  }
+
   createLightning(origin, impact) {
     this.createEnergyStreams({
       prefix: 'lightning-stream',
@@ -547,9 +713,9 @@ export class LightningCombat {
     });
   }
 
-  createFrost(origin, impact) {
+  createFrost(origin, impact, spell = 'frost') {
     this.createEnergyStreams({
-      prefix: 'frost-stream',
+      prefix: spell === 'freeze' ? 'freeze-stream' : 'frost-stream',
       origin,
       impact,
       colors: ['#efffff', '#66d8ff'],
@@ -558,6 +724,44 @@ export class LightningCombat {
       amplitude: .045,
       lightColor: '#79e4ff'
     });
+  }
+
+  createIceLance(origin, impact) {
+    this.createEnergyStreams({
+      prefix: 'ice-lance-stream',
+      origin,
+      impact,
+      colors: ['#f5ffff', '#70dfff'],
+      duration: COMBAT.iceLanceEffectDuration,
+      streams: 5,
+      amplitude: .025,
+      lightColor: '#b9f8ff'
+    });
+  }
+
+  createFireball(origin, impact) {
+    this.createEnergyStreams({
+      prefix: 'fireball-stream',
+      origin,
+      impact,
+      colors: ['#fff0a2', '#ff4a16'],
+      duration: COMBAT.fireballEffectDuration,
+      streams: 6,
+      amplitude: .07,
+      lightColor: '#ff6d24'
+    });
+    const burst = this.BABYLON.MeshBuilder.CreateSphere('fireball-impact-burst', { diameter: .58, segments: 12 }, this.scene);
+    const material = new this.BABYLON.StandardMaterial('fireball-impact-material', this.scene);
+    material.diffuseColor = this.BABYLON.Color3.FromHexString('#ffad38');
+    material.emissiveColor = this.BABYLON.Color3.FromHexString('#ff3108');
+    material.alpha = .82;
+    burst.position.copyFrom(impact);
+    burst.material = material;
+    burst.isPickable = false;
+    setTimeout(() => {
+      burst.dispose();
+      material.dispose();
+    }, COMBAT.fireballEffectDuration * 1000);
   }
 
   createEnergyStreams({ prefix, origin, impact, colors, duration, streams, amplitude, lightColor }) {
@@ -598,8 +802,8 @@ export class LightningCombat {
   }
 
   reset() {
-    this.cooldownUntil = { lightning: 0, frost: 0, aegis: 0 };
-    this.selectedSpell = 'lightning';
+    this.cooldownUntil = createCooldowns();
+    this.selectedSpell = this.loadout[0] || 'lightning';
     this.lastTime = 0;
     this.targeted = false;
     this.candidateTargeted = false;
@@ -615,12 +819,18 @@ export class LightningCombat {
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
     this.aegisAbsorbedHits = 0;
+    this.fireRingUntil = 0;
+    this.fireRingHitUntil = 0;
+    this.fireRingAbsorbedHits = 0;
+    this.fireRingRepelledCreatures = 0;
     this.damageTaken = 0;
     this.dragonInAttackRange = false;
     this.nextDragonAttackAt = 0;
     this.playerDefeated = false;
     this.aegis.mesh.setEnabled(false);
     this.aegis.light.intensity = 0;
+    this.fireRing.root.setEnabled(false);
+    this.fireRing.light.intensity = 0;
     this.crosshair.classList.remove('is-targeting', 'is-assisted', 'is-obstructed', 'is-self-cast');
     this.crosshairLabel.dataset.stateLabel = '';
     this.targetCard.classList.remove('is-visible', 'is-frozen');
@@ -637,6 +847,8 @@ export class LightningCombat {
       Object.entries(this.cooldownUntil).map(([name, until]) => [name, Math.max(0, until - this.lastTime)])
     );
     return {
+      activeCharacter: this.activeCharacter,
+      loadout: [...this.loadout],
       selectedSpell: this.selectedSpell,
       spellcastingEnabled: this.spellcastingEnabled,
       playerName: this.playerName,
@@ -659,6 +871,15 @@ export class LightningCombat {
         absorbedHits: this.aegisAbsorbedHits,
         visible: this.aegis.mesh.isEnabled()
       },
+      fireRing: {
+        active: this.lastTime < this.fireRingUntil,
+        remaining: Math.max(0, this.fireRingUntil - this.lastTime),
+        duration: COMBAT.fireRingDuration,
+        radius: COMBAT.fireRingRadius,
+        absorbedHits: this.fireRingAbsorbedHits,
+        repelledCreatures: this.fireRingRepelledCreatures,
+        visible: this.fireRing.root.isEnabled()
+      },
       powerups: {
         lightningActive: this.lightningBoostActive(this.lastTime),
         lightningRemaining: Math.max(0, this.lightningBoostUntil - this.lastTime),
@@ -672,7 +893,9 @@ export class LightningCombat {
       },
       dragonInAttackRange: this.dragonInAttackRange,
       activeLightningStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('lightning-stream-')).length,
-      activeFrostStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('frost-stream-')).length
+      activeFrostStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('frost-stream-') || mesh.name.startsWith('freeze-stream-')).length,
+      activeIceLanceStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('ice-lance-stream-')).length,
+      activeFireballStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('fireball-stream-')).length
     };
   }
 }

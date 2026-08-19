@@ -6,7 +6,7 @@ The homepage runs the third-person Babylon.js version, with an over-the-shoulder
 
 Design direction has moved toward a collaborative, shared-campaign model (BG3-style); see [Story & Collaboration Framework](docs/story-collaboration-framework.md).
 
-Beginning a new hunt opens on a Coven leader in the live Babylon scene. Press Enter or choose **Hear the Coven briefing** to let her deliver the summons through the computer's system voice, with a compact line-by-line caption. The Purple Witch and Green Witch choice cards appear automatically after her final line. After confirmation, the chosen Witch becomes the sole local player and arrives before the Moon Gate; the route begins only when the player walks through it. Add `?party=simulated` to retain the optional snapshot-driven teammate proof.
+Beginning a new hunt opens on a Coven leader in the live Babylon scene. Press Enter or choose **Hear the Coven briefing** to let her deliver the summons through the computer's system voice, with a compact line-by-line caption. Purple, Green, Frost, and Fire Witch choice cards appear automatically after her final line. After confirmation, the chosen Witch becomes the sole local player and arrives before the Moon Gate; the route begins only when the player walks through it. Add `?party=simulated` to retain the optional snapshot-driven teammate proof.
 
 ## Platform direction
 

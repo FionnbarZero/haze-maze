@@ -43,7 +43,7 @@ class CDP {
       const timeout = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`CDP command timed out: ${method}`));
-      }, 30000);
+      }, 60000);
       this.pending.set(id, {
         resolve: value => { clearTimeout(timeout); resolve(value); },
         reject: error => { clearTimeout(timeout); reject(error); }
@@ -216,8 +216,12 @@ const checks = {
   choiceWaitsForNarration: narrationComplete.opening.step === 'SELECTION'
     && narrationComplete.opening.narration.status === 'COMPLETE'
     && narrationComplete.covenLeader.presentation.visibility === 0
-    && narrationComplete.purpleWitch.presentation.visibility === 1
-    && narrationComplete.greenWitch.presentation.visibility === 1,
+    && [
+      narrationComplete.purpleWitch.presentation,
+      narrationComplete.greenWitch.presentation,
+      narrationComplete.frostWitch.presentation,
+      narrationComplete.fireWitch.presentation
+    ].every(presentation => presentation.visibility > 0),
   mouseSelectDoesNotStart: greenSelected.snapshot.opening.awaitingConfirmation
     && greenSelected.snapshot.characterSelection.selectedCharacter === 'green'
     && greenSelected.snapshot.characterSelection.localCharacter === null

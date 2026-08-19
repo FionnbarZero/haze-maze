@@ -543,7 +543,7 @@ export class PouchInventory {
   }
 
   setCharacter(characterId) {
-    this.activeCharacter = characterId === 'green' ? 'green' : 'purple';
+    this.activeCharacter = ['purple', 'green', 'frost', 'fire'].includes(characterId) ? characterId : 'purple';
     if (this.gearSection) this.gearSection.hidden = this.activeCharacter !== 'purple';
     this.applyEquippedItem();
     this.updateInterface();
@@ -711,6 +711,10 @@ export class PouchInventory {
   }
 
   useLightningPotion() {
+    if (this.activeCharacter !== 'purple') {
+      this.onMessage('Storm potions can only empower the Purple Witch');
+      return false;
+    }
     if (this.lightningPotions <= 0) {
       this.onMessage('The pouch has no storm potions');
       return false;
@@ -728,6 +732,10 @@ export class PouchInventory {
   }
 
   useAegisPotion() {
+    if (this.activeCharacter !== 'purple') {
+      this.onMessage('Aegis potions can only empower the Purple Witch');
+      return false;
+    }
     if (this.aegisPotions <= 0) {
       this.onMessage('The pouch has no blue Aegis potions');
       return false;
@@ -844,9 +852,12 @@ export class PouchInventory {
 
     const lightningLabel = `${this.lightningPotions} ${this.lightningPotions === 1 ? 'potion' : 'potions'}`;
     const lightningActive = this.combat.lightningBoostActive();
+    const purplePowerupsAvailable = this.activeCharacter === 'purple';
     this.lightningPotionCountCopy.textContent = lightningLabel;
-    this.lightningPotionButton.disabled = this.lightningPotions === 0 || lightningActive;
-    this.lightningPotionActionCopy.textContent = lightningActive
+    this.lightningPotionButton.disabled = !purplePowerupsAvailable || this.lightningPotions === 0 || lightningActive;
+    this.lightningPotionActionCopy.textContent = !purplePowerupsAvailable
+      ? 'Purple Witch only · potion preserved'
+      : lightningActive
       ? `Active · ×${COMBAT.lightningPotionDamageMultiplier} damage · ${Math.max(0, this.combat.lightningBoostUntil - performance.now() / 1000).toFixed(1)}s`
       : this.lightningPotions
         ? `Drink · ×${COMBAT.lightningPotionDamageMultiplier} lightning damage for ${COMBAT.lightningPotionDuration}s`
@@ -854,8 +865,10 @@ export class PouchInventory {
 
     const aegisLabel = `${this.aegisPotions} ${this.aegisPotions === 1 ? 'potion' : 'potions'}`;
     this.aegisPotionCountCopy.textContent = aegisLabel;
-    this.aegisPotionButton.disabled = this.aegisPotions === 0 || this.combat.aegisBoostPrimed;
-    this.aegisPotionActionCopy.textContent = this.combat.aegisBoostPrimed
+    this.aegisPotionButton.disabled = !purplePowerupsAvailable || this.aegisPotions === 0 || this.combat.aegisBoostPrimed;
+    this.aegisPotionActionCopy.textContent = !purplePowerupsAvailable
+      ? 'Purple Witch only · potion preserved'
+      : this.combat.aegisBoostPrimed
       ? `Primed · next Aegis lasts ${COMBAT.aegisDuration * COMBAT.aegisPotionDurationMultiplier}s`
       : this.aegisPotions
         ? `Drink · next Aegis lasts ×${COMBAT.aegisPotionDurationMultiplier} longer`

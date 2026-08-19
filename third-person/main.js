@@ -4,14 +4,14 @@ import { createPlaceholderDragon } from './dragon.js?v=20260818-witchselect-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
 import { ShoulderCamera } from './camera.js?v=20260818-witchselect-v1';
-import { LightningCombat } from './combat.js?v=20260819-purple-progression-v1';
-import { PouchInventory } from './inventory.js?v=20260819-purple-progression-v1';
+import { LightningCombat } from './combat.js?v=20260819-elemental-witches-v1';
+import { PouchInventory } from './inventory.js?v=20260819-elemental-witches-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260818-witchselect-v1';
-import { GreenWitchAbilities } from './green-witch.js?v=20260819-solo-cast-v1';
-import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-coven-audio-release-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260819-elemental-witches-v1';
+import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -83,6 +83,48 @@ try {
       label: '#c5ffd0'
     }
   });
+  const frostWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, {
+    id: 'frost-witch',
+    label: 'Frost Witch',
+    palette: {
+      primary: '#245a78',
+      primaryLight: '#4e91ae',
+      accent: '#a9ebf5',
+      hair: '#d9f4f5',
+      hairEmissive: '#193b4a',
+      leather: '#28445b',
+      wood: '#5c7184',
+      orb: '#f0ffff',
+      orbEmissive: '#57cce7',
+      orbCast: '#d5fbff',
+      orbLight: '#83ebff',
+      label: '#cff8ff'
+    }
+  });
+  const fireWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, {
+    id: 'fire-witch',
+    label: 'Fire Witch',
+    palette: {
+      primary: '#7f2d1e',
+      primaryLight: '#b9552c',
+      accent: '#f1a143',
+      hair: '#3a1712',
+      hairEmissive: '#3b0903',
+      leather: '#4f271b',
+      wood: '#70402a',
+      orb: '#fff1a9',
+      orbEmissive: '#e84a0b',
+      orbCast: '#fff0a0',
+      orbLight: '#ff7b28',
+      label: '#ffd2a0'
+    }
+  });
+  const playableWitchActors = Object.freeze({
+    purple: purpleWitch,
+    green: greenWitch,
+    frost: frostWitch,
+    fire: fireWitch
+  });
   const covenLeader = createPlaceholderWitch(BABYLON, scene, shadowGenerator, {
     id: 'coven-leader',
     label: 'Coven Leader',
@@ -111,6 +153,13 @@ try {
     stateLabel: 'IDLE'
   };
   const covenLeaderInput = { aiming: false };
+  const previewInput = { aiming: false };
+  const previewWitchStates = Object.freeze({
+    purple: { position: new BABYLON.Vector3(-2.55, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
+    green: { position: new BABYLON.Vector3(-.85, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
+    frost: { position: new BABYLON.Vector3(.85, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
+    fire: { position: new BABYLON.Vector3(2.55, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' }
+  });
   const initialPlayerState = controller.snapshot();
   const greenReplica = new RemotePlayerReplica(BABYLON, greenWitch, {
     sequence: 0,
@@ -124,6 +173,7 @@ try {
   });
   const greenSimulation = new SimulatedTeammateFeed(greenReplica, initialPlayerState);
   greenSimulation.setEnabled(simulatedPartyEnabled);
+  const companionCharacterId = characterId => characterId === 'green' ? 'purple' : 'green';
   let selectedCharacter = 'purple';
   let localWitch = purpleWitch;
   let remoteWitch = greenWitch;
@@ -151,10 +201,18 @@ try {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => toast.classList.remove('is-visible'), 1500);
   };
-  const greenSpellName = spell => spell === 'restore' || spell === 'frost' ? 'restore' : 'vineTrap';
-  const selectActiveSpell = spell => selectedCharacter === 'green'
-    ? greenAbilities.selectSpell(greenSpellName(spell))
-    : combat.selectSpell(spell);
+  const legacySpellSlots = Object.freeze({ lightning: 0, frost: 1, aegis: 2 });
+  const resolveActiveSpell = requested => {
+    const entries = spellRackPresentation[selectedCharacter] || [];
+    if (entries.some(entry => entry.id === requested)) return requested;
+    return entries[legacySpellSlots[requested] ?? 0]?.id || entries[0]?.id || requested;
+  };
+  const selectActiveSpell = spell => {
+    const selected = resolveActiveSpell(spell);
+    return selectedCharacter === 'green'
+      ? greenAbilities.selectSpell(selected)
+      : combat.selectSpell(selected);
+  };
   const castActiveSpell = spell => {
     const now = performance.now() / 1000;
     if (selectedCharacter !== 'green') {
@@ -162,9 +220,9 @@ try {
         showMessage('Equip the Moon staff from the pouch before casting · press P');
         return false;
       }
-      return combat.cast(now, spell);
+      return combat.cast(now, spell ? resolveActiveSpell(spell) : undefined);
     }
-    if (spell) greenAbilities.selectSpell(greenSpellName(spell), false);
+    if (spell) greenAbilities.selectSpell(resolveActiveSpell(spell), false);
     return greenAbilities.castSelected(now);
   };
   input.onCast = castActiveSpell;
@@ -200,19 +258,29 @@ try {
     green: [
       { id: 'vineTrap', symbol: '⌁', label: 'Vine Trap' },
       { id: 'restore', symbol: '+', label: 'Restore' }
+    ],
+    frost: [
+      { id: 'freeze', symbol: '❄', label: 'Freeze' },
+      { id: 'iceLance', symbol: '◇', label: 'Ice Lance' }
+    ],
+    fire: [
+      { id: 'fireball', symbol: '●', label: 'Fireball' },
+      { id: 'fireRing', symbol: '○', label: 'Fire Ring' }
     ]
   };
 
   const updateCharacterInterface = () => {
     const local = PLAYABLE_WITCHES[selectedCharacter];
-    const remoteCharacterId = selectedCharacter === 'purple' ? 'green' : 'purple';
+    const remoteCharacterId = companionCharacterId(selectedCharacter);
     const remote = PLAYABLE_WITCHES[remoteCharacterId];
     playerNameCopy.textContent = local.name;
     teammateNameCopy.textContent = remote.name;
     pouchCharacterName.textContent = local.name;
     playerVitals.setAttribute('aria-label', `${local.name} health and protection`);
     teammatePanel.setAttribute('aria-label', `Simulated ${remote.name} teammate`);
-    playerVitals.classList.toggle('is-green', selectedCharacter === 'green');
+    for (const characterId of Object.keys(PLAYABLE_WITCHES)) {
+      playerVitals.classList.toggle(`is-${characterId}`, selectedCharacter === characterId);
+    }
     teammatePanel.classList.toggle('is-purple', remoteCharacterId === 'purple');
     teammatePanel.hidden = !simulatedPartyEnabled;
     greenPartyActions.hidden = !simulatedPartyEnabled || selectedCharacter === 'green';
@@ -227,8 +295,8 @@ try {
       button.querySelector('span').textContent = entry.label;
       button.classList.toggle('is-selected', index === 0);
     }
-    if (selectedCharacter === 'purple') combat.updateSpellSelection(false);
-    else greenAbilities.updateSpellSelection(false);
+    if (selectedCharacter === 'green') greenAbilities.updateSpellSelection(false);
+    else combat.updateSpellSelection(false);
   };
 
   const selectLocalCharacter = characterId => {
@@ -236,24 +304,25 @@ try {
     selectedCharacter = characterId;
     covenLeader.setVisibility(0);
     covenLeader.setNameplateVisible(false);
-    localWitch = characterId === 'green' ? greenWitch : purpleWitch;
-    remoteWitch = characterId === 'green' ? purpleWitch : greenWitch;
-    purpleWitch.root.scaling.set(1, 1, 1);
-    greenWitch.root.scaling.set(1, 1, 1);
-    purpleWitch.setPresentationOffset();
-    greenWitch.setPresentationOffset();
-    purpleWitch.setVisibility(characterId === 'purple' || simulatedPartyEnabled ? 1 : 0);
-    greenWitch.setVisibility(characterId === 'green' || simulatedPartyEnabled ? 1 : 0);
-    purpleWitch.setNameplateVisible(simulatedPartyEnabled && remoteWitch === purpleWitch);
-    greenWitch.setNameplateVisible(simulatedPartyEnabled && remoteWitch === greenWitch);
+    const remoteCharacterId = companionCharacterId(characterId);
+    localWitch = playableWitchActors[characterId];
+    remoteWitch = playableWitchActors[remoteCharacterId];
+    for (const [actorCharacterId, actor] of Object.entries(playableWitchActors)) {
+      actor.root.scaling.set(1, 1, 1);
+      actor.setPresentationOffset();
+      actor.setVisibility(actorCharacterId === characterId || (simulatedPartyEnabled && actorCharacterId === remoteCharacterId) ? 1 : 0);
+      actor.setNameplateVisible(simulatedPartyEnabled && actorCharacterId === remoteCharacterId);
+    }
     greenReplica.setPresentation(remoteWitch);
     greenSimulation.setEnabled(simulatedPartyEnabled);
     if (simulatedPartyEnabled) greenSimulation.reset(controller.snapshot());
-    combat.setWitch(localWitch, PLAYABLE_WITCHES[characterId].name);
-    combat.setSpellcastingEnabled(characterId === 'purple');
+    combat.setCharacter(characterId, localWitch, PLAYABLE_WITCHES[characterId].name);
+    combat.setSpellcastingEnabled(characterId !== 'green');
     greenAbilities.setMode({
       locallyControlled: characterId === 'green',
-      friendWitch: simulatedPartyEnabled ? remoteWitch : localWitch,
+      friendWitch: simulatedPartyEnabled
+        ? characterId === 'green' ? remoteWitch : localWitch
+        : localWitch,
       friendAvailable: simulatedPartyEnabled
     });
     inventory.setCharacter(characterId);
@@ -291,25 +360,28 @@ try {
       if (step === 'BRIEFING') {
         covenLeader.setVisibility(1);
         covenLeader.setNameplateVisible(true);
-        purpleWitch.setVisibility(0);
-        greenWitch.setVisibility(0);
-        purpleWitch.setNameplateVisible(false);
-        greenWitch.setNameplateVisible(false);
+        for (const actor of Object.values(playableWitchActors)) {
+          actor.setVisibility(0);
+          actor.setNameplateVisible(false);
+        }
         return;
       }
       covenLeader.setVisibility(0);
       covenLeader.setNameplateVisible(false);
-      purpleWitch.setVisibility(1);
-      greenWitch.setVisibility(1);
-      purpleWitch.setNameplateVisible(true);
-      greenWitch.setNameplateVisible(true);
       const emphasized = selectedId || focusedId || null;
       const hasEmphasis = Boolean(emphasized);
-      const previewScale = characterId => emphasized === characterId ? 1.24 : hasEmphasis ? .88 : 1;
-      purpleWitch.root.scaling.setAll(previewScale('purple'));
-      greenWitch.root.scaling.setAll(previewScale('green'));
-      purpleWitch.setPresentationOffset(emphasized === 'purple' ? 3.15 : 0, 0, emphasized === 'purple' ? .3 : 0);
-      greenWitch.setPresentationOffset(emphasized === 'green' ? 2 : 0, 0, emphasized === 'green' ? .3 : 0);
+      const previewScale = characterId => emphasized === characterId ? 1.08 : hasEmphasis ? .78 : 1;
+      for (const [characterId, actor] of Object.entries(playableWitchActors)) {
+        const highlighted = emphasized === characterId;
+        actor.setVisibility(highlighted || !hasEmphasis ? 1 : .2);
+        actor.setNameplateVisible(highlighted || !hasEmphasis);
+        actor.root.scaling.setAll(previewScale(characterId));
+        actor.setPresentationOffset(
+          highlighted ? 2.4 - previewWitchStates[characterId].position.x : 0,
+          highlighted ? .1 : 0,
+          highlighted ? .24 : 0
+        );
+      }
     }
   });
 
@@ -344,10 +416,10 @@ try {
       partyMode: simulatedPartyEnabled ? 'SIMULATED' : 'SOLO',
       selectedCharacter: openingFlow?.completed ? selectedCharacter : openingFlow?.selectedCharacter || null,
       localCharacter: input.active ? selectedCharacter : null,
-      remoteCharacter: input.active && simulatedPartyEnabled ? selectedCharacter === 'purple' ? 'green' : 'purple' : null,
+      remoteCharacter: input.active && simulatedPartyEnabled ? companionCharacterId(selectedCharacter) : null,
       localName: input.active ? PLAYABLE_WITCHES[selectedCharacter].name : null,
       remoteName: input.active && simulatedPartyEnabled
-        ? PLAYABLE_WITCHES[selectedCharacter === 'purple' ? 'green' : 'purple'].name
+        ? PLAYABLE_WITCHES[companionCharacterId(selectedCharacter)].name
         : null,
       previewName: !input.active && openingFlow?.selectedCharacter
         ? PLAYABLE_WITCHES[openingFlow.selectedCharacter].name
@@ -378,8 +450,10 @@ try {
       presentation: greenWitch.snapshot(),
       abilities: greenAbilities.snapshot()
     },
+    frostWitch: { presentation: frostWitch.snapshot() },
+    fireWitch: { presentation: fireWitch.snapshot() },
     teammate: simulatedPartyEnabled ? {
-      character: selectedCharacter === 'purple' ? 'green' : 'purple',
+      character: companionCharacterId(selectedCharacter),
       replica: greenReplica.snapshot(),
       simulation: greenSimulation.snapshot(),
       presentation: remoteWitch.snapshot()
@@ -413,12 +487,20 @@ try {
     controller.update(input, shoulderCamera.yaw, deltaTime);
     const cameraWitch = openingFlow?.step === 'BRIEFING' ? covenLeader : localWitch;
     shoulderCamera.update(controller, input, deltaTime, cameraWitch);
-    localWitch.update(controller, input, deltaTime, now);
+    if (input.active) {
+      localWitch.update(controller, input, deltaTime, now);
+    } else {
+      for (const [characterId, actor] of Object.entries(playableWitchActors)) {
+        actor.update(previewWitchStates[characterId], previewInput, deltaTime, now);
+      }
+    }
     covenLeaderState.stateLabel = openingFlow?.narrationStatus === 'SPEAKING' ? 'ADDRESSING COVEN' : 'IDLE';
     covenLeader.update(covenLeaderState, covenLeaderInput, deltaTime, now);
     const currentPlayerState = controller.snapshot();
-    greenSimulation.update(now, currentPlayerState);
-    greenReplica.update(deltaTime, now);
+    if (input.active) {
+      greenSimulation.update(now, currentPlayerState);
+      greenReplica.update(deltaTime, now);
+    }
     dragon.update(now, deltaTime);
     combat.update();
     greenAbilities.update(now, selectedCharacter === 'green' ? shoulderCamera : null);
@@ -513,6 +595,10 @@ try {
     castLightning: () => castActiveSpell('lightning'),
     castFrost: () => castActiveSpell('frost'),
     castAegis: () => castActiveSpell('aegis'),
+    castFreeze: () => castActiveSpell('freeze'),
+    castIceLance: () => castActiveSpell('iceLance'),
+    castFireball: () => castActiveSpell('fireball'),
+    castFireRing: () => castActiveSpell('fireRing'),
     castGreenVine: () => greenAbilities.castVineTrap(performance.now() / 1000),
     castGreenRestore: (target = 'smart') => target === 'smart'
       ? greenAbilities.castSmartRestore(performance.now() / 1000)

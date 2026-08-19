@@ -15,12 +15,16 @@ export const GREEN_WITCH_SPELLS = Object.freeze({
   })
 });
 
+const presentationName = (presentation, fallback = 'Ally') => presentation?.snapshot?.().label || fallback;
+const characterTargetId = name => name.toLowerCase().replaceAll(' ', '-');
+
 export class GreenWitchAbilities {
   constructor(BABYLON, scene, greenWitch, localWitch, dragon, combat) {
     this.BABYLON = BABYLON;
     this.scene = scene;
     this.greenWitch = greenWitch;
     this.friendWitch = localWitch;
+    this.friendName = presentationName(localWitch, 'Purple Witch');
     this.dragon = dragon;
     this.combat = combat;
     this.locallyControlled = false;
@@ -105,6 +109,7 @@ export class GreenWitchAbilities {
     this.locallyControlled = Boolean(locallyControlled);
     this.friendAvailable = Boolean(friendAvailable);
     this.friendWitch = friendWitch;
+    this.friendName = presentationName(friendWitch, this.friendName);
     this.selectedSpell = 'vineTrap';
     this.friendTargeted = false;
     this.updateHud(this.lastTime);
@@ -249,7 +254,7 @@ export class GreenWitchAbilities {
     this.createRestoreEffect(targetWitch.root, time);
     this.lastCast = {
       spell: 'restore',
-      target: target === 'FRIEND' ? 'purple-witch' : 'green-witch',
+      target: target === 'FRIEND' ? characterTargetId(this.friendName) : 'green-witch',
       targetMode: target,
       friendTargeted: Boolean(friendTargeted),
       restored,
@@ -260,8 +265,8 @@ export class GreenWitchAbilities {
     this.partyPanel?.classList.add('is-healing');
     setTimeout(() => this.partyPanel?.classList.remove('is-healing'), 320);
     this.onMessage(restored > 0
-      ? `Green Witch restored ${target === 'FRIEND' ? 'Purple Witch' : 'herself'} · +${restored} health`
-      : `${target === 'FRIEND' ? 'Purple Witch' : 'Green Witch'} is already at full health`);
+      ? `Green Witch restored ${target === 'FRIEND' ? this.friendName : 'herself'} · +${restored} health`
+      : `${target === 'FRIEND' ? this.friendName : 'Green Witch'} is already at full health`);
     this.updateHud(time);
     return true;
   }
@@ -375,7 +380,7 @@ export class GreenWitchAbilities {
     const partyMaximumHealth = this.locallyControlled ? this.friendMaximumHealth : this.maximumHealth;
     if (this.healthFill) this.healthFill.style.transform = `scaleX(${partyHealth / partyMaximumHealth})`;
     if (this.healthCopy) this.healthCopy.textContent = `${partyHealth} / ${partyMaximumHealth}`;
-    if (this.restoreTargetCopy) this.restoreTargetCopy.textContent = `Restore target · ${target === 'FRIEND' ? 'Purple Witch' : 'Self'}`;
+    if (this.restoreTargetCopy) this.restoreTargetCopy.textContent = `Restore target · ${target === 'FRIEND' ? this.friendName : 'Self'}`;
     const vineRemaining = Math.max(0, this.cooldownUntil.vineTrap - time);
     const restoreRemaining = Math.max(0, this.cooldownUntil.restore - time);
     const vineInRange = this.dragonDistance() <= GREEN_WITCH.vineTrapRange;
@@ -384,7 +389,7 @@ export class GreenWitchAbilities {
     if (this.statusCopy) {
       this.statusCopy.textContent = this.locallyControlled
         ? this.friendAvailable
-          ? 'Simulated Purple Witch · storm combat ready'
+          ? `Simulated ${this.friendName} · combat ready`
           : 'Solo plant magic ready'
         : this.dragon.isRestrained(time)
         ? `Dragon vinebound · ${Math.max(0, this.dragon.restrainedUntil - time).toFixed(1)}s`
@@ -420,6 +425,7 @@ export class GreenWitchAbilities {
       role: 'RESTORATIVE PLANT MAGIC',
       locallyControlled: this.locallyControlled,
       friendAvailable: this.friendAvailable,
+      friendName: this.friendName,
       selectedSpell: this.selectedSpell,
       health: ownHealth,
       maximumHealth: this.maximumHealth,

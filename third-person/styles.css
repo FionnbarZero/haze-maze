@@ -181,6 +181,29 @@ button { -webkit-tap-highlight-color: transparent; }
 .qualification-export { margin-top: 7px; }
 .qualification-summary { min-height: 160px; margin: 8px 0 0; padding: 10px; overflow: auto; border: 1px solid rgba(128, 223, 255, .16); border-radius: 4px; background: #040812; color: #a9dbe8; font: 9px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; user-select: text; }
 
+.witch-card-frost { background: linear-gradient(135deg, rgba(24, 82, 108, .92), rgba(7, 29, 43, .94)); }
+.witch-card-fire { background: linear-gradient(135deg, rgba(116, 43, 25, .92), rgba(42, 12, 8, .94)); }
+.witch-card-frost .witch-sigil { border-color: rgba(150, 236, 255, .45); color: #c8f8ff; }
+.witch-card-fire .witch-sigil { border-color: rgba(255, 180, 102, .46); color: #ffd08d; text-shadow: 0 0 12px #ff4d18; }
+.witch-card-frost .witch-card-copy em { color: #91c7d4; }
+.witch-card-fire .witch-card-copy em { color: #d79a78; }
+.witch-card-frost .witch-card-copy b { color: #d9fbff; }
+.witch-card-fire .witch-card-copy b { color: #ffd8a1; }
+.witch-card-frost.is-selected { border-color: #a9efff; box-shadow: 0 0 30px rgba(72, 200, 235, .22); }
+.witch-card-fire.is-selected { border-color: #ffac68; box-shadow: 0 0 30px rgba(255, 82, 28, .22); }
+.player-vitals.is-frost { border-color: rgba(126, 223, 255, .34); background: rgba(5, 24, 37, .74); }
+.player-vitals.is-frost span, .player-vitals.is-frost #aegis-status { color: #c7f6ff; }
+.player-vitals.is-frost .player-health-track i { background: linear-gradient(90deg, #3e9bc0, #bcefff); box-shadow: 0 0 9px rgba(86, 212, 255, .5); }
+.player-vitals.is-fire { border-color: rgba(255, 139, 71, .38); background: rgba(42, 12, 7, .76); }
+.player-vitals.is-fire span, .player-vitals.is-fire #aegis-status { color: #ffd0a2; }
+.player-vitals.is-fire .player-health-track i { background: linear-gradient(90deg, #ce3e1c, #ffb84d); box-shadow: 0 0 9px rgba(255, 91, 34, .55); }
+.crosshair[data-spell="freeze"].is-targeting, .crosshair[data-spell="iceLance"].is-targeting { border-color: #a9efff; box-shadow: 0 0 18px rgba(105, 224, 255, .52); }
+.crosshair[data-spell="freeze"].is-targeting i, .crosshair[data-spell="iceLance"].is-targeting i { background: #d8fbff; box-shadow: 0 0 11px #70e4ff; }
+.crosshair[data-spell="fireball"].is-targeting, .crosshair[data-spell="fireRing"].is-self-cast { border-color: #ff9d5a; box-shadow: 0 0 18px rgba(255, 75, 24, .5); }
+.crosshair[data-spell="fireball"].is-targeting i, .crosshair[data-spell="fireRing"].is-self-cast i { background: #ffd06e; box-shadow: 0 0 11px #ff4a16; }
+.spell-rack button[data-spell="freeze"].is-selected, .spell-rack button[data-spell="iceLance"].is-selected { border-color: rgba(125, 229, 255, .8); box-shadow: 0 0 16px rgba(89, 207, 255, .32); }
+.spell-rack button[data-spell="fireball"].is-selected, .spell-rack button[data-spell="fireRing"].is-selected { border-color: rgba(255, 142, 73, .82); box-shadow: 0 0 16px rgba(255, 77, 24, .34); }
+
 @media (pointer: coarse) {
   .qualification-panel { width: 100%; border-left: 0; }
   .qualification-launch { min-width: 64px; min-height: 34px; font-size: 8px; }
