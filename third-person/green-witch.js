@@ -1,4 +1,4 @@
-import { GREEN_WITCH } from './config.js?v=20260818-greenwitch-v1';
+import { GREEN_WITCH } from './config.js?v=20260818-witchselect-v1';
 
 export const GREEN_WITCH_SPELLS = Object.freeze({
   vineTrap: Object.freeze({
@@ -20,11 +20,15 @@ export class GreenWitchAbilities {
     this.BABYLON = BABYLON;
     this.scene = scene;
     this.greenWitch = greenWitch;
-    this.localWitch = localWitch;
+    this.friendWitch = localWitch;
     this.dragon = dragon;
     this.combat = combat;
+    this.locallyControlled = false;
+    this.selectedSpell = 'vineTrap';
     this.maximumHealth = GREEN_WITCH.maximumHealth;
     this.health = this.maximumHealth;
+    this.friendMaximumHealth = 100;
+    this.friendHealth = this.friendMaximumHealth;
     this.cooldownUntil = { vineTrap: 0, restore: 0 };
     this.lastTime = 0;
     this.lastCast = null;
@@ -38,6 +42,10 @@ export class GreenWitchAbilities {
     this.restoreTargetCopy = document.querySelector('#green-restore-target');
     this.vineButton = document.querySelector('#green-vine-demo');
     this.restoreButton = document.querySelector('#green-restore-demo');
+    this.crosshair = document.querySelector('#crosshair');
+    this.crosshairLabel = this.crosshair.querySelector('i');
+    this.spellNameCopy = document.querySelector('#selected-spell-name');
+    this.spellHelpCopy = document.querySelector('#selected-spell-help');
     this.vineMaterial = this.createVineMaterial();
     this.vineBindings = this.createVineBindings();
     this.updateHud(0);
@@ -70,7 +78,7 @@ export class GreenWitchAbilities {
   }
 
   friendDistance() {
-    const friend = this.localWitch.root.position;
+    const friend = this.friendWitch.root.position;
     const self = this.greenWitch.root.position;
     return Math.hypot(friend.x - self.x, friend.y - self.y, friend.z - self.z);
   }
@@ -92,6 +100,40 @@ export class GreenWitchAbilities {
     return this.resolveRestoreTarget();
   }
 
+  setMode({ locallyControlled, friendWitch = this.friendWitch } = {}) {
+    this.locallyControlled = Boolean(locallyControlled);
+    this.friendWitch = friendWitch;
+    this.selectedSpell = 'vineTrap';
+    this.friendTargeted = false;
+    this.updateHud(this.lastTime);
+    if (this.locallyControlled) this.updateSpellSelection(false);
+  }
+
+  selectSpell(value, announce = true) {
+    const selected = value === 'restore' ? 'restore' : 'vineTrap';
+    const changed = selected !== this.selectedSpell;
+    this.selectedSpell = selected;
+    this.updateSpellSelection(announce && changed);
+    return selected;
+  }
+
+  updateSpellSelection(announce) {
+    if (!this.locallyControlled) return;
+    const spell = GREEN_WITCH_SPELLS[this.selectedSpell];
+    this.spellNameCopy.textContent = spell.label;
+    this.spellHelpCopy.textContent = this.selectedSpell === 'restore'
+      ? 'Aim at your friend to heal them · otherwise heals self'
+      : '1 / 2 select · left click casts';
+    this.crosshair.dataset.spell = this.selectedSpell;
+    if (announce) this.onMessage(`${spell.label} selected`);
+  }
+
+  castSelected(time = performance.now() / 1000) {
+    return this.selectedSpell === 'restore'
+      ? this.castRestore(time, this.friendTargeted)
+      : this.castVineTrap(time);
+  }
+
   receiveDamage(amount) {
     if (amount <= 0 || this.health <= 0) return 0;
     const applied = Math.min(this.health, amount);
@@ -103,8 +145,16 @@ export class GreenWitchAbilities {
   }
 
   restoreSelf(amount) {
+    if (this.locallyControlled) return this.combat.restorePlayerHealth(amount);
     const restored = Math.min(amount, this.maximumHealth - this.health);
     this.health += restored;
+    return restored;
+  }
+
+  restoreFriend(amount) {
+    if (!this.locallyControlled) return this.combat.restorePlayerHealth(amount);
+    const restored = Math.min(amount, this.friendMaximumHealth - this.friendHealth);
+    this.friendHealth += restored;
     return restored;
   }
 
@@ -188,9 +238,9 @@ export class GreenWitchAbilities {
     this.cooldownUntil.restore = time + GREEN_WITCH.restoreCooldown;
     const target = this.resolveRestoreTarget(friendTargeted);
     const restored = target === 'FRIEND'
-      ? this.combat.restorePlayerHealth(GREEN_WITCH.restoreAmount)
+      ? this.restoreFriend(GREEN_WITCH.restoreAmount)
       : this.restoreSelf(GREEN_WITCH.restoreAmount);
-    const targetWitch = target === 'FRIEND' ? this.localWitch : this.greenWitch;
+    const targetWitch = target === 'FRIEND' ? this.friendWitch : this.greenWitch;
     this.greenWitch.setCast(time, 'restore');
     this.createRestoreEffect(targetWitch.root, time);
     this.lastCast = {
@@ -213,7 +263,9 @@ export class GreenWitchAbilities {
   }
 
   castSmartRestore(time = performance.now() / 1000) {
-    const friendNeedsHealing = this.combat.playerHealth < this.combat.playerMaximumHealth;
+    const friendNeedsHealing = this.locallyControlled
+      ? this.friendHealth < this.friendMaximumHealth
+      : this.combat.playerHealth < this.combat.playerMaximumHealth;
     this.setFriendTargeted(friendNeedsHealing);
     return this.castRestore(time, friendNeedsHealing);
   }
@@ -251,7 +303,37 @@ export class GreenWitchAbilities {
     });
   }
 
-  update(time) {
+  updateLocalTargeting(camera) {
+    if (!this.locallyControlled || !camera) return;
+    let friendTargeted = false;
+    if (this.selectedSpell === 'restore' && this.friendDistance() <= GREEN_WITCH.restoreRange) {
+      const ray = camera.getAimRay(GREEN_WITCH.restoreRange);
+      const target = this.friendWitch.root.position.add(new this.BABYLON.Vector3(0, 1.05, 0));
+      const toTarget = target.subtract(ray.origin);
+      const alongRay = this.BABYLON.Vector3.Dot(toTarget, ray.direction);
+      const closest = ray.origin.add(ray.direction.scale(Math.max(0, alongRay)));
+      friendTargeted = alongRay >= 0
+        && alongRay <= GREEN_WITCH.restoreRange
+        && this.BABYLON.Vector3.Distance(closest, target) <= .8;
+    }
+    this.friendTargeted = friendTargeted;
+    const vineTargeted = this.selectedSpell === 'vineTrap'
+      && this.dragon.alive
+      && this.dragonDistance() <= GREEN_WITCH.vineTrapRange;
+    this.crosshair.classList.toggle('is-targeting', vineTargeted || friendTargeted);
+    this.crosshair.classList.toggle('is-self-cast', this.selectedSpell === 'restore' && !friendTargeted);
+    this.crosshair.classList.remove('is-assisted', 'is-obstructed');
+    this.crosshairLabel.dataset.stateLabel = friendTargeted
+      ? 'FRIEND'
+      : this.selectedSpell === 'restore'
+        ? 'SELF'
+        : vineTargeted
+          ? 'BIND'
+          : '';
+    this.updateSpellSelection(false);
+  }
+
+  update(time, camera = null) {
     this.lastTime = time;
     const restrained = this.dragon.isRestrained(time);
     for (const [index, ring] of this.vineBindings.entries()) {
@@ -279,13 +361,16 @@ export class GreenWitchAbilities {
       effect.light?.dispose();
       effect.material?.dispose();
     }
+    this.updateLocalTargeting(camera);
     this.updateHud(time);
   }
 
   updateHud(time) {
     const target = this.resolveRestoreTarget();
-    if (this.healthFill) this.healthFill.style.transform = `scaleX(${this.health / this.maximumHealth})`;
-    if (this.healthCopy) this.healthCopy.textContent = `${this.health} / ${this.maximumHealth}`;
+    const partyHealth = this.locallyControlled ? this.friendHealth : this.health;
+    const partyMaximumHealth = this.locallyControlled ? this.friendMaximumHealth : this.maximumHealth;
+    if (this.healthFill) this.healthFill.style.transform = `scaleX(${partyHealth / partyMaximumHealth})`;
+    if (this.healthCopy) this.healthCopy.textContent = `${partyHealth} / ${partyMaximumHealth}`;
     if (this.restoreTargetCopy) this.restoreTargetCopy.textContent = `Restore target · ${target === 'FRIEND' ? 'Purple Witch' : 'Self'}`;
     const vineRemaining = Math.max(0, this.cooldownUntil.vineTrap - time);
     const restoreRemaining = Math.max(0, this.cooldownUntil.restore - time);
@@ -293,7 +378,9 @@ export class GreenWitchAbilities {
     if (this.vineButton) this.vineButton.disabled = vineRemaining > 0 || !vineInRange || !this.dragon.alive;
     if (this.restoreButton) this.restoreButton.disabled = restoreRemaining > 0;
     if (this.statusCopy) {
-      this.statusCopy.textContent = this.dragon.isRestrained(time)
+      this.statusCopy.textContent = this.locallyControlled
+        ? 'Simulated Purple Witch · storm combat ready'
+        : this.dragon.isRestrained(time)
         ? `Dragon vinebound · ${Math.max(0, this.dragon.restrainedUntil - time).toFixed(1)}s`
         : !vineInRange && this.dragon.alive
           ? 'Move near the dragon to use Vine Trap'
@@ -305,6 +392,7 @@ export class GreenWitchAbilities {
 
   reset() {
     this.health = this.maximumHealth;
+    this.friendHealth = this.friendMaximumHealth;
     this.cooldownUntil = { vineTrap: 0, restore: 0 };
     this.lastCast = null;
     this.friendTargeted = false;
@@ -320,11 +408,15 @@ export class GreenWitchAbilities {
 
   snapshot() {
     const restoreTarget = this.resolveRestoreTarget();
+    const ownHealth = this.locallyControlled ? this.combat.playerHealth : this.health;
     return {
       character: 'GREEN WITCH',
       role: 'RESTORATIVE PLANT MAGIC',
-      health: this.health,
+      locallyControlled: this.locallyControlled,
+      selectedSpell: this.selectedSpell,
+      health: ownHealth,
       maximumHealth: this.maximumHealth,
+      friendHealth: this.locallyControlled ? this.friendHealth : this.combat.playerHealth,
       spells: Object.fromEntries(Object.entries(GREEN_WITCH_SPELLS).map(([id, spell]) => [id, { ...spell }])),
       cooldowns: {
         vineTrap: Math.max(0, this.cooldownUntil.vineTrap - this.lastTime),

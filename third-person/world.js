@@ -187,7 +187,7 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
     },
     update(player, dragon, deltaTime) {
       const events = [];
-      if (player.position.z > -8.55) markRoute('arch', 'Moon Arch crossed', events);
+      if (player.position.z > -8.55) markRoute('arch', 'Moon Gate crossed · the Hollow lies ahead', events);
       if (player.position.z > -5.8 && player.position.z < -4.7 && player.position.y > .42) route.jumpObserved = true;
       if (route.arch && route.jumpObserved && player.position.z > -4.55) markRoute('jump', 'Rune relic cleared', events);
       if (Math.abs(player.position.z - .1) < .78 && player.crouched) route.crouchObserved = true;
@@ -195,7 +195,7 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       if (route.crouch && player.position.z > 4.2) markRoute('arena', 'Dragon arena reached', events);
       if (!dragon.alive) {
         markRoute('dragon', 'Training dragon contained · exit unlocking', events);
-        if (this.unlockGate()) events.push({ type: 'gate', message: 'Moon gate opening' });
+        if (this.unlockGate()) events.push({ type: 'gate', message: 'Arena exit opening' });
       }
       if (gateState === 'OPENING') {
         gateProgress = Math.min(1, gateProgress + deltaTime / WORLD.gateOpenResponse);
@@ -205,7 +205,7 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
         if (gateProgress >= 1) {
           gateState = 'OPEN';
           gateBarrier.setEnabled(false);
-          events.push({ type: 'gate-open', message: 'Moon gate open · reach the exit' });
+          events.push({ type: 'gate-open', message: 'Arena exit open · leave the training route' });
         }
       }
       if (gateState === 'OPEN' && player.position.z >= WORLD.exitZ) markRoute('exit', 'Level 1 technical route complete', events);
@@ -213,12 +213,12 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       return events;
     },
     nextObjective() {
-      if (!route.arch) return 'Cross the Moon Arch';
+      if (!route.arch) return 'Cross the Moon Gate';
       if (!route.jump) return 'Jump over the rune relic';
       if (!route.crouch) return 'Crouch beneath the low lintel';
       if (!route.arena) return 'Enter the dragon arena';
       if (!route.dragon) return 'Aim and contain the training dragon';
-      if (gateState !== 'OPEN') return 'Wait for the Moon gate';
+      if (gateState !== 'OPEN') return 'Wait for the arena exit';
       if (!route.exit) return 'Pass through the open exit';
       return 'Technical route complete';
     },

@@ -198,6 +198,8 @@ Each level functions as a story chapter with:
 
 The Moon Witch should have a defined personality and relationships rather than serving as a silent camera. Dialogue, animation, and player actions should consistently communicate her motives. The exact degree of dialogue choice, branching outcomes, companions, and moral consequence remains a separate narrative-design decision.
 
+For the current collaboration-first direction, see [Story & Collaboration Framework](story-collaboration-framework.md).
+
 ## Controls and presentation
 
 Desktop keyboard and mouse are the primary control standard:

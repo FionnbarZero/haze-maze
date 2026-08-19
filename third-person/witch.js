@@ -1,4 +1,4 @@
-import { damp } from './utils.js?v=20260818-greenwitch-v1';
+import { damp } from './utils.js?v=20260818-witchselect-v1';
 
 export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options = {}) {
   const id = options.id || 'witch';
@@ -111,6 +111,8 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
   let previousAnimationState = 'IDLE';
   let transitionWeight = 1;
   let visibility = 1;
+  let nameplateVisible = Boolean(options.label);
+  const presentationOffset = BABYLON.Vector3.Zero();
 
   let nameplate = null;
   if (options.label) {
@@ -142,7 +144,14 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
     },
     setVisibility(value) {
       visibility = value;
-      for (const mesh of meshes) mesh.visibility = value;
+      for (const mesh of meshes) mesh.visibility = mesh === nameplate && !nameplateVisible ? 0 : value;
+    },
+    setNameplateVisible(value) {
+      nameplateVisible = Boolean(value && nameplate);
+      if (nameplate) nameplate.visibility = nameplateVisible ? visibility : 0;
+    },
+    setPresentationOffset(x = 0, y = 0, z = 0) {
+      presentationOffset.set(x, y, z);
     },
     getOrbPosition() {
       orb.computeWorldMatrix(true);
@@ -158,6 +167,7 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
     },
     update(state, input, deltaTime, time) {
       root.position.copyFrom(state.position);
+      root.position.addInPlace(presentationOffset);
       root.rotation.y = state.facingYaw;
       const requestedState = time < castUntil
         ? `CAST ${castSpell.toUpperCase()}`
@@ -203,8 +213,10 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
         castSpell,
         crouchWeight,
         visibility,
+        scale: root.scaling.x,
+        presentationOffset: presentationOffset.asArray(),
         label: options.label || null,
-        nameplateVisible: Boolean(nameplate && nameplate.visibility > 0),
+        nameplateVisible: Boolean(nameplate && nameplateVisible && nameplate.visibility > 0),
         staffSocket: staffSocket.name,
         staffAttached: staff.parent === staffSocket
       };

@@ -1,4 +1,4 @@
-import { COMBAT, PLAYER } from './config.js?v=20260818-greenwitch-v1';
+import { COMBAT, PLAYER } from './config.js?v=20260818-witchselect-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
@@ -15,6 +15,8 @@ export class LightningCombat {
     this.scene = scene;
     this.camera = camera;
     this.witch = witch;
+    this.playerName = 'Purple Witch';
+    this.spellcastingEnabled = true;
     this.dragon = dragon;
     this.controller = controller;
     this.cooldownUntil = { lightning: 0, frost: 0, aegis: 0 };
@@ -79,6 +81,28 @@ export class LightningCombat {
     light.range = 4.5;
     light.intensity = 0;
     return { mesh, material, light };
+  }
+
+  setWitch(witch, playerName = this.playerName) {
+    this.witch = witch;
+    this.playerName = playerName;
+    this.aegis.mesh.parent = witch.root;
+    this.aegis.light.parent = witch.root;
+  }
+
+  setSpellcastingEnabled(value) {
+    this.spellcastingEnabled = Boolean(value);
+    if (!this.spellcastingEnabled) {
+      this.targeted = false;
+      this.candidateTargeted = false;
+      this.assisted = false;
+      this.aimState = 'NONE';
+      this.crosshair.classList.remove('is-targeting', 'is-assisted', 'is-obstructed', 'is-self-cast');
+      this.crosshairLabel.dataset.stateLabel = '';
+    } else {
+      this.updateSpellSelection(false);
+    }
+    this.updatePlayerHud(this.lastTime);
   }
 
   selectSpell(value, announce = true) {
@@ -220,21 +244,23 @@ export class LightningCombat {
 
   update() {
     this.lastTime = performance.now() / 1000;
-    const targetedSpell = SPELLS[this.selectedSpell].targeted;
-    const solution = targetedSpell ? this.resolveAim() : null;
-    const path = solution?.target ? this.resolveStaffPath(solution) : null;
-    this.candidateTargeted = Boolean(solution?.target);
-    this.targeted = Boolean(solution?.target && !path?.obstructed);
-    this.assisted = this.targeted && solution.mode === 'ASSISTED';
-    this.aimState = !targetedSpell
-      ? 'SELF'
-      : path?.obstructed
-        ? 'OBSTRUCTED'
-        : this.assisted
-          ? 'ASSISTED'
-          : this.targeted
-            ? 'DIRECT'
-            : 'NONE';
+    if (this.spellcastingEnabled) {
+      const targetedSpell = SPELLS[this.selectedSpell].targeted;
+      const solution = targetedSpell ? this.resolveAim() : null;
+      const path = solution?.target ? this.resolveStaffPath(solution) : null;
+      this.candidateTargeted = Boolean(solution?.target);
+      this.targeted = Boolean(solution?.target && !path?.obstructed);
+      this.assisted = this.targeted && solution.mode === 'ASSISTED';
+      this.aimState = !targetedSpell
+        ? 'SELF'
+        : path?.obstructed
+          ? 'OBSTRUCTED'
+          : this.assisted
+            ? 'ASSISTED'
+            : this.targeted
+              ? 'DIRECT'
+              : 'NONE';
+    }
     this.updateTargetHud();
     this.updateAegis(this.lastTime);
     this.updateDragonThreat(this.lastTime);
@@ -328,7 +354,7 @@ export class LightningCombat {
     setTimeout(() => this.playerVitals.classList.remove('is-hit'), 180);
     if (this.playerHealth === 0) {
       this.playerDefeated = true;
-      this.onMessage('The Purple Witch was overwhelmed');
+      this.onMessage(`The ${this.playerName} was overwhelmed`);
       this.onPlayerDefeated();
     } else {
       this.onMessage(`Dragon strike · ${this.playerHealth} health remains`);
@@ -368,6 +394,12 @@ export class LightningCombat {
   updatePlayerHud(time) {
     this.playerHealthFill.style.transform = `scaleX(${this.playerHealth / this.playerMaximumHealth})`;
     this.playerHealthCopy.textContent = `${this.playerHealth} / ${this.playerMaximumHealth}`;
+    if (!this.spellcastingEnabled) {
+      this.playerVitals.classList.remove('is-aegis', 'is-powered');
+      this.aegisStatus.textContent = 'Plant magic ready';
+      this.powerupStatus.textContent = 'Vine Trap · Restore';
+      return;
+    }
     const active = time < this.aegisUntil;
     const cooldown = Math.max(0, this.cooldownUntil.aegis - time);
     this.playerVitals.classList.toggle('is-aegis', active);
@@ -469,8 +501,8 @@ export class LightningCombat {
       spell: 'aegis',
       origin: { x: origin.x, y: origin.y, z: origin.z },
       impact: { x: this.controller.position.x, y: this.controller.position.y + .9, z: this.controller.position.z },
-      intendedTarget: 'purple-witch',
-      actualTarget: 'purple-witch',
+      intendedTarget: this.playerName.toLowerCase().replaceAll(' ', '-'),
+      actualTarget: this.playerName.toLowerCase().replaceAll(' ', '-'),
       intendedKind: 'self',
       actualKind: 'self',
       obstructed: false,
@@ -588,6 +620,8 @@ export class LightningCombat {
     );
     return {
       selectedSpell: this.selectedSpell,
+      spellcastingEnabled: this.spellcastingEnabled,
+      playerName: this.playerName,
       targeted: this.targeted,
       candidateTargeted: this.candidateTargeted,
       assisted: this.assisted,

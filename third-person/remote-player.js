@@ -1,5 +1,5 @@
-import { GREEN_WITCH } from './config.js?v=20260818-greenwitch-v1';
-import { damp } from './utils.js?v=20260818-greenwitch-v1';
+import { GREEN_WITCH } from './config.js?v=20260818-witchselect-v1';
+import { damp } from './utils.js?v=20260818-witchselect-v1';
 
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
 
@@ -67,6 +67,13 @@ export class RemotePlayerReplica {
     this.enabled = Boolean(value);
   }
 
+  setPresentation(presentation) {
+    if (!presentation) return false;
+    this.presentation = presentation;
+    this.snapToLatest();
+    return true;
+  }
+
   snapToLatest() {
     this.renderPosition.set(
       this.latest.position.x,
@@ -111,6 +118,7 @@ export class RemotePlayerReplica {
     return {
       kind: 'REMOTE_REPLICA',
       source: 'SIMULATED_LAN_SNAPSHOTS',
+      presentation: this.presentation.snapshot().label,
       enabled: this.enabled,
       snapshotsReceived: this.snapshotsReceived,
       latestSequence: this.latest.sequence,

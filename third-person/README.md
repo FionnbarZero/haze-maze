@@ -4,8 +4,9 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 
 ## Modules
 
-- `main.js` composes the scene and exposes a purpose-built browser smoke-test hook.
-- `world.js` builds the temporary brick route, required traversal obstacles, Moon Arch, dragon arena, animated gate, route checkpoints, and collision registry.
+- `main.js` composes the scene, assigns the selected local and simulated remote Witch, and exposes a purpose-built browser smoke-test hook.
+- `character-selection.js` owns the Coven briefing, two-step Purple/Green Witch choice, named opening actions, confirmation state, and gamepad-ready action boundary.
+- `world.js` builds the temporary brick route, entrance Moon Gate, required traversal obstacles, dragon arena, technical exit barrier, route checkpoints, and collision registry.
 - `controller.js` owns the substepped camera-relative capsule, wall and actor separation, buffered jumping, landing, crouching, ground probing, standing-clearance checks, and smooth cast-facing requests.
 - `camera.js` owns exploration/aim framing, aim-preserving shoulder switching, smoothing, multi-ray wall collision, side compression, recovery, and occlusion handling.
 - `input.js` maps keyboard, mouse, and independent touch pointers to named gameplay actions.
@@ -21,7 +22,7 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 
 The authoritative route contains six checkpoints:
 
-1. Cross the Moon Arch.
+1. Cross the Moon Gate after confirming a Witch.
 2. Jump over the rune relic.
 3. Crouch beneath the low lintel.
 4. Enter the combat arena.
@@ -34,7 +35,7 @@ Optional greybox rewards exercise the emerging inventory and economy loop withou
 
 ## Controls
 
-Desktop uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, P to open the pouch, the mouse to look, right mouse to aim, 1/2/3 to select lightning/frost/Aegis, and left mouse to cast. The first gameplay click casts and safely requests pointer lock. Losing pointer lock, browser focus, or page visibility clears held input. The simulated teammate panel also exposes `G` for Green Witch's in-range Vine Trap demonstration and `H` for Smart Restore, which heals a wounded Purple Witch when available and otherwise targets Green Witch herself.
+The opening accepts mouse/trackpad clicks or the named keyboard actions Left/Right and A/D to navigate, Enter to select and then confirm, and Escape to step back. Desktop gameplay uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, P to open the pouch, the mouse to look, right mouse to aim, number keys to select the local Witch's spells, and left mouse to cast. Purple starts with Lightning in the selection copy and retains all three proof spells for regression testing. Green starts with Vine Trap; Restore is presented as the next XP unlock while remaining available in the two-spell technical template. The first gameplay click casts and safely requests pointer lock. Losing pointer lock, browser focus, or page visibility clears held input. When Green is the simulated teammate, the teammate panel also exposes `G` for Vine Trap and `H` for Smart Restore.
 
 On coarse-pointer landscape screens, all three immediate-cast spell buttons remain on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
 
@@ -53,6 +54,8 @@ Run the dependency-free targeting math suite with `node --test tests/targeting.t
 `tests/third-person-dragon-defeat-smoke.mjs` verifies repeated gameplay clicks can reduce the training dragon to zero health, complete its defeat state exactly once, update the health HUD, and unlock the exit gate. It also covers route reset, frost followed by lightning, and resumed combat after pointer-lock interruption using the same optional URL and DevTools endpoint variables.
 
 `tests/third-person-green-witch-smoke.mjs` verifies the simulated LAN snapshot stream and interpolation, distinct Green Witch presentation and nameplate, two unlocked ability templates, two-arm Vine Trap visuals and dragon restraint, self and friend Restore modes, smart wounded-friend selection, party HUD feedback, and runtime stability.
+
+`tests/third-person-character-selection-smoke.mjs` verifies the exact Coven briefing and tagline, mouse and keyboard selection, the deliberately separate confirmation step, both local/remote character assignments, Green's local starting ability, and the player-controlled Moon Gate crossing.
 
 `tests/third-person-spells-smoke.mjs` uses the same local endpoints to verify first-click lightning damage, visible health feedback, Frost status and wall rejection, Aegis visibility and damage absorption, unshielded player damage, berry healing, pouch behavior, chest gold, both potion effects, spell selection, and the preserved spells-left/movement-right landscape-mobile layout.
 

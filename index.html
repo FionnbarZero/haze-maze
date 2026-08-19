@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#090615" />
     <meta name="description" content="Play Moonhollow Quest, a third-person Babylon.js spellcasting adventure." />
     <title>Moonhollow Quest</title>
-    <link rel="stylesheet" href="third-person/styles.css?v=20260818-greenwitch-v1" />
+    <link rel="stylesheet" href="third-person/styles.css?v=20260818-witchselect-v1" />
   </head>
   <body>
     <main id="proof-shell" aria-label="Moonhollow Quest game">
@@ -28,8 +28,8 @@
         </aside>
 
         <div id="spell-readout" class="spell-readout"><span>Selected spell</span><strong id="selected-spell-name">Lightning</strong><small id="selected-spell-help">1 / 2 / 3 select · left click casts</small></div>
-        <aside id="player-vitals" class="player-vitals" aria-label="Purple Witch health and protection">
-          <div><span>Purple Witch</span><strong id="player-health-copy">100 / 100</strong></div>
+        <aside id="player-vitals" class="player-vitals" aria-label="Selected Witch health and protection">
+          <div><span id="player-character-name">Purple Witch</span><strong id="player-health-copy">100 / 100</strong></div>
           <div class="player-health-track"><i id="player-health-fill"></i></div>
           <small id="aegis-status">Aegis ready</small>
           <small id="powerup-status">No powerup active</small>
@@ -56,17 +56,17 @@
 
         <aside class="route-panel" aria-label="Level 1 route objective">
           <span>Technical route</span>
-          <strong id="route-objective">Cross the Moon Arch</strong>
+          <strong id="route-objective">Cross the Moon Gate</strong>
           <small id="route-progress">0 / 6 checkpoints</small>
         </aside>
 
-        <aside id="green-witch-party" class="party-panel" aria-label="Simulated Green Witch teammate">
-          <header><span>Simulated LAN teammate</span><strong>Green Witch</strong></header>
+        <aside id="green-witch-party" class="party-panel" aria-label="Simulated Witch teammate">
+          <header><span>Simulated LAN teammate</span><strong id="teammate-character-name">Green Witch</strong></header>
           <div><span>Health</span><strong id="green-witch-health-copy">100 / 100</strong></div>
           <div class="party-health-track"><i id="green-witch-health-fill"></i></div>
           <small id="green-witch-status">Two-spell ability template ready</small>
           <small id="green-restore-target">Restore target · Self</small>
-          <div class="party-actions">
+          <div id="green-party-actions" class="party-actions">
             <button id="green-vine-demo" type="button"><kbd>G</kbd> Vine Trap</button>
             <button id="green-restore-demo" type="button"><kbd>H</kbd> Smart Restore</button>
           </div>
@@ -91,7 +91,7 @@
       <section id="pouch-overlay" class="pouch-overlay" aria-hidden="true">
         <article class="pouch-panel" role="dialog" aria-modal="true" aria-labelledby="pouch-title">
           <header>
-            <div><small>Purple Witch inventory</small><h2 id="pouch-title">Field pouch</h2></div>
+            <div><small><span id="pouch-character-name">Purple Witch</span> inventory</small><h2 id="pouch-title">Field pouch</h2></div>
             <button id="close-pouch" type="button" aria-label="Close pouch">×</button>
           </header>
           <div class="pouch-lining">
@@ -122,12 +122,46 @@
       </section>
 
       <section id="start-overlay" class="start-overlay">
-        <div>
-          <p>Level 1 · Camera and traversal study</p>
-          <h1>Third-person<br />technical proof</h1>
-          <p>This intentionally uses temporary geometry to validate camera, collision, movement, and staff-origin aiming.</p>
-          <button id="start-proof" type="button">Enter the brick passage <span>→</span></button>
-          <small>WASD move · Mouse look · Shift sprint · Space jump · C crouch · V shoulder · P pouch · 1 / 2 / 3 spells · Left click casts · G / H teammate spell demos</small>
+        <div class="opening-shell">
+          <article id="coven-briefing" class="opening-step coven-briefing is-current" aria-hidden="false">
+            <p class="opening-kicker">An urgent Coven briefing</p>
+            <h1>Moonhollow has fallen silent. <br /><em>The Coven has not.</em></h1>
+            <div class="briefing-copy">
+              <p>“Witches, attend me. Three nights ago, the ancient wards encircling Moonhollow began to fail.”</p>
+              <p>“The cause remains unknown. Creatures are already crossing the Rift. The outlying farms stand abandoned, and the nearest villages prepare to flee.”</p>
+              <p>“No ordinary soldier can endure passage through the failing barrier. Only witches of your power may enter.”</p>
+              <p>“Find the source of the breach. Destroy what has crossed into our world. Seal the Rift.”</p>
+              <p>“Should you fail, Moonhollow will be merely the first to fall.”</p>
+              <p class="briefing-question">“Who among you will enter the Hollow?”</p>
+            </div>
+            <button id="briefing-continue" class="opening-primary" type="button">Answer the Coven <span>→</span></button>
+            <small>Press Enter to continue</small>
+          </article>
+
+          <article id="witch-selection" class="opening-step witch-selection" aria-hidden="true">
+            <header>
+              <div><p class="opening-kicker">Choose your Witch</p><h2>Who will enter Moonhollow?</h2></div>
+              <p>Choose once to inspect a Witch. Confirm separately when you are ready to approach the Moon Gate.</p>
+            </header>
+            <div class="witch-cards" role="group" aria-label="Playable Witches">
+              <button class="witch-card witch-card-purple" type="button" data-character="purple" aria-pressed="false">
+                <span class="witch-sigil" aria-hidden="true">ϟ</span>
+                <span class="witch-card-copy"><strong>Purple Witch</strong><em>Storm magic · Damage and protection</em><small>Starting spell: <b>Lightning</b></small></span>
+                <span class="witch-card-state">Select</span>
+              </button>
+              <button class="witch-card witch-card-green" type="button" data-character="green" aria-pressed="false">
+                <span class="witch-sigil" aria-hidden="true">⌁</span>
+                <span class="witch-card-copy"><strong>Green Witch</strong><em>Plant magic · Control and restoration</em><small>Starting spell: <b>Vine Trap</b></small><small>Next XP unlock: <b>Restore</b></small></span>
+                <span class="witch-card-state">Select</span>
+              </button>
+            </div>
+            <p class="preview-note">The selected card enlarges that Witch in the live Babylon scene.</p>
+            <div class="selection-actions">
+              <button id="selection-back" class="opening-secondary" type="button">← Return to briefing</button>
+              <button id="confirm-witch" class="opening-primary" type="button" disabled>Choose a Witch to enter Moonhollow</button>
+            </div>
+            <small>Left / Right or A / D to navigate · Enter to select and confirm · Escape to go back</small>
+          </article>
         </div>
       </section>
 
@@ -141,6 +175,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260818-greenwitch-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260818-witchselect-v1"></script>
   </body>
 </html>
