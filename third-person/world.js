@@ -38,6 +38,11 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
   gateMaterial.emissiveColor = hexColor3(BABYLON, '#9650dd');
   gateMaterial.alpha = .82;
 
+  const secondGateMaterial = new BABYLON.StandardMaterial('proof-second-gate-material', scene);
+  secondGateMaterial.diffuseColor = hexColor3(BABYLON, '#6a456f');
+  secondGateMaterial.emissiveColor = hexColor3(BABYLON, '#3f214e');
+  secondGateMaterial.alpha = .78;
+
   const moonMaterial = new BABYLON.StandardMaterial('temporary-moon-material', scene);
   moonMaterial.diffuseColor = hexColor3(BABYLON, '#e2c8ff');
   moonMaterial.emissiveColor = hexColor3(BABYLON, '#7247a8');
@@ -538,11 +543,34 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
   exitGlow.material = moonMaterial;
   exitGlow.isPickable = false;
 
+  const secondDragonRoomWest = addBox(
+    'proof-second-room-wall-west',
+    new BABYLON.Vector3(-2.3, wallY, 11.95),
+    new BABYLON.Vector3(.45, WORLD.wallHeight, 5.4),
+    { material: brickMaterial, kind: 'second-room-wall', castsShadow: true }
+  );
+  const secondDragonRoomEast = addBox(
+    'proof-second-room-wall-east',
+    new BABYLON.Vector3(2.3, wallY, 11.95),
+    new BABYLON.Vector3(.45, WORLD.wallHeight, 5.4),
+    { material: brickMaterial, kind: 'second-room-wall', castsShadow: true }
+  );
+  const secondDragonRoomDoor = addBox(
+    'proof-second-room-door',
+    new BABYLON.Vector3(0, 1.4, 10.88),
+    new BABYLON.Vector3(4, 2.8, .55),
+    { material: secondGateMaterial, kind: 'second-room-gate', castsShadow: true }
+  );
+  const secondRoomDoorBarrier = secondDragonRoomDoor.collider;
+  const secondRoomDoorMesh = secondDragonRoomDoor.mesh;
+
   const route = {
     arch: false,
     jump: false,
     crouch: false,
     arena: false,
+    secondRoom: false,
+    firstDragon: false,
     dragon: false,
     exit: false,
     jumpObserved: false,
@@ -550,6 +578,16 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
   };
   let gateState = 'LOCKED';
   let gateProgress = 0;
+  let dragonPhase = 1;
+  let secondDragonStarted = false;
+  const firstDragonPosition = new BABYLON.Vector3(0, 0, 9);
+  const secondDragonPosition = new BABYLON.Vector3(0, 0, 12.6);
+  const secondDragonPatrol = [
+    new BABYLON.Vector3(-1.05, 0, 11.88),
+    new BABYLON.Vector3(1.05, 0, 11.88),
+    new BABYLON.Vector3(1.35, 0, 12.78),
+    new BABYLON.Vector3(-1.35, 0, 12.78)
+  ];
 
   const markRoute = (key, message, events) => {
     if (route[key]) return;
@@ -564,7 +602,15 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
     aimSurfaces,
     gateBarrier,
     startPosition: new BABYLON.Vector3(0, 0, -10.5),
-    dragonPosition: new BABYLON.Vector3(0, 0, 9),
+    dragonPosition: firstDragonPosition,
+    openSecondRoomDoor() {
+      if (secondDragonStarted && route.secondRoom) return false;
+      route.secondRoom = true;
+      secondDragonStarted = true;
+      secondRoomDoorMesh.setEnabled(false);
+      removeCollider(secondRoomDoorBarrier);
+      return true;
+    },
     unlockGate() {
       if (gateState !== 'LOCKED') return false;
       gateState = 'OPENING';
@@ -579,6 +625,11 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       gateBarrier.setEnabled(true);
       gateMaterial.alpha = .82;
       restoreCollider(gateCollider);
+      secondDragonStarted = false;
+      dragonPhase = 1;
+      secondRoomDoorMesh.setEnabled(true);
+      secondRoomDoorMesh.material.alpha = .78;
+      if (secondRoomDoorBarrier) restoreCollider(secondRoomDoorBarrier);
       exitGlow.visibility = .15;
     },
     update(player, dragon, deltaTime) {
@@ -589,8 +640,18 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       if (Math.abs(player.position.z - .1) < .78 && player.crouched) route.crouchObserved = true;
       if (route.jump && route.crouchObserved && player.position.z > .8) markRoute('crouch', 'Low lintel cleared', events);
       if (route.crouch && player.position.z > 4.2) markRoute('arena', 'Dragon arena reached', events);
-      if (!dragon.alive) {
-        markRoute('dragon', 'Training dragon contained · exit unlocking', events);
+      if (dragonPhase === 1 && !route.firstDragon && !dragon.alive) {
+        markRoute('firstDragon', 'First guardian contained · second chamber opened', events);
+        dragon.setSpawnPosition(secondDragonPosition);
+        dragon.setPatrol(secondDragonPatrol, 1.05, 1);
+        dragon.reset();
+        this.openSecondRoomDoor();
+        dragonPhase = 2;
+        events.push({ type: 'dragon-phase', message: 'Second guardian awakens' });
+      }
+
+      if (dragonPhase === 2 && route.firstDragon && !route.dragon && !dragon.alive) {
+        markRoute('dragon', 'Second guardian contained · exit unlocking', events);
         if (this.unlockGate()) events.push({ type: 'gate', message: 'Arena exit opening' });
       }
       if (gateState === 'OPENING') {
@@ -648,7 +709,9 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       if (!route.jump) return 'Jump over the rune relic';
       if (!route.crouch) return 'Crouch beneath the low lintel';
       if (!route.arena) return 'Enter the dragon arena';
-      if (!route.dragon) return 'Aim and contain the training dragon';
+      if (!route.firstDragon) return 'Aim and contain the first dragon';
+      if (!route.secondRoom) return 'Open the second chamber gate';
+      if (!route.dragon) return 'Defeat the moving second guardian';
       if (gateState !== 'OPEN') return 'Wait for the arena exit';
       if (!route.exit) return 'Pass through the open exit';
       return 'Technical route complete';

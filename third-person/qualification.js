@@ -1,4 +1,4 @@
-const ROUTE_KEYS = ['arch', 'jump', 'crouch', 'arena', 'dragon', 'exit'];
+const ROUTE_KEYS = ['arch', 'jump', 'crouch', 'arena', 'firstDragon', 'secondRoom', 'dragon', 'exit'];
 const SESSION_STORAGE_KEY = 'hmw-mobile-qualification-draft-v1';
 
 const average = values => values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;

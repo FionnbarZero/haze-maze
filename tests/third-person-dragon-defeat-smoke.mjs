@@ -114,14 +114,28 @@ await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
 await resetAt(0, 4.8);
 await aimAtDragon();
 
-const healthAfterHits = [];
-const damageAfterHits = [];
+const phaseOneHealth = [];
+const phaseOneDamage = [];
 for (let hit = 0; hit < 4; hit += 1) {
   const state = await castLightningWithO();
-  healthAfterHits.push(state.dragon.health);
-  damageAfterHits.push(state.combat.lastCast?.damage);
+  phaseOneHealth.push(state.dragon.health);
+  phaseOneDamage.push(state.combat.lastCast?.damage);
 }
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.firstDragon === true");
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'IDLE'");
+const phaseOneDefeated = await snapshot();
+await aimAtDragon();
+
+const phaseTwoHealth = [];
+const phaseTwoDamage = [];
+for (let hit = 0; hit < 4; hit += 1) {
+  const state = await castLightningWithO();
+  phaseTwoHealth.push(state.dragon.health);
+  phaseTwoDamage.push(state.combat.lastCast?.damage);
+}
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.dragon === true");
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.gate.state === 'OPEN'");
 const defeated = await snapshot();
 const hud = await evaluate(`({
@@ -148,8 +162,13 @@ const afterPointerLockLoss = await snapshot();
 const resumedAfterPointerLockLoss = await castLightningWithO();
 
 const checks = {
-  eachHitDealtConfiguredDamage: damageAfterHits.every(damage => damage === 25),
-  healthReachedZero: JSON.stringify(healthAfterHits) === JSON.stringify([75, 50, 25, 0]),
+  eachPhaseOneHitDealtConfiguredDamage: phaseOneDamage.every(damage => damage === 25),
+  phaseOneHealthReachedZero: JSON.stringify(phaseOneHealth) === JSON.stringify([75, 50, 25, 0]),
+  firstPhaseRecorded: phaseOneDefeated.world.route.firstDragon
+    && !phaseOneDefeated.world.route.dragon
+    && phaseOneDefeated.world.route.secondRoom,
+  eachPhaseTwoHitDealtConfiguredDamage: phaseTwoDamage.every(damage => damage === 25),
+  phaseTwoHealthReachedZero: JSON.stringify(phaseTwoHealth) === JSON.stringify([75, 50, 25, 0]),
   dragonDefeatedOnce: !defeated.dragon.alive && defeated.dragon.state === 'DEFEATED' && !defeated.dragon.enabled,
   defeatRecorded: defeated.world.route.dragon,
   gateUnlocked: defeated.world.gate.state === 'OPEN',
@@ -161,6 +180,7 @@ const checks = {
     && afterRouteReset.dragon.alive
     && afterRouteReset.dragon.enabled
     && !afterRouteReset.world.route.dragon
+    && !afterRouteReset.world.route.firstDragon
     && afterRouteReset.world.gate.state === 'LOCKED',
   frostDidNotPreventLaterDamage: frozenBeforeLightning.dragon.frozen
     && frozenBeforeLightning.dragon.health === 100
@@ -177,8 +197,11 @@ const checks = {
 console.log(JSON.stringify({
   checks,
   evidence: {
-    healthAfterHits,
-    damageAfterHits,
+    phaseOneHealth,
+    phaseOneDamage,
+    phaseOneDefeated,
+    phaseTwoHealth,
+    phaseTwoDamage,
     dragon: defeated.dragon,
     world: defeated.world,
     hud,

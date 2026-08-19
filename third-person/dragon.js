@@ -6,6 +6,12 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
   root.rotation.y = Math.PI;
   const spawnPosition = position.clone();
   const meshes = [];
+  let patrolEnabled = false;
+  let patrolPoints = [];
+  let patrolIndex = 0;
+  let patrolSpeed = 1.2;
+  let patrolWaitUntil = 0;
+  let patrolWaitDuration = 0.9;
   const material = new BABYLON.StandardMaterial('temporary-dragon-material', scene);
   material.diffuseColor = BABYLON.Color3.FromHexString('#49306f');
   material.emissiveColor = BABYLON.Color3.FromHexString('#12081f');
@@ -31,6 +37,37 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     defeatedAt: 0,
     deathProgress: 0,
     state: 'IDLE',
+    setPatrol(pathPoints = [], speed = 1.2, pauseDuration = 0.9) {
+      if (!Array.isArray(pathPoints) || pathPoints.length < 2) {
+        patrolEnabled = false;
+        patrolPoints = [];
+        patrolIndex = 0;
+        patrolWaitUntil = 0;
+        return;
+      }
+      patrolEnabled = true;
+      patrolSpeed = Math.max(.4, Number(speed) || 1.2);
+      patrolWaitDuration = Math.max(.2, Number(pauseDuration) || 0.9);
+      patrolPoints = pathPoints.map(position => position.clone ? position.clone() : new BABYLON.Vector3(position.x, position.y, position.z));
+      patrolIndex = 0;
+      patrolWaitUntil = 0;
+    },
+    clearPatrol() {
+      patrolEnabled = false;
+      patrolPoints = [];
+      patrolIndex = 0;
+      patrolWaitUntil = 0;
+    },
+    setSpawnPosition(position) {
+      const nextSpawn = position instanceof BABYLON.Vector3 ? position : new BABYLON.Vector3(position.x, position.y, position.z);
+      spawnPosition.copyFrom(nextSpawn);
+      root.position.copyFrom(nextSpawn);
+    },
+    teleport(position) {
+      const nextPosition = position instanceof BABYLON.Vector3 ? position : new BABYLON.Vector3(position.x, position.y, position.z);
+      root.position.copyFrom(nextPosition);
+      patrolWaitUntil = 0;
+    },
     getAimPoint() {
       return root.position.add(new BABYLON.Vector3(0, COMBAT.dragonAimHeight, 0));
     },
@@ -86,6 +123,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       material.emissiveColor = BABYLON.Color3.FromHexString('#12081f');
       material.diffuseColor = BABYLON.Color3.FromHexString('#49306f');
       material.specularColor = BABYLON.Color3.FromHexString('#7c5aa4');
+      patrolIndex = 0;
+      patrolWaitUntil = 0;
     },
     update(time, deltaTime) {
       if (!this.alive) {
@@ -106,6 +145,34 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       } else {
         this.state = time < this.hitUntil ? 'HIT' : 'IDLE';
       }
+
+      if (patrolEnabled && !this.isFrozen(time) && !this.isRestrained(time)) {
+        const now = time;
+        if (now < patrolWaitUntil) {
+          this.state = 'PATROL_WAIT';
+        } else {
+          const target = patrolPoints[patrolIndex];
+          if (target) {
+            const toTarget = target.subtract(root.position);
+            const toTargetXZ = toTarget.clone();
+            toTargetXZ.y = 0;
+            const distance = toTargetXZ.length();
+            if (distance <= .1) {
+              patrolIndex = (patrolIndex + 1) % patrolPoints.length;
+              patrolWaitUntil = now + patrolWaitDuration;
+            } else {
+              const moveDistance = Math.min(distance, patrolSpeed * deltaTime);
+              const direction = toTargetXZ.normalize();
+              root.position.addInPlace(direction.scale(moveDistance));
+              root.rotation.y = Math.atan2(direction.x, direction.z);
+              root.position.y = spawnPosition.y;
+            }
+          }
+        }
+      } else if (!patrolEnabled && this.state !== 'DEFEAT') {
+        root.rotation.x = 0;
+      }
+
       const frozen = this.isFrozen(time);
       const restrained = this.isRestrained(time);
       material.diffuseColor = restrained

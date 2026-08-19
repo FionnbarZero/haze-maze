@@ -11,7 +11,7 @@ import { AdaptiveQualityController, initialHardwareScaling, resolveQualityReques
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260818-witchselect-v1';
 import { GreenWitchAbilities } from './green-witch.js?v=20260819-solo-cast-v1';
-import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260818-witchselect-v1';
+import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-covenvoice-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -83,6 +83,34 @@ try {
       label: '#c5ffd0'
     }
   });
+  const covenLeader = createPlaceholderWitch(BABYLON, scene, shadowGenerator, {
+    id: 'coven-leader',
+    label: 'Coven Leader',
+    palette: {
+      primary: '#30294d',
+      primaryLight: '#665b86',
+      accent: '#a980b9',
+      hair: '#c8c1d4',
+      hairEmissive: '#1b1722',
+      leather: '#3c3247',
+      wood: '#57435c',
+      orb: '#fff0c7',
+      orbEmissive: '#bc82d5',
+      orbCast: '#ffe9a6',
+      orbLight: '#e2b4ff',
+      label: '#f3ddff'
+    }
+  });
+  covenLeader.root.scaling.setAll(1.22);
+  const covenLeaderState = {
+    position: new BABYLON.Vector3(1.35, 0, -9.85),
+    facingYaw: Math.PI,
+    speed: 0,
+    grounded: true,
+    crouched: false,
+    stateLabel: 'IDLE'
+  };
+  const covenLeaderInput = { aiming: false };
   const initialPlayerState = controller.snapshot();
   const greenReplica = new RemotePlayerReplica(BABYLON, greenWitch, {
     sequence: 0,
@@ -200,6 +228,8 @@ try {
   const selectLocalCharacter = characterId => {
     if (!PLAYABLE_WITCHES[characterId]) return false;
     selectedCharacter = characterId;
+    covenLeader.setVisibility(0);
+    covenLeader.setNameplateVisible(false);
     localWitch = characterId === 'green' ? greenWitch : purpleWitch;
     remoteWitch = characterId === 'green' ? purpleWitch : greenWitch;
     purpleWitch.root.scaling.set(1, 1, 1);
@@ -225,7 +255,7 @@ try {
   };
 
   const updateRouteHud = worldState => {
-    const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'dragon', 'exit'];
+    const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'firstDragon', 'secondRoom', 'dragon', 'exit'];
     const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
     routeObjective.textContent = worldState.objective;
     routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} checkpoints`;
@@ -246,8 +276,20 @@ try {
 
   openingFlow = new CharacterSelectionFlow({
     onConfirm: characterId => startProof(characterId),
+    onNarrationLine: (_line, index) => covenLeader.setCast(performance.now() / 1000, `address ${index + 1}`),
     onPreviewChange: (selectedId, focusedId, step) => {
       if (step === 'COMPLETE') return;
+      if (step === 'BRIEFING') {
+        covenLeader.setVisibility(1);
+        covenLeader.setNameplateVisible(true);
+        purpleWitch.setVisibility(0);
+        greenWitch.setVisibility(0);
+        purpleWitch.setNameplateVisible(false);
+        greenWitch.setNameplateVisible(false);
+        return;
+      }
+      covenLeader.setVisibility(0);
+      covenLeader.setNameplateVisible(false);
       purpleWitch.setVisibility(1);
       greenWitch.setVisibility(1);
       purpleWitch.setNameplateVisible(true);
@@ -269,6 +311,8 @@ try {
     input.active = true;
     input.updateBlockedState();
     world.reset();
+    dragon.setSpawnPosition(world.dragonPosition);
+    dragon.clearPatrol();
     dragon.reset();
     combat.reset();
     inventory.reset();
@@ -315,6 +359,10 @@ try {
     camera: shoulderCamera.snapshot(input.aiming),
     witch: localWitch.snapshot(),
     purpleWitch: { presentation: purpleWitch.snapshot() },
+    covenLeader: {
+      presentation: covenLeader.snapshot(),
+      speaking: openingFlow?.narrationStatus === 'SPEAKING'
+    },
     greenWitch: {
       replica: greenReplica.snapshot(),
       simulation: greenSimulation.snapshot(),
@@ -354,8 +402,11 @@ try {
     lastTime = nowMilliseconds;
     shoulderCamera.updateLook(input);
     controller.update(input, shoulderCamera.yaw, deltaTime);
-    shoulderCamera.update(controller, input, deltaTime, localWitch);
+    const cameraWitch = openingFlow?.step === 'BRIEFING' ? covenLeader : localWitch;
+    shoulderCamera.update(controller, input, deltaTime, cameraWitch);
     localWitch.update(controller, input, deltaTime, now);
+    covenLeaderState.stateLabel = openingFlow?.narrationStatus === 'SPEAKING' ? 'ADDRESSING COVEN' : 'IDLE';
+    covenLeader.update(covenLeaderState, covenLeaderInput, deltaTime, now);
     const currentPlayerState = controller.snapshot();
     greenSimulation.update(now, currentPlayerState);
     greenReplica.update(deltaTime, now);
@@ -427,6 +478,7 @@ try {
   window.__HMW_THIRD_PERSON_PROOF__ = Object.freeze({
     start: startProof,
     snapshot: snapshotProof,
+    startCovenBriefing: () => openingFlow.startNarration(),
     showCharacterSelection: () => openingFlow.showSelection(),
     selectCharacter: characterId => openingFlow.select(characterId),
     confirmCharacterSelection: () => openingFlow.confirm(),
