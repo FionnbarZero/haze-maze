@@ -159,6 +159,8 @@ for (let hit = 0; hit < 4; hit += 1) {
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.dragon === true");
 const gateWaitingForFinalRune = await snapshot();
+await delay(750);
+const defeatedGuardianSettled = await snapshot();
 const secondRunePosition = gateWaitingForFinalRune.inventory.runePickups.find(rune => rune.source === 'secondDragon').position;
 await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${secondRunePosition.x}, 0, ${secondRunePosition.z}); true`);
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 3');
@@ -206,6 +208,10 @@ const checks = {
     && cast.actualTarget !== 'proof-second-room-door'
     && ['TARGET', 'TARGET_ASSISTED'].includes(cast.resolution)),
   phaseTwoHealthReachedZero: JSON.stringify(phaseTwoHealth) === JSON.stringify([75, 50, 25, 0]),
+  defeatedGuardianStopsPatrolling: Math.hypot(
+    defeatedGuardianSettled.dragon.aimPoint[0] - gateWaitingForFinalRune.dragon.aimPoint[0],
+    defeatedGuardianSettled.dragon.aimPoint[2] - gateWaitingForFinalRune.dragon.aimPoint[2]
+  ) < .001,
   dragonDefeatedOnce: !defeated.dragon.alive && defeated.dragon.state === 'DEFEATED' && !defeated.dragon.enabled,
   defeatRecorded: defeated.world.route.dragon,
   gateWaitedForFinalRune: gateWaitingForFinalRune.inventory.runes === 2
@@ -249,6 +255,10 @@ console.log(JSON.stringify({
     phaseTwoHealth,
     phaseTwoDamage,
     phaseTwoResolutions,
+    defeatedGuardianPosition: {
+      initial: gateWaitingForFinalRune.dragon.aimPoint,
+      settled: defeatedGuardianSettled.dragon.aimPoint
+    },
     dragon: defeated.dragon,
     world: defeated.world,
     gateWaitingForFinalRune: {

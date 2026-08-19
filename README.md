@@ -16,7 +16,7 @@ The existing landscape-mobile controls, responsive presentation, diagnostic inst
 
 ## Play
 
-Open `index.html` directly, or run a local server:
+Because the Babylon build uses JavaScript modules, serve the repository from its root instead of opening `index.html` as a `file://` page:
 
 ```sh
 python3 -m http.server 8000
@@ -28,9 +28,11 @@ Then visit `http://localhost:8000`.
 
 The homepage at `http://localhost:8000/` serves the Babylon.js game. The previous game is preserved at `http://localhost:8000/legacy.html`, while `http://localhost:8000/third-person.html` remains available as a direct alias for the Babylon.js version. Babylon.js loads from its official CDN, so the game requires an internet connection.
 
-Opening controls: press Enter or click the briefing button to permit computer audio and hear the Coven leader. When she finishes, click a character card, or use Left/Right or A/D and Enter; a separate confirmation starts the game, and Escape returns to the previous opening state. Proof controls are WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, number keys to select the chosen Witch's spells, and O or left click to cast. On landscape touch devices, the preserved spell controls remain on the left, movement remains on the right, and the center region controls the camera.
+Opening controls: press Enter or click the briefing button to permit computer audio and hear the Coven leader. When she finishes, click a character card, or use Left/Right or A/D and Enter; a separate confirmation starts the game, and Escape returns to the previous opening state. Proof controls are WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, number keys to select the chosen Witch's spells, and O to cast. Left click captures the pointer for mouse-look without casting. On landscape touch devices, the preserved spell controls remain on the left, movement remains on the right, and the center region controls the camera.
 
-## Controls
+## Legacy build
+
+The following controls and ten-level maze systems describe the preserved game at `legacy.html`.
 
 - Desktop: WASD or Up/Down to move, mouse to look, Left/Right or Q/E to turn, Shift to sprint, click/1 for lightning, 2 for freeze, 3 for shield, Space to jump, C or Control to crouch, M for the map, and P for the pouch.
 - Touch landscape: right joystick to move, drag the center to look, use the spell buttons on the left, and use the Jump/Crouch buttons beside the joystick.

@@ -41,7 +41,7 @@ Optional greybox rewards continue to exercise the emerging inventory and economy
 
 The opening accepts Enter or a mouse/trackpad click on **Hear the Coven briefing** to permit computer audio. A dedicated Coven leader speaks the briefing through the browser's system voice while a compact caption follows each line; its speech session is explicitly released before character selection so no narration audio remains active in gameplay. Left/Right and A/D then navigate all four Witches, Enter selects and confirms in separate steps, and Escape steps back. Desktop gameplay uses WASD or arrow keys to move, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulder, P to open the pouch, the mouse to look, right mouse to aim, number keys to select the local Witch's spells, and O to cast. Purple starts with Lightning and retains all three storm-proof spells for regression testing; her staff must be equipped to cast. Green starts with Vine Trap, with Restore available in the two-spell technical template. Frost starts with control-focused Freeze and a damaging Ice Lance. Fire starts with a damaging Fireball and a five-second Fire Ring that repels the dragon and prevents creature damage while active. A left click only captures the pointer for mouse-look. Losing pointer lock, browser focus, or page visibility clears held input. Solo is the default and shows only the selected Witch. The optional `?party=simulated` test mode preserves the snapshot-driven Green teammate for Purple, Frost, and Fire; when Green is local, Purple is the simulated teammate.
 
-On coarse-pointer landscape screens, all three immediate-cast spell buttons remain on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
+On coarse-pointer landscape screens, up to three immediate-cast spell slots remain on the left, movement remains on the right, and the center look zone supports an independent pointer so movement, looking, and casting can occur together. Jump, crouch, and shoulder buttons sit beside the movement stick. Portrait play is blocked.
 
 ## Configuration and diagnostics
 
@@ -49,9 +49,9 @@ On coarse-pointer landscape screens, all three immediate-cast spell buttons rema
 
 The browser smoke-test hook at `window.__HMW_THIRD_PERSON_PROOF__` supports deterministic inspection and route automation. It is proof instrumentation, not a production game API.
 
-## Targeting regression checks
+## Regression checks
 
-Run the dependency-free targeting math suite with `node --test tests/targeting.test.mjs`. It covers close and normal range, modest off-center assistance, misses, wall precedence, and cast-facing direction.
+Run the dependency-free unit suites with `node --test tests/targeting.test.mjs tests/character-selection-audio.test.mjs tests/remote-player.test.mjs`. They cover targeting math, opening-audio lifecycle, stale teammate-snapshot rejection, feed/replica separation, and disabled-replica behavior.
 
 `tests/third-person-targeting-smoke.mjs` exercises the rendered proof through Chrome DevTools Protocol. Start the repository on port 8766, launch a Chromium browser with remote debugging on port 9223, then run `node tests/third-person-targeting-smoke.mjs`. The optional `HMW_GAME_URL` and `HMW_CDP_ENDPOINT` environment variables select different local endpoints. The browser regression verifies close-range damage, normal-range damage, off-center character rotation, wall rejection, staff-origin evidence, and dragon separation.
 
