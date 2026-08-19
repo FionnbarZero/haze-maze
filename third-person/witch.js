@@ -101,6 +101,32 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
   orbLight.intensity = .65;
   orbLight.range = 4;
 
+  const pickHandle = addMesh(BABYLON.MeshBuilder.CreateCylinder(named('geode-pick-handle'), {
+    height: 1.12,
+    diameter: .075,
+    tessellation: 10
+  }, scene), staffSocket, new BABYLON.Vector3(0, .18, 0), wood);
+  pickHandle.rotation.z = -.08;
+  const pickHead = addMesh(BABYLON.MeshBuilder.CreateCylinder(named('geode-pick-head'), {
+    height: .62,
+    diameterTop: .055,
+    diameterBottom: .14,
+    tessellation: 10
+  }, scene), staffSocket, new BABYLON.Vector3(-.02, .72, 0), leather);
+  pickHead.rotation.z = Math.PI / 2;
+
+  const hammerHandle = addMesh(BABYLON.MeshBuilder.CreateCylinder(named('geode-hammer-handle'), {
+    height: .92,
+    diameter: .085,
+    tessellation: 10
+  }, scene), staffSocket, new BABYLON.Vector3(0, .12, 0), wood);
+  hammerHandle.rotation.z = -.08;
+  const hammerHead = addMesh(BABYLON.MeshBuilder.CreateBox(named('geode-hammer-head'), {
+    width: .5,
+    height: .2,
+    depth: .22
+  }, scene), staffSocket, new BABYLON.Vector3(-.02, .6, 0), leather);
+
   let gait = 0;
   let moveWeight = 0;
   let crouchWeight = 0;
@@ -111,6 +137,7 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
   let previousAnimationState = 'IDLE';
   let transitionWeight = 1;
   let visibility = 1;
+  let heldItem = 'staff';
   let nameplateVisible = Boolean(options.label);
   const presentationOffset = BABYLON.Vector3.Zero();
 
@@ -134,6 +161,19 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
     meshes.push(nameplate);
   }
 
+  const equipmentMeshes = {
+    staff: [staff, orb],
+    geodePick: [pickHandle, pickHead],
+    geodeHammer: [hammerHandle, hammerHead]
+  };
+  const applyEquipmentVisibility = () => {
+    for (const [item, itemMeshes] of Object.entries(equipmentMeshes)) {
+      for (const mesh of itemMeshes) mesh.visibility = heldItem === item ? visibility : 0;
+    }
+    if (heldItem !== 'staff') orbLight.intensity = 0;
+  };
+  applyEquipmentVisibility();
+
   return {
     root,
     meshes,
@@ -145,6 +185,13 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
     setVisibility(value) {
       visibility = value;
       for (const mesh of meshes) mesh.visibility = mesh === nameplate && !nameplateVisible ? 0 : value;
+      applyEquipmentVisibility();
+    },
+    setHeldItem(item = null) {
+      if (item !== null && !equipmentMeshes[item]) return false;
+      heldItem = item;
+      applyEquipmentVisibility();
+      return true;
     },
     setNameplateVisible(value) {
       nameplateVisible = Boolean(value && nameplate);
@@ -200,7 +247,9 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
       visual.rotation.z = damp(visual.rotation.z, Math.sin(gait) * .012 * moveWeight, .1, deltaTime);
       cape.rotation.z = -.08 - stride * .025;
       cape.rotation.x = state.speed * .015 + airborne * .06;
-      orbLight.intensity = .58 + Math.sin(time * 6) * .12 + castWeight * 1.2;
+      orbLight.intensity = heldItem === 'staff'
+        ? .58 + Math.sin(time * 6) * .12 + castWeight * 1.2
+        : 0;
       orbMaterial.emissiveColor.copyFrom(BABYLON.Color3.Lerp(orbBaseColor, orbCastColor, castWeight));
       void skirt; void torso;
     },
@@ -217,8 +266,9 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
         presentationOffset: presentationOffset.asArray(),
         label: options.label || null,
         nameplateVisible: Boolean(nameplate && nameplateVisible && nameplate.visibility > 0),
+        heldItem,
         staffSocket: staffSocket.name,
-        staffAttached: staff.parent === staffSocket
+        staffAttached: heldItem === 'staff' && staff.parent === staffSocket
       };
     }
   };

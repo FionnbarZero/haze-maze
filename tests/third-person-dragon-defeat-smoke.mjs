@@ -112,6 +112,11 @@ const castLightningWithO = async () => {
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
 await resetAt(0, 4.8);
+const treeRunePosition = (await snapshot()).inventory.runePickups.find(rune => rune.source === 'tree').position;
+await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${treeRunePosition.x}, 0, ${treeRunePosition.z}); true`);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 1');
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); true');
+await delay(220);
 await aimAtDragon();
 
 const phaseOneHealth = [];
@@ -126,6 +131,11 @@ phaseOneDamage.push(phaseOneFinalCast.combat.lastCast?.damage);
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.firstDragon === true");
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'IDLE' && window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.health === 100");
 const phaseOneDefeated = await snapshot();
+const firstRunePosition = phaseOneDefeated.inventory.runePickups.find(rune => rune.source === 'firstDragon').position;
+await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${firstRunePosition.x}, 0, ${firstRunePosition.z}); true`);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 2');
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); true');
+await delay(220);
 await aimAtDragon();
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.targeted === true");
 const phaseTwoTargeting = await snapshot();
@@ -148,6 +158,10 @@ for (let hit = 0; hit < 4; hit += 1) {
 }
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.dragon === true");
+const gateWaitingForFinalRune = await snapshot();
+const secondRunePosition = gateWaitingForFinalRune.inventory.runePickups.find(rune => rune.source === 'secondDragon').position;
+await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${secondRunePosition.x}, 0, ${secondRunePosition.z}); true`);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 3');
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.gate.state === 'OPEN'");
 const defeated = await snapshot();
 const hud = await evaluate(`({
@@ -194,6 +208,8 @@ const checks = {
   phaseTwoHealthReachedZero: JSON.stringify(phaseTwoHealth) === JSON.stringify([75, 50, 25, 0]),
   dragonDefeatedOnce: !defeated.dragon.alive && defeated.dragon.state === 'DEFEATED' && !defeated.dragon.enabled,
   defeatRecorded: defeated.world.route.dragon,
+  gateWaitedForFinalRune: gateWaitingForFinalRune.inventory.runes === 2
+    && gateWaitingForFinalRune.world.gate.state === 'LOCKED',
   gateUnlocked: defeated.world.gate.state === 'OPEN',
   healthHudReachedZero: hud.health === 'CONTAINED' && hud.fill === 'scaleX(0)',
   duplicateCastDidNotChangeDefeat: afterDuplicateCast.dragon.health === 0
@@ -235,6 +251,10 @@ console.log(JSON.stringify({
     phaseTwoResolutions,
     dragon: defeated.dragon,
     world: defeated.world,
+    gateWaitingForFinalRune: {
+      inventory: gateWaitingForFinalRune.inventory,
+      world: gateWaitingForFinalRune.world
+    },
     hud,
     duplicateCast: afterDuplicateCast.combat.lastCast,
     routeReset: afterRouteReset,

@@ -1,4 +1,4 @@
-import { COMBAT, PLAYER } from './config.js?v=20260819-solo-cast-v1';
+import { COMBAT, PLAYER, POUCH } from './config.js?v=20260819-purple-progression-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
@@ -31,6 +31,8 @@ export class LightningCombat {
     this.playerHealth = PLAYER.maximumHealth;
     this.aegisUntil = 0;
     this.lightningBoostUntil = 0;
+    this.geodeCount = 0;
+    this.geodeDamageMultiplier = 1;
     this.aegisBoostPrimed = false;
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
@@ -88,6 +90,13 @@ export class LightningCombat {
     this.playerName = playerName;
     this.aegis.mesh.parent = witch.root;
     this.aegis.light.parent = witch.root;
+  }
+
+  setGeodeCount(count = 0) {
+    this.geodeCount = Math.max(0, Math.floor(Number(count) || 0));
+    this.geodeDamageMultiplier = 1 + this.geodeCount * POUCH.geodePowerPerCrystal;
+    this.updatePlayerHud(this.lastTime);
+    return this.geodeDamageMultiplier;
   }
 
   setSpellcastingEnabled(value) {
@@ -417,6 +426,7 @@ export class LightningCombat {
     if (this.lightningBoostActive(time)) {
       powerups.push(`Lightning ×${COMBAT.lightningPotionDamageMultiplier} · ${(this.lightningBoostUntil - time).toFixed(1)}s`);
     }
+    if (this.geodeCount) powerups.push(`${this.geodeCount} geode · permanent ×${this.geodeDamageMultiplier.toFixed(1)}`);
     if (this.aegisBoostPrimed) powerups.push(`Next Aegis ×${COMBAT.aegisPotionDurationMultiplier}`);
     this.powerupStatus.textContent = powerups.length ? powerups.join(' · ') : 'No powerup active';
     this.playerVitals.classList.toggle('is-powered', powerups.length > 0);
@@ -444,9 +454,10 @@ export class LightningCombat {
       intendedTarget ? intendedTarget.getAimPoint() : solution.intendedPoint
     );
 
-    const lightningMultiplier = spell === 'lightning' && this.lightningBoostActive(time)
+    const potionMultiplier = spell === 'lightning' && this.lightningBoostActive(time)
       ? COMBAT.lightningPotionDamageMultiplier
       : 1;
+    const lightningMultiplier = potionMultiplier * this.geodeDamageMultiplier;
     const lightningDamage = COMBAT.lightningDamage * lightningMultiplier;
     this.lastCast = {
       spell,
@@ -477,7 +488,7 @@ export class LightningCombat {
       if (spell === 'lightning') {
         intendedTarget.damage(lightningDamage, time);
         this.onMessage(intendedTarget.alive
-          ? `Lightning${lightningMultiplier > 1 ? ' ×2' : ''} hit · ${intendedTarget.health} health remains`
+          ? `Lightning${lightningMultiplier > 1 ? ` ×${lightningMultiplier.toFixed(1)}` : ''} hit · ${intendedTarget.health} health remains`
           : 'Training dragon contained');
       } else {
         intendedTarget.freeze(time, COMBAT.frostDuration);
@@ -598,6 +609,8 @@ export class LightningCombat {
     this.playerHealth = this.playerMaximumHealth;
     this.aegisUntil = 0;
     this.lightningBoostUntil = 0;
+    this.geodeCount = 0;
+    this.geodeDamageMultiplier = 1;
     this.aegisBoostPrimed = false;
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
@@ -650,8 +663,10 @@ export class LightningCombat {
         lightningActive: this.lightningBoostActive(this.lastTime),
         lightningRemaining: Math.max(0, this.lightningBoostUntil - this.lastTime),
         lightningDamageMultiplier: this.lightningBoostActive(this.lastTime)
-          ? COMBAT.lightningPotionDamageMultiplier
-          : 1,
+          ? COMBAT.lightningPotionDamageMultiplier * this.geodeDamageMultiplier
+          : this.geodeDamageMultiplier,
+        geodeCount: this.geodeCount,
+        geodeDamageMultiplier: this.geodeDamageMultiplier,
         aegisPrimed: this.aegisBoostPrimed,
         aegisDurationMultiplier: this.aegisBoostPrimed ? COMBAT.aegisPotionDurationMultiplier : 1
       },

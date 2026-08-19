@@ -101,11 +101,19 @@ export class CharacterSelectionFlow {
     this.narrationTimer = 0;
   }
 
+  releaseNarrationAudio() {
+    if (this.activeUtterance) {
+      this.activeUtterance.onend = null;
+      this.activeUtterance.onerror = null;
+    }
+    this.activeUtterance = null;
+    window.speechSynthesis?.cancel?.();
+  }
+
   stopNarration({ reset = false } = {}) {
     this.narrationRun += 1;
     this.clearNarrationTimer();
-    if (this.activeUtterance) window.speechSynthesis?.cancel?.();
-    this.activeUtterance = null;
+    this.releaseNarrationAudio();
     if (reset) {
       this.narrationStatus = 'READY';
       this.narrationLineIndex = -1;
@@ -133,7 +141,6 @@ export class CharacterSelectionFlow {
       this.render();
       return false;
     }
-    window.speechSynthesis.cancel();
     window.speechSynthesis.resume?.();
     this.narrationStatus = 'SPEAKING';
     this.narrationVoiceName = this.resolveVoice()?.name || 'System voice';
@@ -175,7 +182,7 @@ export class CharacterSelectionFlow {
     utterance.onerror = event => {
       if (run !== this.narrationRun) return;
       this.clearNarrationTimer();
-      this.activeUtterance = null;
+      this.releaseNarrationAudio();
       this.narrationStatus = 'ERROR';
       if (this.subtitle) this.subtitle.textContent = `The Coven’s voice was interrupted${event.error ? ` (${event.error})` : ''}. Check your computer audio and try again.`;
       this.render();
@@ -184,9 +191,8 @@ export class CharacterSelectionFlow {
     this.clearNarrationTimer();
     this.narrationTimer = setTimeout(() => {
       if (run !== this.narrationRun || this.activeUtterance !== utterance) return;
-      this.activeUtterance = null;
+      this.releaseNarrationAudio();
       this.narrationStatus = 'ERROR';
-      window.speechSynthesis.cancel();
       if (this.subtitle) this.subtitle.textContent = 'The Coven’s voice paused unexpectedly. Check your computer audio and try again.';
       this.render();
     }, Math.max(12000, wordCount * 850));
@@ -194,7 +200,7 @@ export class CharacterSelectionFlow {
       window.speechSynthesis.speak(utterance);
     } catch {
       this.clearNarrationTimer();
-      this.activeUtterance = null;
+      this.releaseNarrationAudio();
       this.narrationStatus = 'ERROR';
       if (this.subtitle) this.subtitle.textContent = 'The Coven’s voice could not begin. Check your computer audio and try again.';
       this.render();
@@ -204,7 +210,7 @@ export class CharacterSelectionFlow {
   finishNarration() {
     if (this.step !== 'BRIEFING') return false;
     this.clearNarrationTimer();
-    this.activeUtterance = null;
+    this.releaseNarrationAudio();
     this.narrationStatus = 'COMPLETE';
     this.narrationLineIndex = COVEN_BRIEFING_LINES.length - 1;
     this.render();

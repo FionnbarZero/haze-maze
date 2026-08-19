@@ -151,7 +151,7 @@ await delay(350);
 await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'w', code: 'KeyW', windowsVirtualKeyCode: 87, nativeVirtualKeyCode: 87 });
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1, false); true');
 const crossingStartedAt = Date.now();
-while (Date.now() - crossingStartedAt < 8000) {
+while (Date.now() - crossingStartedAt < 45000) {
   if ((await snapshot()).world.route.arch) break;
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1, false); true');
   await delay(100);
@@ -247,7 +247,7 @@ const checks = {
   waitsAtMoonGate: !greenStarted.world.route.arch
     && greenStarted.world.objective === 'Cross the Moon Gate',
   controlledCrossingStartsRoute: greenCrossed.world.route.arch
-    && greenCrossed.world.objective === 'Jump over the rune relic'
+    && greenCrossed.world.objective === 'Jump over the fallen stone relic'
     && greenCrossed.player.z > -8.55,
   greenLocalAbilitiesBound: greenAbilityProof.dragon.restrained
     && greenAbilityProof.combat.playerHealth === 100

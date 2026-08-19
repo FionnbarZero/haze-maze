@@ -1,4 +1,4 @@
-import { WORLD } from './config.js?v=20260818-rewards-v1';
+import { POUCH, WORLD } from './config.js?v=20260819-purple-progression-v1';
 import { hexColor3 } from './utils.js';
 
 export function createWorld(BABYLON, scene, shadowGenerator) {
@@ -578,6 +578,7 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
   };
   let gateState = 'LOCKED';
   let gateProgress = 0;
+  let runeCount = 0;
   let dragonPhase = 1;
   let secondDragonStarted = false;
   const firstDragonPosition = new BABYLON.Vector3(0, 0, 9);
@@ -617,10 +618,15 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       removeCollider(gateCollider);
       return true;
     },
+    setRuneCount(count) {
+      runeCount = Math.max(0, Math.min(POUCH.requiredRunes, Math.floor(Number(count) || 0)));
+      return runeCount;
+    },
     reset() {
       for (const key of Object.keys(route)) route[key] = false;
       gateState = 'LOCKED';
       gateProgress = 0;
+      runeCount = 0;
       gateBarrier.position.y = 1.4;
       gateBarrier.setEnabled(true);
       gateMaterial.alpha = .82;
@@ -636,12 +642,18 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       const events = [];
       if (player.position.z > -8.55) markRoute('arch', 'Moon Gate crossed · the Hollow lies ahead', events);
       if (player.position.z > -5.8 && player.position.z < -4.7 && player.position.y > .42) route.jumpObserved = true;
-      if (route.arch && route.jumpObserved && player.position.z > -4.55) markRoute('jump', 'Rune relic cleared', events);
+      if (route.arch && route.jumpObserved && player.position.z > -4.55) markRoute('jump', 'Fallen stone relic cleared', events);
       if (Math.abs(player.position.z - .1) < .78 && player.crouched) route.crouchObserved = true;
       if (route.jump && route.crouchObserved && player.position.z > .8) markRoute('crouch', 'Low lintel cleared', events);
       if (route.crouch && player.position.z > 4.2) markRoute('arena', 'Dragon arena reached', events);
       if (dragonPhase === 1 && !route.firstDragon && !dragon.alive) {
-        markRoute('firstDragon', 'First guardian contained · second chamber opened', events);
+        markRoute('firstDragon', 'First guardian contained · a gate rune has fallen', events);
+        events.push({
+          type: 'rune-drop',
+          source: 'firstDragon',
+          position: { x: firstDragonPosition.x, y: firstDragonPosition.y, z: firstDragonPosition.z },
+          message: 'The first guardian dropped a gate rune'
+        });
         dragon.setSpawnPosition(secondDragonPosition);
         dragon.setPatrol(secondDragonPatrol, 1.05, 1);
         dragon.reset();
@@ -651,8 +663,17 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
       }
 
       if (dragonPhase === 2 && route.firstDragon && !route.dragon && !dragon.alive) {
-        markRoute('dragon', 'Second guardian contained · exit unlocking', events);
-        if (this.unlockGate()) events.push({ type: 'gate', message: 'Arena exit opening' });
+        const fallenPosition = dragon.root.position;
+        markRoute('dragon', 'Second guardian contained · its gate rune has fallen', events);
+        events.push({
+          type: 'rune-drop',
+          source: 'secondDragon',
+          position: { x: fallenPosition.x, y: 0, z: fallenPosition.z },
+          message: 'The second guardian dropped the final gate rune'
+        });
+      }
+      if (route.dragon && runeCount >= POUCH.requiredRunes && gateState === 'LOCKED') {
+        if (this.unlockGate()) events.push({ type: 'gate', message: 'Three runes joined · arena exit opening' });
       }
       if (gateState === 'OPENING') {
         gateProgress = Math.min(1, gateProgress + deltaTime / WORLD.gateOpenResponse);
@@ -706,12 +727,13 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
     },
     nextObjective() {
       if (!route.arch) return 'Cross the Moon Gate';
-      if (!route.jump) return 'Jump over the rune relic';
+      if (!route.jump) return 'Jump over the fallen stone relic';
       if (!route.crouch) return 'Crouch beneath the low lintel';
       if (!route.arena) return 'Enter the dragon arena';
       if (!route.firstDragon) return 'Aim and contain the first dragon';
       if (!route.secondRoom) return 'Open the second chamber gate';
       if (!route.dragon) return 'Defeat the moving second guardian';
+      if (runeCount < POUCH.requiredRunes) return `Recover ${POUCH.requiredRunes - runeCount} missing gate ${POUCH.requiredRunes - runeCount === 1 ? 'rune' : 'runes'}`;
       if (gateState !== 'OPEN') return 'Wait for the arena exit';
       if (!route.exit) return 'Pass through the open exit';
       return 'Technical route complete';
@@ -719,7 +741,7 @@ export function createWorld(BABYLON, scene, shadowGenerator) {
     snapshot() {
       return {
         route: { ...route },
-        gate: { state: gateState, progress: gateProgress },
+        gate: { state: gateState, progress: gateProgress, runes: runeCount, requiredRunes: POUCH.requiredRunes },
         objective: this.nextObjective(),
         complete: route.exit
       };

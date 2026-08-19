@@ -1,17 +1,17 @@
-import { createWorld } from './world.js?v=20260818-witchselect-v1';
-import { createPlaceholderWitch } from './witch.js?v=20260818-witchselect-v1';
+import { createWorld } from './world.js?v=20260819-purple-progression-v1';
+import { createPlaceholderWitch } from './witch.js?v=20260819-purple-progression-v1';
 import { createPlaceholderDragon } from './dragon.js?v=20260818-witchselect-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
 import { ShoulderCamera } from './camera.js?v=20260818-witchselect-v1';
-import { LightningCombat } from './combat.js?v=20260819-second-dragon-target-v1';
-import { PouchInventory } from './inventory.js?v=20260818-witchselect-v1';
+import { LightningCombat } from './combat.js?v=20260819-purple-progression-v1';
+import { PouchInventory } from './inventory.js?v=20260819-purple-progression-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260818-witchselect-v1';
 import { GreenWitchAbilities } from './green-witch.js?v=20260819-solo-cast-v1';
-import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-covenvoice-v1';
+import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-coven-audio-release-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -134,7 +134,7 @@ try {
   const input = new ProofInput(canvas);
   const combat = new LightningCombat(BABYLON, scene, shoulderCamera, purpleWitch, dragon, controller);
   const greenAbilities = new GreenWitchAbilities(BABYLON, scene, greenWitch, purpleWitch, dragon, combat);
-  const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat);
+  const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch);
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
   const routePanel = document.querySelector('.route-panel');
@@ -157,7 +157,13 @@ try {
     : combat.selectSpell(spell);
   const castActiveSpell = spell => {
     const now = performance.now() / 1000;
-    if (selectedCharacter !== 'green') return combat.cast(now, spell);
+    if (selectedCharacter !== 'green') {
+      if (!inventory.canCastWithStaff()) {
+        showMessage('Equip the Moon staff from the pouch before casting · press P');
+        return false;
+      }
+      return combat.cast(now, spell);
+    }
     if (spell) greenAbilities.selectSpell(greenSpellName(spell), false);
     return greenAbilities.castSelected(now);
   };
@@ -250,6 +256,7 @@ try {
       friendWitch: simulatedPartyEnabled ? remoteWitch : localWitch,
       friendAvailable: simulatedPartyEnabled
     });
+    inventory.setCharacter(characterId);
     updateCharacterInterface();
     return true;
   };
@@ -258,7 +265,7 @@ try {
     const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'firstDragon', 'secondRoom', 'dragon', 'exit'];
     const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
     routeObjective.textContent = worldState.objective;
-    routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} checkpoints`;
+    routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} checkpoints · ${worldState.gate.runes} / ${worldState.gate.requiredRunes} runes`;
     routePanel.classList.toggle('is-complete', worldState.complete);
   };
   updateRouteHud(world.snapshot());
@@ -270,7 +277,9 @@ try {
     document.querySelector('#hud').classList.add('is-active');
     input.start();
     qualification?.recordEvent('gameplay-start');
-    showMessage('Cross the Moon Gate · find the corner chest and arena potions · P opens the pouch');
+    showMessage(characterId === 'purple'
+      ? 'Cross the Moon Gate · find the hidden mining tools and three gate runes · P opens the pouch'
+      : 'Cross the Moon Gate · recover all three gate runes · P opens the pouch');
     return true;
   };
 
@@ -414,9 +423,13 @@ try {
     combat.update();
     greenAbilities.update(now, selectedCharacter === 'green' ? shoulderCamera : null);
     inventory.update(now, deltaTime);
+    world.setRuneCount(inventory.runes);
     const routeEvents = world.update(controller, dragon, deltaTime);
     const worldState = world.snapshot();
-    for (const event of routeEvents) showMessage(event.message);
+    for (const event of routeEvents) {
+      if (event.type === 'rune-drop') inventory.revealDragonRune(event.source, event.position);
+      showMessage(event.message);
+    }
     if (worldState.complete && !completed) {
       completed = true;
       input.active = false;
@@ -497,9 +510,9 @@ try {
     switchShoulder: () => shoulderCamera.switchShoulder(),
     selectSpell: selectActiveSpell,
     castSpell: castActiveSpell,
-    castLightning: () => combat.cast(performance.now() / 1000, 'lightning'),
-    castFrost: () => combat.cast(performance.now() / 1000, 'frost'),
-    castAegis: () => combat.cast(performance.now() / 1000, 'aegis'),
+    castLightning: () => castActiveSpell('lightning'),
+    castFrost: () => castActiveSpell('frost'),
+    castAegis: () => castActiveSpell('aegis'),
     castGreenVine: () => greenAbilities.castVineTrap(performance.now() / 1000),
     castGreenRestore: (target = 'smart') => target === 'smart'
       ? greenAbilities.castSmartRestore(performance.now() / 1000)
@@ -510,10 +523,12 @@ try {
     setGreenSimulationEnabled: value => greenSimulation.setEnabled(value),
     receiveGreenSnapshot: snapshot => greenReplica.receiveSnapshot(snapshot),
     receiveDragonDamage: amount => combat.receiveDragonDamage(amount),
+    damageActiveDragon: amount => dragon.damage(amount, performance.now() / 1000),
     togglePouch: () => inventory.toggle(),
     useHealthBerry: () => inventory.useHealthBerry(),
     useLightningPotion: () => inventory.useLightningPotion(),
     useAegisPotion: () => inventory.useAegisPotion(),
+    equipPurpleItem: item => inventory.toggleEquipment(item),
     teleport: (x, y, z) => { controller.teleport(x, y, z); shoulderCamera.snapNextUpdate(); },
     resetRoute: resetTechnicalRoute,
     resetPerformance: () => telemetry.reset(),

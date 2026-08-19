@@ -97,6 +97,9 @@ export const POUCH = Object.freeze({
   healthBerryRestore: 30,
   pickupRadius: 1.05,
   chestPickupRadius: 1.35,
+  geodeMineRadius: 1.42,
+  geodePowerPerCrystal: .1,
+  requiredRunes: 3,
   berryBushes: Object.freeze([
     Object.freeze({ id: 'corridor', x: -1.62, y: 0, z: 2.1 }),
     Object.freeze({ id: 'arena-west', x: -4.65, y: 0, z: 8.15 }),
@@ -106,6 +109,18 @@ export const POUCH = Object.freeze({
   powerups: Object.freeze([
     Object.freeze({ id: 'storm-tonic', type: 'lightning', x: 5.8, y: 0, z: 5.05 }),
     Object.freeze({ id: 'aegis-tonic', type: 'aegis', x: -5.85, y: 0, z: 10.45 })
+  ]),
+  equipmentPickups: Object.freeze([
+    Object.freeze({ id: 'crystal-geode-pick', type: 'geodePick', x: 1.72, y: 0, z: -3.35 }),
+    Object.freeze({ id: 'geode-hammer', type: 'geodeHammer', x: 6.42, y: 0, z: 3.55 })
+  ]),
+  geodeRocks: Object.freeze([
+    Object.freeze({ id: 'southwest-crystal-rock', x: -6.45, y: 0, z: 4.45 })
+  ]),
+  runes: Object.freeze([
+    Object.freeze({ id: 'tree-rune', source: 'tree', x: -6.05, y: 0, z: -5.9, available: true }),
+    Object.freeze({ id: 'first-dragon-rune', source: 'firstDragon', x: 0, y: 0, z: 9, available: false }),
+    Object.freeze({ id: 'second-dragon-rune', source: 'secondDragon', x: 0, y: 0, z: 12.6, available: false })
   ])
 });
 

@@ -112,7 +112,7 @@ await evaluate(`(() => {
 })()`);
 await delay(35);
 const interpolationEarly = await snapshot();
-await delay(700);
+await waitFor(`window.__HMW_THIRD_PERSON_PROOF__.snapshot().greenWitch.replica.interpolationError < ${interpolationEarly.greenWitch.replica.interpolationError * .75}`);
 const interpolationSettled = await snapshot();
 
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.setGreenSimulationEnabled(true); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 5.5); true');
