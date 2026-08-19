@@ -129,7 +129,12 @@ export class LightningCombat {
   pickAimSurface(ray, predicate = () => true) {
     return this.scene.pickWithRay(
       ray,
-      mesh => mesh.metadata?.aimSurface === true && predicate(mesh),
+      mesh => mesh.isEnabled()
+        && mesh.isVisible
+        && mesh.visibility > 0
+        && mesh.isPickable
+        && mesh.metadata?.aimSurface === true
+        && predicate(mesh),
       false
     );
   }

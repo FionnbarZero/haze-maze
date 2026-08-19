@@ -116,23 +116,35 @@ await aimAtDragon();
 
 const phaseOneHealth = [];
 const phaseOneDamage = [];
-for (let hit = 0; hit < 4; hit += 1) {
+for (let hit = 0; hit < 3; hit += 1) {
   const state = await castLightningWithO();
   phaseOneHealth.push(state.dragon.health);
   phaseOneDamage.push(state.combat.lastCast?.damage);
 }
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
+const phaseOneFinalCast = await castLightningWithO();
+phaseOneDamage.push(phaseOneFinalCast.combat.lastCast?.damage);
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.firstDragon === true");
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'IDLE'");
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'IDLE' && window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.health === 100");
 const phaseOneDefeated = await snapshot();
 await aimAtDragon();
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.targeted === true");
+const phaseTwoTargeting = await snapshot();
 
 const phaseTwoHealth = [];
 const phaseTwoDamage = [];
+const phaseTwoResolutions = [];
 for (let hit = 0; hit < 4; hit += 1) {
+  await aimAtDragon();
   const state = await castLightningWithO();
   phaseTwoHealth.push(state.dragon.health);
   phaseTwoDamage.push(state.combat.lastCast?.damage);
+  phaseTwoResolutions.push({
+    resolution: state.combat.lastCast?.resolution,
+    intendedKind: state.combat.lastCast?.intendedKind,
+    actualKind: state.combat.lastCast?.actualKind,
+    intendedTarget: state.combat.lastCast?.intendedTarget,
+    actualTarget: state.combat.lastCast?.actualTarget
+  });
 }
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.dragon === true");
@@ -163,11 +175,22 @@ const resumedAfterPointerLockLoss = await castLightningWithO();
 
 const checks = {
   eachPhaseOneHitDealtConfiguredDamage: phaseOneDamage.every(damage => damage === 25),
-  phaseOneHealthReachedZero: JSON.stringify(phaseOneHealth) === JSON.stringify([75, 50, 25, 0]),
+  phaseOneHealthReachedFinalHit: JSON.stringify(phaseOneHealth) === JSON.stringify([75, 50, 25])
+    && phaseOneFinalCast.combat.lastCast?.damage === 25,
   firstPhaseRecorded: phaseOneDefeated.world.route.firstDragon
     && !phaseOneDefeated.world.route.dragon
-    && phaseOneDefeated.world.route.secondRoom,
+    && phaseOneDefeated.world.route.secondRoom
+    && phaseOneDefeated.dragon.health === 100
+    && phaseOneDefeated.dragon.alive,
+  secondDragonTargetableThroughOpenedDoor: phaseTwoTargeting.combat.targeted
+    && phaseTwoTargeting.combat.candidateTargeted
+    && ['DIRECT', 'ASSISTED'].includes(phaseTwoTargeting.combat.aimState),
   eachPhaseTwoHitDealtConfiguredDamage: phaseTwoDamage.every(damage => damage === 25),
+  eachPhaseTwoCastReachedDragon: phaseTwoResolutions.every(cast => cast.intendedKind === 'dragon'
+    && cast.actualKind === 'dragon'
+    && cast.intendedTarget !== 'proof-second-room-door'
+    && cast.actualTarget !== 'proof-second-room-door'
+    && ['TARGET', 'TARGET_ASSISTED'].includes(cast.resolution)),
   phaseTwoHealthReachedZero: JSON.stringify(phaseTwoHealth) === JSON.stringify([75, 50, 25, 0]),
   dragonDefeatedOnce: !defeated.dragon.alive && defeated.dragon.state === 'DEFEATED' && !defeated.dragon.enabled,
   defeatRecorded: defeated.world.route.dragon,
@@ -199,9 +222,17 @@ console.log(JSON.stringify({
   evidence: {
     phaseOneHealth,
     phaseOneDamage,
+    phaseOneFinalCast: phaseOneFinalCast.combat.lastCast,
     phaseOneDefeated,
+    phaseTwoTargeting: {
+      player: phaseTwoTargeting.player,
+      camera: phaseTwoTargeting.camera,
+      dragon: phaseTwoTargeting.dragon,
+      combat: phaseTwoTargeting.combat
+    },
     phaseTwoHealth,
     phaseTwoDamage,
+    phaseTwoResolutions,
     dragon: defeated.dragon,
     world: defeated.world,
     hud,
