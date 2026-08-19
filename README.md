@@ -6,7 +6,7 @@ The homepage runs the third-person Babylon.js version, with an over-the-shoulder
 
 Design direction has moved toward a collaborative, shared-campaign model (BG3-style); see [Story & Collaboration Framework](docs/story-collaboration-framework.md).
 
-Beginning a new hunt opens with an urgent Coven briefing and a two-step choice between the Purple Witch and Green Witch. After confirmation, the chosen Witch becomes the local player, the other becomes a simulated snapshot-driven teammate, and both arrive before the Moon Gate. The route begins only when the player walks through it.
+Beginning a new hunt opens on a Coven leader in the live Babylon scene. Press Enter or choose **Hear the Coven briefing** to let her deliver the summons through the computer's system voice, with a compact line-by-line caption. The Purple Witch and Green Witch choice cards appear automatically after her final line. After confirmation, the chosen Witch becomes the sole local player and arrives before the Moon Gate; the route begins only when the player walks through it. Add `?party=simulated` to retain the optional snapshot-driven teammate proof.
 
 ## Platform direction
 
@@ -28,7 +28,7 @@ Then visit `http://localhost:8000`.
 
 The homepage at `http://localhost:8000/` serves the Babylon.js game. The previous game is preserved at `http://localhost:8000/legacy.html`, while `http://localhost:8000/third-person.html` remains available as a direct alias for the Babylon.js version. Babylon.js loads from its official CDN, so the game requires an internet connection.
 
-Opening controls: click a character card, or use Left/Right or A/D and Enter; a separate confirmation starts the game, and Escape returns to the previous opening state. Proof controls are WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, number keys to select the chosen Witch's spells, and left click to cast. On landscape touch devices, the preserved spell controls remain on the left, movement remains on the right, and the center region controls the camera.
+Opening controls: press Enter or click the briefing button to permit computer audio and hear the Coven leader. When she finishes, click a character card, or use Left/Right or A/D and Enter; a separate confirmation starts the game, and Escape returns to the previous opening state. Proof controls are WASD or arrow keys to move, mouse to look, Shift to sprint, Space to jump, C or Control to crouch, V to switch shoulders, right mouse to aim, number keys to select the chosen Witch's spells, and O or left click to cast. On landscape touch devices, the preserved spell controls remain on the left, movement remains on the right, and the center region controls the camera.
 
 ## Controls
 

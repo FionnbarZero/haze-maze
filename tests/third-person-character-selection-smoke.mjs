@@ -1,5 +1,5 @@
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
-const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low';
+const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&narration=instant';
 
 const pages = await fetch(`${debugEndpoint}/json/list`).then(response => response.json());
 const target = pages.find(page => page.type === 'page');
@@ -84,6 +84,8 @@ const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
 const navigate = async () => {
   await cdp.send('Page.navigate', { url: `${gameUrl}${gameUrl.includes('?') ? '&' : '?'}openingTest=${Date.now()}` });
   await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
+  await waitFor("document.querySelector('#loading')?.classList.contains('is-hidden')");
+  await delay(500);
 };
 const click = async selector => {
   const point = await evaluate(`(() => {
@@ -101,14 +103,23 @@ const press = async ({ key, code, keyCode }) => {
 
 await navigate();
 const briefing = await evaluate(`({
-  tagline: document.querySelector('#coven-briefing h1').textContent.replace(/\\s+/g, ' ').trim(),
-  paragraphs: [...document.querySelectorAll('.briefing-copy p')].map(paragraph => paragraph.textContent.trim()),
-  step: window.__HMW_THIRD_PERSON_PROOF__.snapshot().opening.step,
+  speaker: document.querySelector('#coven-briefing h1').textContent.replace(/\\s+/g, ' ').trim(),
+  tagline: document.querySelector('#briefing-subtitle').textContent.trim(),
+  paragraphs: [...document.querySelectorAll('.briefing-transcript p')].map(paragraph => paragraph.textContent.trim()),
+  buttonText: document.querySelector('#briefing-continue').textContent.trim(),
+  soundStatus: document.querySelector('#briefing-sound-status').textContent.trim(),
+  snapshot: window.__HMW_THIRD_PERSON_PROOF__.snapshot(),
   selectionVisible: document.querySelector('#witch-selection').classList.contains('is-current')
 })`);
+if (process.env.HMW_BRIEFING_SCREENSHOT_PATH) {
+  const screenshot = await cdp.send('Page.captureScreenshot', { format: 'png', fromSurface: true });
+  const { writeFile } = await import('node:fs/promises');
+  await writeFile(process.env.HMW_BRIEFING_SCREENSHOT_PATH, Buffer.from(screenshot.data, 'base64'));
+}
 
 await click('#briefing-continue');
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().opening.step === 'SELECTION'");
+const narrationComplete = await snapshot();
 await click('[data-character="green"]');
 const greenSelected = await evaluate(`({
   snapshot: window.__HMW_THIRD_PERSON_PROOF__.snapshot(),
@@ -189,10 +200,24 @@ const exactBriefing = [
 ];
 
 const checks = {
-  exactCovenBriefing: briefing.step === 'BRIEFING'
+  covenLeaderIntroducesBriefing: briefing.snapshot.opening.step === 'BRIEFING'
     && !briefing.selectionVisible
+    && briefing.speaker === 'Coven Leader Warden of Moonhollow'
+    && briefing.snapshot.opening.narration.status === 'READY'
+    && briefing.snapshot.covenLeader.presentation.visibility === 1
+    && briefing.snapshot.covenLeader.presentation.nameplateVisible
+    && briefing.snapshot.purpleWitch.presentation.visibility === 0
+    && briefing.snapshot.greenWitch.presentation.visibility === 0,
+  exactCovenBriefing: briefing.snapshot.opening.narration.lineCount === exactBriefing.length
     && briefing.paragraphs.join('\n') === exactBriefing.join('\n'),
-  exactTagline: briefing.tagline === 'Moonhollow has fallen silent. The Coven has not.',
+  audibleBriefingPrompt: briefing.tagline === 'Moonhollow has fallen silent. The Coven has not.'
+    && briefing.buttonText === 'Hear the Coven briefing'
+    && briefing.soundStatus.includes('sound will play through your computer'),
+  choiceWaitsForNarration: narrationComplete.opening.step === 'SELECTION'
+    && narrationComplete.opening.narration.status === 'COMPLETE'
+    && narrationComplete.covenLeader.presentation.visibility === 0
+    && narrationComplete.purpleWitch.presentation.visibility === 1
+    && narrationComplete.greenWitch.presentation.visibility === 1,
   mouseSelectDoesNotStart: greenSelected.snapshot.opening.awaitingConfirmation
     && greenSelected.snapshot.characterSelection.selectedCharacter === 'green'
     && greenSelected.snapshot.characterSelection.localCharacter === null
@@ -253,6 +278,7 @@ console.log(JSON.stringify({
   checks,
   evidence: {
     briefing,
+    narrationComplete: { opening: narrationComplete.opening, covenLeader: narrationComplete.covenLeader },
     greenSelected: { opening: greenSelected.snapshot.opening, characterSelection: greenSelected.snapshot.characterSelection, confirmText: greenSelected.confirmText },
     greenStarted: { opening: greenStarted.opening, characterSelection: greenStarted.characterSelection, combat: greenStarted.combat, abilities: greenStarted.greenWitch.abilities, teammate: greenStarted.teammate, ui: greenUi },
     greenCrossed: { input: greenCrossed.input, player: greenCrossed.player, world: greenCrossed.world, teammate: greenCrossed.teammate },

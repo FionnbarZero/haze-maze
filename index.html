@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#090615" />
     <meta name="description" content="Play Moonhollow Quest, a third-person Babylon.js spellcasting adventure." />
     <title>Moonhollow Quest</title>
-    <link rel="stylesheet" href="third-person/styles.css?v=20260819-solo-cast-v1" />
+    <link rel="stylesheet" href="third-person/styles.css?v=20260819-covenvoice-v1" />
   </head>
   <body>
     <main id="proof-shell" aria-label="Moonhollow Quest game">
@@ -124,18 +124,30 @@
       <section id="start-overlay" class="start-overlay">
         <div class="opening-shell">
           <article id="coven-briefing" class="opening-step coven-briefing is-current" aria-hidden="false">
-            <p class="opening-kicker">An urgent Coven briefing</p>
-            <h1>Moonhollow has fallen silent. <br /><em>The Coven has not.</em></h1>
-            <div class="briefing-copy">
-              <p>“Witches, attend me. Three nights ago, the ancient wards encircling Moonhollow began to fail.”</p>
-              <p>“The cause remains unknown. Creatures are already crossing the Rift. The outlying farms stand abandoned, and the nearest villages prepare to flee.”</p>
-              <p>“No ordinary soldier can endure passage through the failing barrier. Only witches of your power may enter.”</p>
-              <p>“Find the source of the breach. Destroy what has crossed into our world. Seal the Rift.”</p>
-              <p>“Should you fail, Moonhollow will be merely the first to fall.”</p>
-              <p class="briefing-question">“Who among you will enter the Hollow?”</p>
+            <div class="coven-dialogue">
+              <header>
+                <p class="opening-kicker">A summons from the High Coven</p>
+                <h1>Coven Leader <em>Warden of Moonhollow</em></h1>
+              </header>
+              <div class="briefing-caption" role="status" aria-live="polite" aria-atomic="true">
+                <span id="briefing-line-label">The Coven awaits</span>
+                <blockquote id="briefing-subtitle">Moonhollow has fallen silent. The Coven has not.</blockquote>
+                <div class="briefing-progress" aria-hidden="true"><i id="briefing-progress"></i></div>
+              </div>
+              <div class="briefing-actions">
+                <button id="briefing-continue" class="opening-primary" type="button">Hear the Coven briefing</button>
+                <button id="briefing-fallback" class="opening-secondary" type="button" hidden>Continue without narration</button>
+              </div>
+              <small id="briefing-sound-status">Press Enter or choose Hear the Coven briefing · sound will play through your computer</small>
+              <div class="briefing-transcript visually-hidden">
+                <p>“Witches, attend me. Three nights ago, the ancient wards encircling Moonhollow began to fail.”</p>
+                <p>“The cause remains unknown. Creatures are already crossing the Rift. The outlying farms stand abandoned, and the nearest villages prepare to flee.”</p>
+                <p>“No ordinary soldier can endure passage through the failing barrier. Only witches of your power may enter.”</p>
+                <p>“Find the source of the breach. Destroy what has crossed into our world. Seal the Rift.”</p>
+                <p>“Should you fail, Moonhollow will be merely the first to fall.”</p>
+                <p>“Who among you will enter the Hollow?”</p>
+              </div>
             </div>
-            <button id="briefing-continue" class="opening-primary" type="button">Answer the Coven <span>→</span></button>
-            <small>Press Enter to continue</small>
           </article>
 
           <article id="witch-selection" class="opening-step witch-selection" aria-hidden="true">
@@ -175,6 +187,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260819-solo-cast-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260819-covenvoice-v1"></script>
   </body>
 </html>
