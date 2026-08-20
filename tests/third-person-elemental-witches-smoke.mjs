@@ -131,13 +131,13 @@ const frostHud = await evaluate(`({
   rack: [...document.querySelectorAll('.spell-rack button:not([disabled])')].map(button => button.dataset.spell)
 })`);
 
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castFreeze(); true');
 await delay(220);
 const freezeCast = await snapshot();
 
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castIceLance(); true');
 await delay(220);
@@ -153,7 +153,7 @@ const fireHud = await evaluate(`({
   rack: [...document.querySelectorAll('.spell-rack button:not([disabled])')].map(button => button.dataset.spell)
 })`);
 
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castFireball(); true');
 await delay(220);

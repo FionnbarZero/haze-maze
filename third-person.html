@@ -23,7 +23,7 @@
         <div id="crosshair" class="crosshair" aria-hidden="true"><i></i></div>
 
         <aside id="target-card" class="target-card" aria-hidden="true">
-          <div><span>Training dragon <em id="target-status"></em></span><strong id="target-health-copy">100 / 100</strong></div>
+          <div><span>Nearby dragon <em id="target-status"></em></span><strong id="target-health-copy">100 / 100</strong></div>
           <div class="health-track"><i id="target-health-fill"></i></div>
         </aside>
 
@@ -57,7 +57,7 @@
         <aside class="route-panel" aria-label="Level 1 route objective">
           <span>Technical route</span>
           <strong id="route-objective">Cross the Moon Gate</strong>
-          <small id="route-progress">0 / 6 checkpoints</small>
+          <small id="route-progress">0 / 8 checkpoints · 0 / 4 runes</small>
         </aside>
 
         <aside id="green-witch-party" class="party-panel" aria-label="Simulated Witch teammate">
@@ -120,10 +120,10 @@
                 <span><strong>Magical geodes</strong><small id="geode-power-copy">Find both mining tools to open magical crystal rocks</small></span>
                 <em id="pouch-geode-count">0 geodes</em>
               </div>
-              <div class="pouch-item pouch-treasure" aria-label="Recovered exit gate runes">
+              <div class="pouch-item pouch-treasure" aria-label="Recovered rune-door runes">
                 <span class="rune-icon" aria-hidden="true"><i></i><b></b></span>
-                <span><strong>Exit gate runes</strong><small id="rune-action-copy">3 runes remain · find one near a tree and defeat both dragons</small></span>
-                <em id="pouch-rune-count">0 / 3</em>
+                <span><strong>Rune-door runes</strong><small id="rune-action-copy">4 runes remain · search the maze rooms</small></span>
+                <em id="pouch-rune-count">0 / 4</em>
               </div>
             </section>
             <p>Collected provisions</p>
@@ -228,6 +228,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260819-runtime-audit-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260819-expanded-maze-v1"></script>
   </body>
 </html>

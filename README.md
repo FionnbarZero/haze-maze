@@ -8,6 +8,8 @@ Design direction has moved toward a collaborative, shared-campaign model (BG3-st
 
 Beginning a new hunt opens on a Coven leader in the live Babylon scene. Press Enter or choose **Hear the Coven briefing** to let her deliver the summons through the computer's system voice, with a compact line-by-line caption. Purple, Green, Frost, and Fire Witch choice cards appear automatically after her final line. After confirmation, the chosen Witch becomes the sole local player and arrives before the Moon Gate; the route begins only when the player walks through it. Add `?party=simulated` to retain the optional snapshot-driven teammate proof.
 
+The Babylon greybox now spans a 28 × 52 room-based maze—just over three times its former floor area—with variable wall openings. Ten dragons are randomly distributed through its rooms on each new load; exactly one is hostile enough to initiate attacks, while all ten remain valid spell targets. Twelve berry bushes, eight inset fountains, four geodes, and eight potions spread rewards across the route. Two found runes open the inner door, all four found runes open the final Moon Door, and crossing that portal removes the Witch to complete the route. Add `?mazeSeed=your-seed` to reproduce a particular wall and dragon arrangement.
+
 ## Platform direction
 
 Moonhollow Quest now prioritizes Windows and Mac desktop browsers, keyboard and mouse controls, desktop-quality graphics, and the complete desktop gameplay experience. Gamepad support is a future target.

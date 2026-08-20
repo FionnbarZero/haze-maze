@@ -151,6 +151,7 @@ const earlyReplica = interpolationEarly.greenWitch.replica;
 const settledReplica = interpolationSettled.greenWitch.replica;
 const abilities = initial.greenWitch.abilities;
 const vineCast = vine.greenWitch.abilities.lastCast;
+const vineTarget = vine.dragons.find(dragon => dragon.id === vine.greenWitch.abilities.targetDragonId);
 const checks = {
   remoteReplicaPresent: initial.greenWitch.replica.kind === 'REMOTE_REPLICA'
     && initial.greenWitch.replica.source === 'SIMULATED_LAN_SNAPSHOTS',
@@ -170,8 +171,8 @@ const checks = {
   vineTrapUsesBothArms: vineCast?.spell === 'vineTrap'
     && vineCast.originCount === 2
     && vineCast.origins.left.join(',') !== vineCast.origins.right.join(','),
-  vineTrapRestrainsDragon: vine.dragon.restrained
-    && vine.dragon.state === 'VINEBOUND'
+  vineTrapRestrainsDragon: vineTarget?.restrained
+    && vineTarget.state === 'VINEBOUND'
     && vine.greenWitch.abilities.bindingCount === 3
     && vine.greenWitch.abilities.activeVineStreams === 2,
   vineFeedbackVisible: vineUi.status.startsWith('Dragon vinebound') && vineUi.vineDisabled,
@@ -197,7 +198,7 @@ console.log(JSON.stringify({
     initial: initial.greenWitch,
     initialUi,
     interpolation: { early: earlyReplica, settled: settledReplica },
-    vine: { dragon: vine.dragon, abilities: vine.greenWitch.abilities, ui: vineUi },
+    vine: { dragon: vineTarget, abilities: vine.greenWitch.abilities, ui: vineUi },
     selfRestore: { combat: selfRestore.combat, green: selfRestore.greenWitch.abilities },
     friendRestore: { combat: friendRestore.combat, green: friendRestore.greenWitch.abilities, ui: friendRestoreUi },
     smartRestore: { combat: smartRestore.combat, green: smartRestore.greenWitch.abilities },

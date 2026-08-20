@@ -42,7 +42,7 @@ export const PLAYER = Object.freeze({
   jumpBuffer: 0.12,
   coyoteTime: 0.08,
   landingDuration: 0.18,
-  start: Object.freeze({ x: 0, y: 0, z: -10.5 })
+  start: Object.freeze({ x: 0, y: 0, z: -24.2 })
 });
 
 export const INPUT = Object.freeze({
@@ -99,28 +99,48 @@ export const POUCH = Object.freeze({
   chestPickupRadius: 1.35,
   geodeMineRadius: 1.42,
   geodePowerPerCrystal: .1,
-  requiredRunes: 3,
+  firstDoorRunes: 2,
+  requiredRunes: 4,
   berryBushes: Object.freeze([
-    Object.freeze({ id: 'corridor', x: -1.62, y: 0, z: 2.1 }),
-    Object.freeze({ id: 'arena-west', x: -4.65, y: 0, z: 8.15 }),
-    Object.freeze({ id: 'arena-east', x: 4.65, y: 0, z: 12.05 })
+    Object.freeze({ id: 'berry-southwest-a', x: -9, y: 0, z: -22 }),
+    Object.freeze({ id: 'berry-southeast-a', x: 9, y: 0, z: -22 }),
+    Object.freeze({ id: 'berry-southwest-b', x: -9, y: 0, z: -13 }),
+    Object.freeze({ id: 'berry-southeast-b', x: 9, y: 0, z: -13 }),
+    Object.freeze({ id: 'berry-midwest-a', x: -9, y: 0, z: -1 }),
+    Object.freeze({ id: 'berry-mideast-a', x: 9, y: 0, z: -1 }),
+    Object.freeze({ id: 'berry-midwest-b', x: -9, y: 0, z: 9 }),
+    Object.freeze({ id: 'berry-mideast-b', x: 9, y: 0, z: 9 }),
+    Object.freeze({ id: 'berry-northwest-a', x: -9, y: 0, z: 18 }),
+    Object.freeze({ id: 'berry-northeast-a', x: 9, y: 0, z: 18 }),
+    Object.freeze({ id: 'berry-northwest-b', x: -9, y: 0, z: 23 }),
+    Object.freeze({ id: 'berry-northeast-b', x: 9, y: 0, z: 23 })
   ]),
-  goldChest: Object.freeze({ id: 'arena-northwest', x: -6.35, y: 0, z: 13.15, gold: 50 }),
+  goldChest: Object.freeze({ id: 'moon-vault', x: 0, y: 0, z: 12, gold: 50 }),
   powerups: Object.freeze([
-    Object.freeze({ id: 'storm-tonic', type: 'lightning', x: 5.8, y: 0, z: 5.05 }),
-    Object.freeze({ id: 'aegis-tonic', type: 'aegis', x: -5.85, y: 0, z: 10.45 })
+    Object.freeze({ id: 'storm-tonic-southwest', type: 'lightning', x: -8.8, y: 0, z: -18 }),
+    Object.freeze({ id: 'aegis-tonic-southeast', type: 'aegis', x: 8.8, y: 0, z: -18 }),
+    Object.freeze({ id: 'storm-tonic-south-mid', type: 'lightning', x: -8.8, y: 0, z: -9 }),
+    Object.freeze({ id: 'aegis-tonic-south-mid', type: 'aegis', x: 8.8, y: 0, z: -9 }),
+    Object.freeze({ id: 'storm-tonic-north-mid', type: 'lightning', x: -8.8, y: 0, z: 9 }),
+    Object.freeze({ id: 'aegis-tonic-north-mid', type: 'aegis', x: 8.8, y: 0, z: 9 }),
+    Object.freeze({ id: 'storm-tonic-north', type: 'lightning', x: -8.8, y: 0, z: 18 }),
+    Object.freeze({ id: 'aegis-tonic-north', type: 'aegis', x: 8.8, y: 0, z: 18 })
   ]),
   equipmentPickups: Object.freeze([
-    Object.freeze({ id: 'crystal-geode-pick', type: 'geodePick', x: 1.72, y: 0, z: -3.35 }),
-    Object.freeze({ id: 'geode-hammer', type: 'geodeHammer', x: 6.42, y: 0, z: 3.55 })
+    Object.freeze({ id: 'crystal-geode-pick', type: 'geodePick', x: -1.6, y: 0, z: -20 }),
+    Object.freeze({ id: 'geode-hammer', type: 'geodeHammer', x: 1.6, y: 0, z: -10 })
   ]),
   geodeRocks: Object.freeze([
-    Object.freeze({ id: 'southwest-crystal-rock', x: -6.45, y: 0, z: 4.45 })
+    Object.freeze({ id: 'southwest-crystal-rock', x: -10.8, y: 0, z: -12.5 }),
+    Object.freeze({ id: 'southeast-crystal-rock', x: 10.8, y: 0, z: -1 }),
+    Object.freeze({ id: 'northwest-crystal-rock', x: -10.8, y: 0, z: 10 }),
+    Object.freeze({ id: 'northeast-crystal-rock', x: 10.8, y: 0, z: 20.5 })
   ]),
   runes: Object.freeze([
-    Object.freeze({ id: 'tree-rune', source: 'tree', x: -6.05, y: 0, z: -5.9, available: true }),
-    Object.freeze({ id: 'first-dragon-rune', source: 'firstDragon', x: 0, y: 0, z: 9, available: false }),
-    Object.freeze({ id: 'second-dragon-rune', source: 'secondDragon', x: 0, y: 0, z: 12.6, available: false })
+    Object.freeze({ id: 'southwest-rune', source: 'southwestRoom', x: -8.7, y: 0, z: -21, available: true }),
+    Object.freeze({ id: 'southeast-rune', source: 'southeastRoom', x: 8.7, y: 0, z: -10.5, available: true }),
+    Object.freeze({ id: 'northwest-rune', source: 'northwestRoom', x: -8.7, y: 0, z: 9.5, available: true }),
+    Object.freeze({ id: 'northeast-rune', source: 'northeastRoom', x: 8.7, y: 0, z: 20.5, available: true })
   ])
 });
 
@@ -163,14 +183,20 @@ export const COMBAT = Object.freeze({
 });
 
 export const WORLD = Object.freeze({
-  floorWidth: 16,
-  floorDepth: 30,
+  floorWidth: 28,
+  floorDepth: 52,
   wallHeight: 3.4,
   wallThickness: 0.5,
-  gateZ: 14.45,
-  exitZ: 14.72,
+  entranceZ: -24.2,
+  firstDoorZ: -5,
+  gateZ: 25.45,
+  exitZ: 25.72,
   gateOpenHeight: 4.2,
-  gateOpenResponse: 0.55
+  gateOpenResponse: 0.55,
+  exitDuration: 1.15,
+  dragonCount: 10,
+  aggressiveDragonRatio: .1,
+  defaultMazeSeed: 'moonhollow-expanded-v1'
 });
 
 export const PERFORMANCE = Object.freeze({

@@ -1,4 +1,4 @@
-import { COMBAT, PLAYER, POUCH } from './config.js?v=20260819-elemental-witches-v1';
+import { COMBAT, PLAYER, POUCH } from './config.js?v=20260819-expanded-maze-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
@@ -21,7 +21,7 @@ export const CHARACTER_LOADOUTS = Object.freeze({
 const createCooldowns = () => Object.fromEntries(Object.keys(SPELLS).map(spell => [spell, 0]));
 
 export class LightningCombat {
-  constructor(BABYLON, scene, camera, witch, dragon, controller) {
+  constructor(BABYLON, scene, camera, witch, dragonOrDragons, controller) {
     this.BABYLON = BABYLON;
     this.scene = scene;
     this.camera = camera;
@@ -30,7 +30,11 @@ export class LightningCombat {
     this.activeCharacter = 'purple';
     this.loadout = [...CHARACTER_LOADOUTS.purple];
     this.spellcastingEnabled = true;
-    this.dragon = dragon;
+    this.dragons = (Array.isArray(dragonOrDragons) ? dragonOrDragons : [dragonOrDragons]).filter(Boolean);
+    if (!this.dragons.length) throw new Error('LightningCombat requires at least one dragon');
+    this.dragon = this.dragons[0];
+    this.currentTarget = this.dragon;
+    this.threatDragon = null;
     this.controller = controller;
     this.cooldownUntil = createCooldowns();
     this.selectedSpell = 'lightning';
@@ -224,28 +228,32 @@ export class LightningCombat {
       };
     }
 
-    if (this.dragon.alive) {
-      const aimPoint = this.dragon.getAimPoint();
+    const firstSurfaceDistance = cameraHit?.hit ? cameraHit.distance : Infinity;
+    let assistedTarget = null;
+    for (const candidate of this.dragons) {
+      if (!candidate.alive) continue;
+      const aimPoint = candidate.getAimPoint();
       const targetEntryDistance = raySphereEntryDistance(
         cameraRay.origin,
         cameraRay.direction,
         aimPoint,
-        this.dragon.aimRadius,
+        candidate.aimRadius,
         range
       );
-      const firstSurfaceDistance = cameraHit?.hit ? cameraHit.distance : Infinity;
-      const assisted = targetEntryDistance !== null
-        && !blockerPrecedesTarget(firstSurfaceDistance, targetEntryDistance, COMBAT.aimAssistWallTolerance);
-      if (assisted) {
-        return {
-          cameraRay,
-          cameraHit,
-          target: this.dragon,
-          intendedPoint: aimPoint,
-          targetEntryDistance,
-          mode: 'ASSISTED'
-        };
-      }
+      if (targetEntryDistance === null
+        || blockerPrecedesTarget(firstSurfaceDistance, targetEntryDistance, COMBAT.aimAssistWallTolerance)
+        || (assistedTarget && assistedTarget.targetEntryDistance <= targetEntryDistance)) continue;
+      assistedTarget = { target: candidate, aimPoint, targetEntryDistance };
+    }
+    if (assistedTarget) {
+      return {
+        cameraRay,
+        cameraHit,
+        target: assistedTarget.target,
+        intendedPoint: assistedTarget.aimPoint,
+        targetEntryDistance: assistedTarget.targetEntryDistance,
+        mode: 'ASSISTED'
+      };
     }
 
     return {
@@ -323,6 +331,7 @@ export class LightningCombat {
       const targetedSpell = SPELLS[this.selectedSpell].targeted;
       const solution = targetedSpell ? this.resolveAim() : null;
       const path = solution?.target ? this.resolveStaffPath(solution) : null;
+      if (solution?.target) this.currentTarget = solution.target;
       this.candidateTargeted = Boolean(solution?.target);
       this.targeted = Boolean(solution?.target && !path?.obstructed);
       this.assisted = this.targeted && solution.mode === 'ASSISTED';
@@ -344,6 +353,7 @@ export class LightningCombat {
   }
 
   updateTargetHud() {
+    const target = this.currentTarget || this.dragon;
     this.crosshair.classList.toggle('is-targeting', this.targeted);
     this.crosshair.classList.toggle('is-assisted', this.assisted);
     this.crosshair.classList.toggle('is-obstructed', this.aimState === 'OBSTRUCTED');
@@ -356,22 +366,26 @@ export class LightningCombat {
           ? 'SELF'
           : '';
     const showTarget = this.candidateTargeted
-      || this.dragon.health < this.dragon.maximumHealth
-      || this.dragon.isFrozen(this.lastTime);
+      || target.health < target.maximumHealth
+      || target.isFrozen(this.lastTime);
     this.targetCard.classList.toggle('is-visible', showTarget);
-    this.targetCard.classList.toggle('is-frozen', this.dragon.isFrozen(this.lastTime));
+    this.targetCard.classList.toggle('is-frozen', target.isFrozen(this.lastTime));
     this.targetCard.setAttribute('aria-hidden', String(!showTarget));
-    this.healthFill.style.transform = `scaleX(${this.dragon.health / this.dragon.maximumHealth})`;
-    this.healthCopy.textContent = this.dragon.alive
-      ? `${this.dragon.health} / ${this.dragon.maximumHealth}`
+    this.healthFill.style.transform = `scaleX(${target.health / target.maximumHealth})`;
+    this.healthCopy.textContent = target.alive
+      ? `${target.health} / ${target.maximumHealth}`
       : 'CONTAINED';
-    this.targetStatus.textContent = this.dragon.isRestrained(this.lastTime)
-      ? `Vinebound ${Math.max(0, this.dragon.restrainedUntil - this.lastTime).toFixed(1)}s`
-      : this.dragon.isFrozen(this.lastTime)
-      ? `Frozen ${Math.max(0, this.dragon.frozenUntil - this.lastTime).toFixed(1)}s`
-      : this.dragon.state === 'ATTACK'
+    this.targetStatus.textContent = target.isRestrained(this.lastTime)
+      ? `Vinebound ${Math.max(0, target.restrainedUntil - this.lastTime).toFixed(1)}s`
+      : target.isFrozen(this.lastTime)
+      ? `Frozen ${Math.max(0, target.frozenUntil - this.lastTime).toFixed(1)}s`
+      : target.state === 'ATTACK'
         ? 'Attacking'
-        : '';
+        : target.aggressive
+          ? 'Hostile'
+          : target.alive
+            ? 'Watchful'
+            : '';
   }
 
   updateAegis(time) {
@@ -413,48 +427,60 @@ export class LightningCombat {
     });
     this.fireRing.light.intensity = struck ? 3.8 : 1.4 + pulse * .75;
 
-    if (!this.dragon.alive) return;
-    let deltaX = this.dragon.root.position.x - this.controller.position.x;
-    let deltaZ = this.dragon.root.position.z - this.controller.position.z;
-    let distance = Math.hypot(deltaX, deltaZ);
-    const boundary = COMBAT.fireRingRadius + this.dragon.collisionRadius + .08;
-    if (distance >= boundary) return;
-    if (distance < .001) {
-      deltaX = Math.sin(this.controller.facingYaw || 0);
-      deltaZ = Math.cos(this.controller.facingYaw || 0);
-      distance = 1;
+    for (const dragon of this.dragons) {
+      if (!dragon.alive) continue;
+      let deltaX = dragon.root.position.x - this.controller.position.x;
+      let deltaZ = dragon.root.position.z - this.controller.position.z;
+      let distance = Math.hypot(deltaX, deltaZ);
+      const boundary = COMBAT.fireRingRadius + dragon.collisionRadius + .08;
+      if (distance >= boundary) continue;
+      if (distance < .001) {
+        deltaX = Math.sin(this.controller.facingYaw || 0);
+        deltaZ = Math.cos(this.controller.facingYaw || 0);
+        distance = 1;
+      }
+      dragon.teleport(new this.BABYLON.Vector3(
+        this.controller.position.x + deltaX / distance * boundary,
+        dragon.root.position.y,
+        this.controller.position.z + deltaZ / distance * boundary
+      ));
+      this.fireRingRepelledCreatures += 1;
+      this.fireRingHitUntil = time + .22;
     }
-    this.dragon.teleport(new this.BABYLON.Vector3(
-      this.controller.position.x + deltaX / distance * boundary,
-      this.dragon.root.position.y,
-      this.controller.position.z + deltaZ / distance * boundary
-    ));
-    this.fireRingRepelledCreatures += 1;
-    this.fireRingHitUntil = time + .22;
   }
 
   updateDragonThreat(time) {
-    if (!this.dragon.alive || this.dragon.isFrozen(time) || this.dragon.isRestrained(time) || time < this.fireRingUntil || this.playerDefeated) {
+    if (time < this.fireRingUntil || this.playerDefeated) {
       this.dragonInAttackRange = false;
+      this.threatDragon = null;
       this.nextDragonAttackAt = 0;
       return;
     }
-    const deltaX = this.controller.position.x - this.dragon.root.position.x;
-    const deltaZ = this.controller.position.z - this.dragon.root.position.z;
-    const inRange = deltaX * deltaX + deltaZ * deltaZ <= COMBAT.dragonAttackRange * COMBAT.dragonAttackRange;
-    if (!inRange) {
+    const attackRangeSquared = COMBAT.dragonAttackRange * COMBAT.dragonAttackRange;
+    const threat = this.dragons
+      .filter(dragon => dragon.aggressive && dragon.alive && !dragon.isFrozen(time) && !dragon.isRestrained(time))
+      .map(dragon => ({
+        dragon,
+        distanceSquared: (this.controller.position.x - dragon.root.position.x) ** 2
+          + (this.controller.position.z - dragon.root.position.z) ** 2
+      }))
+      .filter(candidate => candidate.distanceSquared <= attackRangeSquared)
+      .sort((left, right) => left.distanceSquared - right.distanceSquared)[0]?.dragon || null;
+    if (!threat) {
       this.dragonInAttackRange = false;
+      this.threatDragon = null;
       this.nextDragonAttackAt = 0;
       return;
     }
-    if (!this.dragonInAttackRange) {
+    if (!this.dragonInAttackRange || this.threatDragon !== threat) {
       this.dragonInAttackRange = true;
+      this.threatDragon = threat;
       this.nextDragonAttackAt = time + COMBAT.dragonAttackWindup;
       return;
     }
     if (time < this.nextDragonAttackAt) return;
     this.nextDragonAttackAt = time + COMBAT.dragonAttackInterval;
-    if (this.dragon.attack(time)) this.receiveDragonDamage(COMBAT.dragonAttackDamage, time);
+    if (threat.attack(time)) this.receiveDragonDamage(COMBAT.dragonAttackDamage, time);
   }
 
   receiveDragonDamage(amount, time = performance.now() / 1000) {
@@ -626,6 +652,7 @@ export class LightningCombat {
       if (['frost', 'freeze'].includes(spell)) {
         intendedTarget.freeze(time, COMBAT.frostDuration);
         this.dragonInAttackRange = false;
+        this.threatDragon = null;
         this.nextDragonAttackAt = 0;
         this.onMessage(`${SPELLS[spell].label} bound the dragon · ${COMBAT.frostDuration.toFixed(1)}s`);
       } else {
@@ -677,6 +704,7 @@ export class LightningCombat {
     this.witch.setCast(time, 'fire ring');
     this.fireRingUntil = time + COMBAT.fireRingDuration;
     this.dragonInAttackRange = false;
+    this.threatDragon = null;
     this.nextDragonAttackAt = 0;
     const origin = this.witch.getOrbPosition();
     this.lastCast = {
@@ -810,6 +838,7 @@ export class LightningCombat {
     this.assisted = false;
     this.aimState = 'NONE';
     this.lastCast = null;
+    this.currentTarget = this.dragon;
     this.playerHealth = this.playerMaximumHealth;
     this.aegisUntil = 0;
     this.lightningBoostUntil = 0;
@@ -825,6 +854,7 @@ export class LightningCombat {
     this.fireRingRepelledCreatures = 0;
     this.damageTaken = 0;
     this.dragonInAttackRange = false;
+    this.threatDragon = null;
     this.nextDragonAttackAt = 0;
     this.playerDefeated = false;
     this.aegis.mesh.setEnabled(false);
@@ -892,6 +922,10 @@ export class LightningCombat {
         aegisDurationMultiplier: this.aegisBoostPrimed ? COMBAT.aegisPotionDurationMultiplier : 1
       },
       dragonInAttackRange: this.dragonInAttackRange,
+      targetDragonId: this.currentTarget?.id || null,
+      threatDragonId: this.threatDragon?.id || null,
+      dragonCount: this.dragons.length,
+      aggressiveDragonCount: this.dragons.filter(dragon => dragon.aggressive).length,
       activeLightningStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('lightning-stream-')).length,
       activeFrostStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('frost-stream-') || mesh.name.startsWith('freeze-stream-')).length,
       activeIceLanceStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('ice-lance-stream-')).length,

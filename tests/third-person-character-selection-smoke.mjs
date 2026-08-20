@@ -64,6 +64,12 @@ await cdp.send('Page.enable');
 await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
 await cdp.send('Emulation.clearDeviceMetricsOverride');
+await cdp.send('Emulation.setDeviceMetricsOverride', {
+  width: 1440,
+  height: 900,
+  deviceScaleFactor: 1,
+  mobile: false
+});
 await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -101,6 +107,7 @@ const press = async ({ key, code, keyCode }) => {
   await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key, code, windowsVirtualKeyCode: keyCode, nativeVirtualKeyCode: keyCode });
 };
 
+await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
 await navigate();
 const briefing = await evaluate(`({
   speaker: document.querySelector('#coven-briefing h1').textContent.replace(/\\s+/g, ' ').trim(),
@@ -121,6 +128,13 @@ await click('#briefing-continue');
 await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().opening.step === 'SELECTION'");
 const narrationComplete = await snapshot();
 await click('[data-character="green"]');
+await delay(300);
+await waitFor(`(() => {
+  const button = document.querySelector('#confirm-witch');
+  const rect = button?.getBoundingClientRect();
+  return Boolean(button && !button.disabled && rect?.width && rect?.height
+    && document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) === button);
+})()`);
 const greenSelected = await evaluate(`({
   snapshot: window.__HMW_THIRD_PERSON_PROOF__.snapshot(),
   overlayVisible: !document.querySelector('#start-overlay').classList.contains('is-hidden'),
@@ -152,14 +166,14 @@ await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'w', code: 'Key
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1, false); true');
 const crossingStartedAt = Date.now();
 while (Date.now() - crossingStartedAt < 45000) {
-  if ((await snapshot()).world.route.arch) break;
+  if ((await snapshot()).world.route.entrance) break;
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1, false); true');
   await delay(100);
 }
 await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'w', code: 'KeyW', windowsVirtualKeyCode: 87, nativeVirtualKeyCode: 87 });
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
 const greenCrossed = await snapshot();
-await evaluate("window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 5.5); true");
+await evaluate("window.__HMW_THIRD_PERSON_PROOF__.focusDragon(0); window.__HMW_THIRD_PERSON_PROOF__.teleportNearDragon(0, 4.2); true");
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().greenWitch.abilities.dragonInRange');
 await evaluate(`(() => {
   const proof = window.__HMW_THIRD_PERSON_PROOF__;
@@ -248,11 +262,11 @@ const checks = {
     && greenUi.partyHidden
     && greenUi.partyDisplay === 'none'
     && greenUi.teammateDemosHidden,
-  waitsAtMoonGate: !greenStarted.world.route.arch
-    && greenStarted.world.objective === 'Cross the Moon Gate',
-  controlledCrossingStartsRoute: greenCrossed.world.route.arch
-    && greenCrossed.world.objective === 'Jump over the fallen stone relic'
-    && greenCrossed.player.z > -8.55,
+  waitsAtMoonGate: !greenStarted.world.route.entrance
+    && greenStarted.world.objective === 'Cross the entrance Moon Gate',
+  controlledCrossingStartsRoute: greenCrossed.world.route.entrance
+    && greenCrossed.world.objective === 'Find 2 southern door runes'
+    && greenCrossed.player.z > -23.55,
   greenLocalAbilitiesBound: greenAbilityProof.dragon.restrained
     && greenAbilityProof.combat.playerHealth === 100
     && greenAbilityProof.greenWitch.abilities.lastCast?.spell === 'restore'

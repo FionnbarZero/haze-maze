@@ -111,7 +111,7 @@ const angleDifference = (a, b) => Math.abs(((a - b + Math.PI) % (Math.PI * 2)) -
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
 
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 const normalBefore = await snapshot();
 await cast();

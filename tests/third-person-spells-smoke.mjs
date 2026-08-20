@@ -103,7 +103,7 @@ const aimAtDragon = async () => {
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
 
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 const lightningBefore = await snapshot();
 await evaluate(`document.querySelector('#render-canvas').dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 })); true`);
@@ -118,7 +118,7 @@ const lightningHud = await evaluate(`({
   help: document.querySelector('#selected-spell-help').textContent
 })`);
 
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castFrost()');
 await delay(220);
@@ -207,7 +207,7 @@ const lightningPotionPouch = await evaluate(`({
 await evaluate(`document.querySelector('#use-lightning-potion').click(); true`);
 await delay(80);
 const lightningPotionUsed = await snapshot();
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); true');
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 6.2); true');
 await aimAtDragon();
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castLightning(); true');
 await delay(280);
@@ -227,7 +227,7 @@ const aegisPotionPouch = await evaluate(`({
 await evaluate(`document.querySelector('#use-aegis-potion').click(); true`);
 await delay(80);
 const aegisPotionUsed = await snapshot();
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); window.__HMW_THIRD_PERSON_PROOF__.castAegis(); true');
+await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 6.2); window.__HMW_THIRD_PERSON_PROOF__.castAegis(); true');
 await delay(120);
 const empoweredAegis = await snapshot();
 const empoweredAegisHud = await evaluate(`document.querySelector('#aegis-status').textContent`);
@@ -250,7 +250,7 @@ await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPo
 await cdp.send('Page.navigate', { url: gameUrl });
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
-await resetAt(0, 4.8);
+await resetAt(0, 6.2);
 await aimAtDragon();
 const mobileBefore = await snapshot();
 await evaluate(`document.querySelector('button[data-spell="lightning"]').dispatchEvent(new PointerEvent('pointerdown', {

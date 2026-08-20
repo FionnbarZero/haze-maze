@@ -1,4 +1,4 @@
-import { COMBAT, POUCH } from './config.js?v=20260818-rewards-v1';
+import { COMBAT, POUCH } from './config.js?v=20260819-expanded-maze-v1';
 import { hexColor3 } from './utils.js';
 
 export class PouchInventory {
@@ -622,7 +622,7 @@ export class PouchInventory {
     const remaining = Math.max(0, POUCH.requiredRunes - this.runes);
     this.onMessage(remaining
       ? `Gate rune recovered · ${remaining} ${remaining === 1 ? 'rune remains' : 'runes remain'}`
-      : 'All three gate runes recovered · the exit seal is yielding');
+      : `All ${POUCH.requiredRunes} gate runes recovered · the Moon Door is yielding`);
     return true;
   }
 
@@ -904,8 +904,8 @@ export class PouchInventory {
     this.runeCountCopy.textContent = `${this.runes} / ${POUCH.requiredRunes}`;
     const runesRemaining = Math.max(0, POUCH.requiredRunes - this.runes);
     this.runeActionCopy.textContent = runesRemaining
-      ? `${runesRemaining} ${runesRemaining === 1 ? 'rune remains' : 'runes remain'} · find one near a tree and defeat both dragons`
-      : 'Complete set · the exit gate can open';
+      ? `${runesRemaining} ${runesRemaining === 1 ? 'rune remains' : 'runes remain'} · search the maze rooms`
+      : 'Complete set · the Moon Door can open';
   }
 
   reset() {

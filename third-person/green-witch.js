@@ -1,4 +1,4 @@
-import { GREEN_WITCH } from './config.js?v=20260819-solo-cast-v1';
+import { GREEN_WITCH } from './config.js?v=20260819-expanded-maze-v1';
 
 export const GREEN_WITCH_SPELLS = Object.freeze({
   vineTrap: Object.freeze({
@@ -19,13 +19,15 @@ const presentationName = (presentation, fallback = 'Ally') => presentation?.snap
 const characterTargetId = name => name.toLowerCase().replaceAll(' ', '-');
 
 export class GreenWitchAbilities {
-  constructor(BABYLON, scene, greenWitch, localWitch, dragon, combat) {
+  constructor(BABYLON, scene, greenWitch, localWitch, dragonOrDragons, combat) {
     this.BABYLON = BABYLON;
     this.scene = scene;
     this.greenWitch = greenWitch;
     this.friendWitch = localWitch;
     this.friendName = presentationName(localWitch, 'Purple Witch');
-    this.dragon = dragon;
+    this.dragons = (Array.isArray(dragonOrDragons) ? dragonOrDragons : [dragonOrDragons]).filter(Boolean);
+    if (!this.dragons.length) throw new Error('GreenWitchAbilities requires at least one dragon');
+    this.dragon = this.dragons[0];
     this.combat = combat;
     this.locallyControlled = false;
     this.friendAvailable = false;
@@ -82,6 +84,26 @@ export class GreenWitchAbilities {
     });
   }
 
+  setDragonTarget(dragon) {
+    if (!dragon || dragon === this.dragon) return this.dragon;
+    this.dragon = dragon;
+    for (const ring of this.vineBindings) ring.parent = dragon.root;
+    return dragon;
+  }
+
+  resolveDragon() {
+    const time = this.lastTime || performance.now() / 1000;
+    if (this.dragon?.alive && this.dragon.isRestrained(time)) return this.dragon;
+    const self = this.greenWitch.root.position;
+    const living = this.dragons.filter(dragon => dragon.alive);
+    const nearest = living.sort((left, right) => {
+      const leftDistance = (left.root.position.x - self.x) ** 2 + (left.root.position.z - self.z) ** 2;
+      const rightDistance = (right.root.position.x - self.x) ** 2 + (right.root.position.z - self.z) ** 2;
+      return leftDistance - rightDistance;
+    })[0];
+    return this.setDragonTarget(nearest || this.dragon);
+  }
+
   friendDistance() {
     const friend = this.friendWitch.root.position;
     const self = this.greenWitch.root.position;
@@ -89,6 +111,7 @@ export class GreenWitchAbilities {
   }
 
   dragonDistance() {
+    this.resolveDragon();
     const dragon = this.dragon.root.position;
     const self = this.greenWitch.root.position;
     return Math.hypot(dragon.x - self.x, dragon.y - self.y, dragon.z - self.z);
@@ -169,6 +192,7 @@ export class GreenWitchAbilities {
 
   castVineTrap(time = performance.now() / 1000) {
     this.lastTime = time;
+    this.resolveDragon();
     if (time < this.cooldownUntil.vineTrap) {
       this.onMessage(`Vine Trap ready in ${(this.cooldownUntil.vineTrap - time).toFixed(1)}s`);
       return false;
@@ -314,6 +338,7 @@ export class GreenWitchAbilities {
 
   updateLocalTargeting(camera) {
     if (!this.locallyControlled || !camera) return;
+    this.resolveDragon();
     let friendTargeted = false;
     if (this.friendAvailable && this.selectedSpell === 'restore' && this.friendDistance() <= GREEN_WITCH.restoreRange) {
       const ray = camera.getAimRay(GREEN_WITCH.restoreRange);
@@ -344,6 +369,7 @@ export class GreenWitchAbilities {
 
   update(time, camera = null) {
     this.lastTime = time;
+    this.resolveDragon();
     const restrained = this.dragon.isRestrained(time);
     for (const [index, ring] of this.vineBindings.entries()) {
       ring.setEnabled(restrained && this.dragon.alive);
@@ -439,6 +465,7 @@ export class GreenWitchAbilities {
       friendTargeted: this.friendTargeted,
       friendInRange: this.friendAvailable && this.friendDistance() <= GREEN_WITCH.restoreRange,
       dragonInRange: this.dragonDistance() <= GREEN_WITCH.vineTrapRange,
+      targetDragonId: this.dragon?.id || null,
       lastCast: this.lastCast,
       activeVineStreams: this.transientEffects.filter(effect => effect.kind === 'VINE').length,
       activeRestoreEffects: this.transientEffects.filter(effect => effect.kind === 'RESTORE').length,

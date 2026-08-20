@@ -1,21 +1,23 @@
-import { createWorld } from './world.js?v=20260819-purple-progression-v1';
+import { createWorld } from './world.js?v=20260819-expanded-maze-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260819-purple-progression-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260819-runtime-audit-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260819-expanded-maze-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
 import { ShoulderCamera } from './camera.js?v=20260819-runtime-audit-v1';
-import { LightningCombat } from './combat.js?v=20260819-elemental-witches-v1';
-import { PouchInventory } from './inventory.js?v=20260819-elemental-witches-v1';
+import { LightningCombat } from './combat.js?v=20260819-expanded-maze-v1';
+import { PouchInventory } from './inventory.js?v=20260819-expanded-maze-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260819-runtime-audit-v1';
-import { GreenWitchAbilities } from './green-witch.js?v=20260819-elemental-witches-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260819-expanded-maze-v1';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
-const simulatedPartyEnabled = new URLSearchParams(location.search).get('party') === 'simulated';
+const queryParameters = new URLSearchParams(location.search);
+const simulatedPartyEnabled = queryParameters.get('party') === 'simulated';
+const mazeSeed = queryParameters.get('mazeSeed') || undefined;
 const loading = document.querySelector('#loading');
 const loadingCopy = document.querySelector('#loading-copy');
 
@@ -43,7 +45,7 @@ try {
   const scene = new BABYLON.Scene(engine);
   scene.clearColor = BABYLON.Color4.FromHexString('#17122aff');
   scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
-  scene.fogDensity = .0176;
+  scene.fogDensity = .012;
   scene.fogColor = BABYLON.Color3.FromHexString('#1d152c');
   scene.imageProcessingConfiguration.contrast = 1.06;
   scene.imageProcessingConfiguration.exposure = 1.22;
@@ -61,9 +63,27 @@ try {
   shadowGenerator.bias = .0005;
   const sceneInstrumentation = new BABYLON.SceneInstrumentation(scene);
 
-  const world = createWorld(BABYLON, scene, shadowGenerator);
+  const world = createWorld(BABYLON, scene, shadowGenerator, { seed: mazeSeed });
   const purpleWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, { label: 'Purple Witch' });
-  const dragon = createPlaceholderDragon(BABYLON, scene, shadowGenerator, world.dragonPosition);
+  const dragons = world.dragonSpawns.map(spawn => createPlaceholderDragon(
+    BABYLON,
+    scene,
+    shadowGenerator,
+    new BABYLON.Vector3(spawn.x, 0, spawn.z),
+    { id: spawn.id, aggressive: spawn.aggressive }
+  ));
+  const dragon = dragons[0];
+  const applyDragonPatrol = (actor, spawn) => {
+    if (!spawn.patrolRadius) {
+      actor.clearPatrol();
+      return;
+    }
+    actor.setPatrol([
+      new BABYLON.Vector3(spawn.x - spawn.patrolRadius, 0, spawn.z),
+      new BABYLON.Vector3(spawn.x + spawn.patrolRadius, 0, spawn.z)
+    ], spawn.patrolSpeed, .65);
+  };
+  for (const [index, actor] of dragons.entries()) applyDragonPatrol(actor, world.dragonSpawns[index]);
   const controller = new CharacterController(BABYLON, world);
   const greenWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, {
     id: 'green-witch',
@@ -144,8 +164,9 @@ try {
     }
   });
   covenLeader.root.scaling.setAll(1.22);
+  const stagingZ = world.startPosition.z + .85;
   const covenLeaderState = {
-    position: new BABYLON.Vector3(1.35, 0, -9.85),
+    position: new BABYLON.Vector3(1.35, 0, world.startPosition.z + .35),
     facingYaw: Math.PI,
     speed: 0,
     grounded: true,
@@ -155,16 +176,16 @@ try {
   const covenLeaderInput = { aiming: false };
   const previewInput = { aiming: false };
   const previewWitchStates = Object.freeze({
-    purple: { position: new BABYLON.Vector3(-2.55, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
-    green: { position: new BABYLON.Vector3(-.85, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
-    frost: { position: new BABYLON.Vector3(.85, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
-    fire: { position: new BABYLON.Vector3(2.55, 0, -9.35), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' }
+    purple: { position: new BABYLON.Vector3(-2.55, 0, stagingZ), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
+    green: { position: new BABYLON.Vector3(-.85, 0, stagingZ), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
+    frost: { position: new BABYLON.Vector3(.85, 0, stagingZ), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' },
+    fire: { position: new BABYLON.Vector3(2.55, 0, stagingZ), facingYaw: Math.PI, speed: 0, grounded: true, crouched: false, stateLabel: 'IDLE' }
   });
   const initialPlayerState = controller.snapshot();
   const greenReplica = new RemotePlayerReplica(BABYLON, greenWitch, {
     sequence: 0,
     sentAt: performance.now() / 1000,
-    position: { x: 1.15, y: 0, z: -9.85 },
+    position: { x: 1.15, y: 0, z: world.startPosition.z + .35 },
     facingYaw: initialPlayerState.facingYaw,
     speed: 0,
     grounded: true,
@@ -178,13 +199,13 @@ try {
   let selectedCharacter = 'purple';
   let localWitch = purpleWitch;
   let remoteWitch = greenWitch;
-  controller.addDynamicObstacle(dragon);
+  for (const actor of dragons) controller.addDynamicObstacle(actor);
   const mobile = matchMedia('(pointer:coarse)').matches;
   const shoulderCamera = new ShoulderCamera(BABYLON, scene, world, mobile);
-  shoulderCamera.addBlockers(dragon.meshes);
+  shoulderCamera.addBlockers(dragons.flatMap(actor => actor.meshes));
   const input = new ProofInput(canvas);
-  const combat = new LightningCombat(BABYLON, scene, shoulderCamera, purpleWitch, dragon, controller);
-  const greenAbilities = new GreenWitchAbilities(BABYLON, scene, greenWitch, purpleWitch, dragon, combat);
+  const combat = new LightningCombat(BABYLON, scene, shoulderCamera, purpleWitch, dragons, controller);
+  const greenAbilities = new GreenWitchAbilities(BABYLON, scene, greenWitch, purpleWitch, dragons, combat);
   const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch);
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
@@ -317,7 +338,10 @@ try {
     greenReplica.setPresentation(remoteWitch);
     greenSimulation.setEnabled(simulatedPartyEnabled);
     greenReplica.setEnabled(simulatedPartyEnabled);
-    if (simulatedPartyEnabled) greenSimulation.reset(controller.snapshot());
+    if (simulatedPartyEnabled) {
+      greenSimulation.reset(controller.snapshot());
+      greenReplica.update(0, performance.now() / 1000);
+    }
     combat.setCharacter(characterId, localWitch, PLAYABLE_WITCHES[characterId].name);
     combat.setSpellcastingEnabled(characterId !== 'green');
     greenAbilities.setMode({
@@ -333,13 +357,13 @@ try {
   };
 
   const updateRouteHud = worldState => {
-    const checkpointKeys = ['arch', 'jump', 'crouch', 'arena', 'firstDragon', 'secondRoom', 'dragon', 'exit'];
+    const checkpointKeys = ['entrance', 'southRunes', 'firstDoor', 'northRooms', 'allRunes', 'finalDoor', 'moonDoor', 'exit'];
     const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
     routeObjective.textContent = worldState.objective;
     routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} checkpoints · ${worldState.gate.runes} / ${worldState.gate.requiredRunes} runes`;
     routePanel.classList.toggle('is-complete', worldState.complete);
   };
-  updateRouteHud(world.snapshot());
+  updateRouteHud(world.snapshot(dragons));
 
   const startProof = (characterId = 'purple') => {
     if (!selectLocalCharacter(characterId)) return false;
@@ -349,8 +373,8 @@ try {
     input.start();
     qualification?.recordEvent('gameplay-start');
     showMessage(characterId === 'purple'
-      ? 'Cross the Moon Gate · find the hidden mining tools and three gate runes · P opens the pouch'
-      : 'Cross the Moon Gate · recover all three gate runes · P opens the pouch');
+      ? 'Explore the maze rooms · find four runes to open both doors · P opens the pouch'
+      : 'Explore the maze rooms · recover four runes to open both doors · P opens the pouch');
     return true;
   };
 
@@ -394,18 +418,29 @@ try {
     input.active = true;
     input.updateBlockedState();
     world.reset();
-    dragon.setSpawnPosition(world.dragonPosition);
-    dragon.clearPatrol();
-    dragon.reset();
+    for (const [index, actor] of dragons.entries()) {
+      const spawn = world.dragonSpawns[index];
+      actor.setSpawnPosition(new BABYLON.Vector3(spawn.x, 0, spawn.z));
+      actor.setAggressive(spawn.aggressive);
+      actor.reset();
+      applyDragonPatrol(actor, spawn);
+    }
     combat.reset();
     inventory.reset();
     controller.reset();
+    localWitch.update(controller, input, 0, performance.now() / 1000);
     greenAbilities.reset();
-    if (simulatedPartyEnabled) greenSimulation.reset(controller.snapshot());
+    localWitch.root.setEnabled(true);
+    localWitch.root.scaling.setAll(1);
+    localWitch.setVisibility(1);
+    if (simulatedPartyEnabled) {
+      greenSimulation.reset(controller.snapshot());
+      greenReplica.update(0, performance.now() / 1000);
+    }
     updateCharacterInterface();
     shoulderCamera.setLook(0, 0);
     shoulderCamera.snapNextUpdate();
-    updateRouteHud(world.snapshot());
+    updateRouteHud(world.snapshot(dragons));
     showMessage('Qualification route reset · begin at the Moon Gate');
   };
   combat.onPlayerDefeated = () => setTimeout(resetTechnicalRoute, 850);
@@ -461,9 +496,10 @@ try {
       presentation: remoteWitch.snapshot()
     } : null,
     dragon: dragon.snapshot(),
+    dragons: dragons.map(actor => actor.snapshot()),
     combat: combat.snapshot(),
     inventory: inventory.snapshot(),
-    world: world.snapshot(),
+    world: world.snapshot(dragons),
     performance: telemetry.snapshot(),
     quality: qualityController.snapshot(),
     meshCount: scene.meshes.length,
@@ -503,21 +539,27 @@ try {
       greenSimulation.update(now, currentPlayerState);
       greenReplica.update(deltaTime, now);
     }
-    dragon.update(now, deltaTime);
+    for (const actor of dragons) actor.update(now, deltaTime);
     combat.update();
     greenAbilities.update(now, selectedCharacter === 'green' ? shoulderCamera : null);
     inventory.update(now, deltaTime);
     world.setRuneCount(inventory.runes);
-    const routeEvents = world.update(controller, dragon, deltaTime);
-    const worldState = world.snapshot();
+    const routeEvents = world.update(controller, dragons, deltaTime);
+    const worldState = world.snapshot(dragons);
     for (const event of routeEvents) {
-      if (event.type === 'rune-drop') inventory.revealDragonRune(event.source, event.position);
       showMessage(event.message);
+    }
+    if (worldState.exit.active) {
+      const visibility = worldState.exit.witchVisible;
+      localWitch.setVisibility(visibility);
+      localWitch.root.scaling.setAll(Math.max(.01, visibility));
     }
     if (worldState.complete && !completed) {
       completed = true;
       input.active = false;
       input.clearHeldInput();
+      localWitch.setVisibility(0);
+      localWitch.root.setEnabled(false);
       document.exitPointerLock?.();
     }
     updateRouteHud(worldState);
@@ -611,7 +653,22 @@ try {
     setGreenSimulationEnabled: value => greenSimulation.setEnabled(value),
     receiveGreenSnapshot: snapshot => greenReplica.receiveSnapshot(snapshot),
     receiveDragonDamage: amount => combat.receiveDragonDamage(amount),
-    damageActiveDragon: amount => dragon.damage(amount, performance.now() / 1000),
+    damageActiveDragon: amount => (combat.currentTarget || dragon).damage(amount, performance.now() / 1000),
+    damageDragon: (index, amount) => dragons[index]?.damage(amount, performance.now() / 1000) || false,
+    focusDragon: index => {
+      const target = dragons[index];
+      if (!target) return null;
+      combat.currentTarget = target;
+      greenAbilities.setDragonTarget(target);
+      return target.id;
+    },
+    teleportNearDragon: (index, distance = 4.2) => {
+      const target = dragons[index];
+      if (!target) return false;
+      controller.teleport(target.root.position.x, 0, target.root.position.z - Math.max(1.5, Number(distance) || 4.2));
+      shoulderCamera.snapNextUpdate();
+      return true;
+    },
     togglePouch: () => inventory.toggle(),
     useHealthBerry: () => inventory.useHealthBerry(),
     useLightningPotion: () => inventory.useLightningPotion(),

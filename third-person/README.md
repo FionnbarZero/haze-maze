@@ -6,15 +6,15 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 
 - `main.js` composes the scene, assigns the selected local Witch, keeps the optional simulated remote Witch behind `?party=simulated`, and exposes a purpose-built browser smoke-test hook.
 - `character-selection.js` owns the system-voiced Coven leader briefing, synchronized captions, automatic transition into the two-step four-Witch choice, named opening actions, confirmation state, and gamepad-ready action boundary.
-- `world.js` builds the temporary brick route, entrance Moon Gate, required traversal obstacles, dragon arena, technical exit barrier, route checkpoints, and collision registry.
+- `world.js` delegates to the expanded world renderer; `expanded-world.js` builds the 28 × 52 stone maze, scenery, two rune doors, Moon Door exit, route state, and collision registry. `maze-layout.js` produces repeatable variable room openings and dragon placements from a seed.
 - `controller.js` owns the substepped camera-relative capsule, wall and actor separation, buffered jumping, landing, crouching, ground probing, standing-clearance checks, and smooth cast-facing requests.
 - `camera.js` owns exploration/aim framing, aim-preserving shoulder switching, smoothing, multi-ray wall collision, side compression, recovery, and occlusion handling.
 - `input.js` maps keyboard, mouse, and independent touch pointers to named gameplay actions.
 - `witch.js` and `dragon.js` build deliberately temporary primitive actors and procedural motion. The Witch builder accepts named palettes so every color witch can share one presentation and animation contract.
 - `remote-player.js` consumes snapshot-shaped teammate state and smooths it independently from local input. Its temporary 10 Hz Green Witch feed can later be replaced by LAN messages without changing the replica.
 - `green-witch.js` owns the Green Witch's health and two unlocked ability templates: two-arm Vine Trap control and smart-targeted Restore healing.
-- `combat.js` resolves authoritative direct or conservative assisted crosshair intent, validates wall obstruction from the staff orb, drives cast-facing, and implements Purple storm magic, Frost control and damage, Fire offense and creature-blocking protection, player health, and the training dragon's close-range strike.
-- `inventory.js` builds the greybox berry bushes, corner treasure chest, gold reward, potion pickups, and clickable field-pouch inventory, then applies their effects through the combat system.
+- `combat.js` resolves authoritative direct or conservative assisted crosshair intent across multiple dragons, validates wall obstruction from the staff orb, drives cast-facing, and implements Purple storm magic, Frost control and damage, Fire offense and creature-blocking protection, player health, and hostile-dragon strikes.
+- `inventory.js` builds the greybox berry bushes, treasure chest, geodes, four found runes, potion pickups, and clickable field-pouch inventory, then applies their effects through the combat system.
 - `debug.js` reports FPS, frame-time samples, camera state, capsule state, collision, target, gate, animation, and mesh count.
 - `config.js` centralizes specification-derived tuning values; `utils.js` and `targeting.js` contain shared movement and targeting math.
 
@@ -23,19 +23,19 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 The authoritative route records eight checkpoints:
 
 1. Cross the Moon Gate after confirming a Witch.
-2. Jump over the rune relic.
-3. Crouch beneath the low lintel.
-4. Enter the combat arena.
-5. Defeat the first stationary guardian, which drops a rune and opens the second chamber.
-6. Enter the opened second chamber.
-7. Defeat its moving guardian and recover the complete three-rune set.
-8. Pass through the animated exit gate.
+2. Search the southern rooms and recover two runes.
+3. Open and cross the first rune door.
+4. Explore the deeper northern rooms.
+5. Recover the complete four-rune set.
+6. Open the final Moon Door.
+7. Step into its moonlit portal.
+8. Disappear through the portal to complete the route.
 
-The exit barrier is a real collider while locked. Three collectible gate runes are required to remove it: one is hidden beside the western trees and one falls from each defeated dragon. Defeating the second dragon without collecting the complete rune set leaves the barrier locked; the assembled set raises the gate and enables the final checkpoint.
+Both doors are real colliders while locked. The first two runes are placed in southern rooms so the player can open the inner door; the remaining two are distributed beyond it. Dragons do not hold required progression items. All ten are containable, but a seeded 10% hostile subset—exactly one dragon in this population—can initiate attacks. This keeps exploration populated without turning every encounter into forced combat.
 
-The Purple Witch's pouch now owns equippable field gear as well as provisions. Her Moon staff starts in hand and can be stored or re-equipped from the pouch; spellcasting requires it. A crystal geode pick and geode hammer are hidden separately in the maze and can each replace the staff in her right hand. Finding both tools permits the glowing southwest-corner rock to yield one magical geode, permanently increasing lightning damage by 10% for that route. The underlying rock list supports one geode per rock as more deposits are added.
+The Purple Witch's pouch now owns equippable field gear as well as provisions. Her Moon staff starts in hand and can be stored or re-equipped from the pouch; spellcasting requires it. A crystal geode pick and geode hammer are hidden separately in the maze and can each replace the staff in her right hand. Finding both tools permits each of four glowing rocks to yield one magical geode, with every geode permanently increasing lightning damage by 10% for that route.
 
-Optional greybox rewards continue to exercise the emerging inventory and economy loop. A chest in the arena's northwest corner opens on approach and awards 50 gold. The amber Storm potion can be collected and deliberately used from the pouch to double lightning damage for 15 seconds. The blue Aegis potion primes the next protective globe to last twice its normal duration. Golden berries remain collectible healing items.
+Optional greybox rewards continue to exercise the emerging inventory and economy loop. A central chest opens on approach and awards 50 gold. Four amber Storm potions can be collected and deliberately used from the pouch to double lightning damage for 15 seconds; four blue Aegis potions prime the next protective globe to last twice its normal duration. Twelve golden-berry bushes and eight inset fountains distribute landmarks and provisions throughout the rooms.
 
 ## Controls
 
@@ -51,13 +51,13 @@ The browser smoke-test hook at `window.__HMW_THIRD_PERSON_PROOF__` supports dete
 
 ## Regression checks
 
-Run the dependency-free unit suites with `node --test tests/targeting.test.mjs tests/character-selection-audio.test.mjs tests/remote-player.test.mjs`. They cover targeting math, opening-audio lifecycle, stale teammate-snapshot rejection, feed/replica separation, and disabled-replica behavior.
+Run the dependency-free unit suites with `node --test tests/maze-layout.test.mjs tests/targeting.test.mjs tests/character-selection-audio.test.mjs tests/remote-player.test.mjs`. They cover expanded-maze size and population invariants, seeded variation, the exact hostile-dragon ratio, both rune thresholds, targeting math, opening-audio lifecycle, and teammate snapshot behavior.
+
+`tests/third-person-expanded-maze-smoke.mjs` is the authoritative rendered route regression. It verifies the 3× floor area, 4× scenery/resource populations, ten-dragon distribution, passive-versus-hostile contact behavior, first-door and final-door rune thresholds, runtime stability, and the Witch's disappearance through the Moon Door.
 
 `tests/third-person-targeting-smoke.mjs` exercises the rendered proof through Chrome DevTools Protocol. Start the repository on port 8766, launch a Chromium browser with remote debugging on port 9223, then run `node tests/third-person-targeting-smoke.mjs`. The optional `HMW_GAME_URL` and `HMW_CDP_ENDPOINT` environment variables select different local endpoints. The browser regression verifies close-range damage, normal-range damage, off-center character rotation, wall rejection, staff-origin evidence, and dragon separation.
 
-`tests/third-person-dragon-defeat-smoke.mjs` verifies repeated O-key casts can reduce both training dragons to zero health, complete defeat states exactly once, update the health HUD, drop guardian runes, keep the gate locked with an incomplete set, and unlock it after the third rune is collected. It also covers route reset, frost followed by lightning, and resumed combat after pointer-lock interruption using the same optional URL and DevTools endpoint variables.
-
-`tests/third-person-purple-progression-smoke.mjs` verifies staff storage and casting requirements, individually held pick and hammer visuals, separate tool discovery, one-geode-per-rock mining, exact 10% permanent attack scaling, the tree and guardian rune sources, the three-rune gate requirement, pouch copy, and runtime stability.
+`tests/third-person-dragon-defeat-smoke.mjs` and `tests/third-person-purple-progression-smoke.mjs` retain historical two-guardian-route coverage for reference while their still-relevant combat and equipment checks are migrated into the expanded route suites.
 
 `tests/third-person-green-witch-smoke.mjs` verifies the simulated LAN snapshot stream and interpolation, distinct Green Witch presentation and nameplate, two unlocked ability templates, two-arm Vine Trap visuals and dragon restraint, self and friend Restore modes, smart wounded-friend selection, party HUD feedback, and runtime stability.
 

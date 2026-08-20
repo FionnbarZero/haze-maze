@@ -1,7 +1,24 @@
-import { COMBAT } from './config.js?v=20260818-greenwitch-v1';
+import { COMBAT } from './config.js?v=20260819-expanded-maze-v1';
 
-export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position) {
-  const root = new BABYLON.TransformNode('placeholder-dragon-root', scene);
+export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position, options = {}) {
+  const id = options.id || 'dragon-0';
+  const named = suffix => `${id}-${suffix}`;
+  const passivePalette = Object.freeze({
+    diffuse: '#49306f',
+    emissive: '#12081f',
+    specular: '#7c5aa4',
+    eyeDiffuse: '#ffd37b',
+    eyeEmissive: '#ff7b2e'
+  });
+  const aggressivePalette = Object.freeze({
+    diffuse: '#75342f',
+    emissive: '#2c0907',
+    specular: '#bd6955',
+    eyeDiffuse: '#fff1a0',
+    eyeEmissive: '#ff351c'
+  });
+  let basePalette = options.aggressive ? aggressivePalette : passivePalette;
+  const root = new BABYLON.TransformNode(named('root'), scene);
   root.position.copyFrom(position);
   root.rotation.y = Math.PI;
   const spawnPosition = position.clone();
@@ -12,21 +29,23 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
   let patrolSpeed = 1.2;
   let patrolWaitUntil = 0;
   let patrolWaitDuration = 0.9;
-  const material = new BABYLON.StandardMaterial('temporary-dragon-material', scene);
-  material.diffuseColor = BABYLON.Color3.FromHexString('#49306f');
-  material.emissiveColor = BABYLON.Color3.FromHexString('#12081f');
-  material.specularColor = BABYLON.Color3.FromHexString('#7c5aa4');
-  const eyeMaterial = new BABYLON.StandardMaterial('temporary-dragon-eye', scene);
-  eyeMaterial.diffuseColor = BABYLON.Color3.FromHexString('#ffd37b');
-  eyeMaterial.emissiveColor = BABYLON.Color3.FromHexString('#ff7b2e');
+  const material = new BABYLON.StandardMaterial(named('material'), scene);
+  material.diffuseColor = BABYLON.Color3.FromHexString(basePalette.diffuse);
+  material.emissiveColor = BABYLON.Color3.FromHexString(basePalette.emissive);
+  material.specularColor = BABYLON.Color3.FromHexString(basePalette.specular);
+  const eyeMaterial = new BABYLON.StandardMaterial(named('eye-material'), scene);
+  eyeMaterial.diffuseColor = BABYLON.Color3.FromHexString(basePalette.eyeDiffuse);
+  eyeMaterial.emissiveColor = BABYLON.Color3.FromHexString(basePalette.eyeEmissive);
 
   const actor = {
+    id,
+    aggressive: Boolean(options.aggressive),
     root,
     meshes,
     health: COMBAT.dragonHealth,
     maximumHealth: COMBAT.dragonHealth,
     alive: true,
-    collisionName: 'TRAINING DRAGON',
+    collisionName: options.aggressive ? 'AGGRESSIVE DRAGON' : 'PASSIVE DRAGON',
     collisionRadius: COMBAT.dragonCollisionRadius,
     collisionHeight: COMBAT.dragonCollisionHeight,
     aimRadius: COMBAT.aimAssistRadius,
@@ -57,6 +76,13 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       patrolPoints = [];
       patrolIndex = 0;
       patrolWaitUntil = 0;
+    },
+    setAggressive(value) {
+      this.aggressive = Boolean(value);
+      this.collisionName = this.aggressive ? 'AGGRESSIVE DRAGON' : 'PASSIVE DRAGON';
+      basePalette = this.aggressive ? aggressivePalette : passivePalette;
+      eyeMaterial.diffuseColor = BABYLON.Color3.FromHexString(basePalette.eyeDiffuse);
+      eyeMaterial.emissiveColor = BABYLON.Color3.FromHexString(basePalette.eyeEmissive);
     },
     setSpawnPosition(position) {
       const nextSpawn = position instanceof BABYLON.Vector3 ? position : new BABYLON.Vector3(position.x, position.y, position.z);
@@ -101,7 +127,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       return this.alive && time < this.restrainedUntil;
     },
     attack(time) {
-      if (!this.alive || this.isFrozen(time) || this.isRestrained(time)) return false;
+      if (!this.aggressive || !this.alive || this.isFrozen(time) || this.isRestrained(time)) return false;
       this.attackUntil = time + COMBAT.dragonAttackAnimationDuration;
       this.state = 'ATTACK';
       return true;
@@ -120,9 +146,9 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       root.rotation.set(0, Math.PI, 0);
       root.scaling.setAll(1);
       root.setEnabled(true);
-      material.emissiveColor = BABYLON.Color3.FromHexString('#12081f');
-      material.diffuseColor = BABYLON.Color3.FromHexString('#49306f');
-      material.specularColor = BABYLON.Color3.FromHexString('#7c5aa4');
+      material.emissiveColor = BABYLON.Color3.FromHexString(basePalette.emissive);
+      material.diffuseColor = BABYLON.Color3.FromHexString(basePalette.diffuse);
+      material.specularColor = BABYLON.Color3.FromHexString(basePalette.specular);
       patrolIndex = 0;
       patrolWaitUntil = 0;
     },
@@ -179,19 +205,19 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         ? BABYLON.Color3.FromHexString('#356a45')
         : frozen
         ? BABYLON.Color3.FromHexString('#72b8df')
-        : BABYLON.Color3.FromHexString('#49306f');
+        : BABYLON.Color3.FromHexString(basePalette.diffuse);
       material.specularColor = restrained
         ? BABYLON.Color3.FromHexString('#b9f4b6')
         : frozen
         ? BABYLON.Color3.FromHexString('#d8f7ff')
-        : BABYLON.Color3.FromHexString('#7c5aa4');
+        : BABYLON.Color3.FromHexString(basePalette.specular);
       material.emissiveColor = restrained
         ? BABYLON.Color3.FromHexString('#123d20')
         : frozen
         ? BABYLON.Color3.FromHexString('#174f77')
         : time < this.hitUntil
           ? BABYLON.Color3.FromHexString('#9f3e83')
-          : BABYLON.Color3.FromHexString('#12081f');
+          : BABYLON.Color3.FromHexString(basePalette.emissive);
       if (this.alive && !frozen && !restrained) {
         const attacking = time < this.attackUntil ? 1 : 0;
         wingLeft.rotation.z = -.35 + Math.sin(time * 2.7) * .18 - attacking * .28;
@@ -201,6 +227,8 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     },
     snapshot() {
       return {
+        id: this.id,
+        aggressive: this.aggressive,
         health: this.health,
         maximumHealth: this.maximumHealth,
         alive: this.alive,
@@ -211,6 +239,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         restrainedRemaining: Math.max(0, this.restrainedUntil - performance.now() / 1000),
         deathProgress: this.deathProgress,
         enabled: root.isEnabled(),
+        position: { x: root.position.x, y: root.position.y, z: root.position.z },
         aimPoint: this.getAimPoint().asArray(),
         collisionRadius: this.collisionRadius
       };
@@ -228,38 +257,38 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     return mesh;
   };
 
-  const body = addMesh(BABYLON.MeshBuilder.CreateSphere('dragon-body', { diameter: 1.5, segments: 18 }, scene), root, new BABYLON.Vector3(0, .82, 0));
+  const body = addMesh(BABYLON.MeshBuilder.CreateSphere(named('body'), { diameter: 1.5, segments: 18 }, scene), root, new BABYLON.Vector3(0, .82, 0));
   body.scaling.set(1.05, .72, 1.38);
-  const chest = addMesh(BABYLON.MeshBuilder.CreateSphere('dragon-chest', { diameter: 1.08, segments: 16 }, scene), root, new BABYLON.Vector3(0, 1.25, .68));
+  const chest = addMesh(BABYLON.MeshBuilder.CreateSphere(named('chest'), { diameter: 1.08, segments: 16 }, scene), root, new BABYLON.Vector3(0, 1.25, .68));
   chest.scaling.set(.82, 1, .9);
-  const head = addMesh(BABYLON.MeshBuilder.CreateSphere('dragon-head', { diameter: .82, segments: 16 }, scene), root, new BABYLON.Vector3(0, 1.62, 1.2));
+  const head = addMesh(BABYLON.MeshBuilder.CreateSphere(named('head'), { diameter: .82, segments: 16 }, scene), root, new BABYLON.Vector3(0, 1.62, 1.2));
   head.scaling.set(.82, .72, 1.05);
   for (const side of [-1, 1]) {
-    const eye = addMesh(BABYLON.MeshBuilder.CreateSphere(`dragon-eye-${side}`, { diameter: .11, segments: 10 }, scene), root, new BABYLON.Vector3(side * .22, 1.72, 1.58), eyeMaterial);
+    const eye = addMesh(BABYLON.MeshBuilder.CreateSphere(named(`eye-${side}`), { diameter: .11, segments: 10 }, scene), root, new BABYLON.Vector3(side * .22, 1.72, 1.58), eyeMaterial);
     eye.scaling.z = .55;
-    const horn = addMesh(BABYLON.MeshBuilder.CreateCylinder(`dragon-horn-${side}`, { height: .52, diameterTop: 0, diameterBottom: .13, tessellation: 10 }, scene), root, new BABYLON.Vector3(side * .28, 1.98, 1.1));
+    const horn = addMesh(BABYLON.MeshBuilder.CreateCylinder(named(`horn-${side}`), { height: .52, diameterTop: 0, diameterBottom: .13, tessellation: 10 }, scene), root, new BABYLON.Vector3(side * .28, 1.98, 1.1));
     horn.rotation.z = side * .34;
     for (const z of [.35, -.35]) {
-      const leg = addMesh(BABYLON.MeshBuilder.CreateCapsule(`dragon-leg-${side}-${z}`, { height: .72, radius: .14, tessellation: 10 }, scene), root, new BABYLON.Vector3(side * .5, .36, z));
+      const leg = addMesh(BABYLON.MeshBuilder.CreateCapsule(named(`leg-${side}-${z}`), { height: .72, radius: .14, tessellation: 10 }, scene), root, new BABYLON.Vector3(side * .5, .36, z));
       leg.rotation.z = side * .12;
     }
   }
 
-  const wingLeft = new BABYLON.TransformNode('dragon-wing-left', scene);
-  const wingRight = new BABYLON.TransformNode('dragon-wing-right', scene);
+  const wingLeft = new BABYLON.TransformNode(named('wing-left'), scene);
+  const wingRight = new BABYLON.TransformNode(named('wing-right'), scene);
   wingLeft.parent = root; wingRight.parent = root;
   wingLeft.position.set(-.55, 1.2, -.05); wingRight.position.set(.55, 1.2, -.05);
-  const wingMeshLeft = addMesh(BABYLON.MeshBuilder.CreateBox('dragon-wing-mesh-left', { width: 1.35, height: .08, depth: .82 }, scene), wingLeft, new BABYLON.Vector3(-.55, 0, 0));
-  const wingMeshRight = addMesh(BABYLON.MeshBuilder.CreateBox('dragon-wing-mesh-right', { width: 1.35, height: .08, depth: .82 }, scene), wingRight, new BABYLON.Vector3(.55, 0, 0));
+  const wingMeshLeft = addMesh(BABYLON.MeshBuilder.CreateBox(named('wing-mesh-left'), { width: 1.35, height: .08, depth: .82 }, scene), wingLeft, new BABYLON.Vector3(-.55, 0, 0));
+  const wingMeshRight = addMesh(BABYLON.MeshBuilder.CreateBox(named('wing-mesh-right'), { width: 1.35, height: .08, depth: .82 }, scene), wingRight, new BABYLON.Vector3(.55, 0, 0));
   wingMeshLeft.rotation.y = -.22; wingMeshRight.rotation.y = .22;
 
   const tailNodes = [];
   let parent = root;
   for (let index = 0; index < 5; index += 1) {
-    const node = new BABYLON.TransformNode(`dragon-tail-node-${index}`, scene);
+    const node = new BABYLON.TransformNode(named(`tail-node-${index}`), scene);
     node.parent = parent;
     node.position.set(0, index ? 0 : .82, index ? -.48 : -.7);
-    const segment = addMesh(BABYLON.MeshBuilder.CreateCapsule(`dragon-tail-${index}`, { height: .62 - index * .07, radius: .18 - index * .022, tessellation: 10 }, scene), node, new BABYLON.Vector3(0, 0, -.22));
+    const segment = addMesh(BABYLON.MeshBuilder.CreateCapsule(named(`tail-${index}`), { height: .62 - index * .07, radius: .18 - index * .022, tessellation: 10 }, scene), node, new BABYLON.Vector3(0, 0, -.22));
     segment.rotation.x = Math.PI / 2;
     tailNodes.push(node);
     parent = node;
