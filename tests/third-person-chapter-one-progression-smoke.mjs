@@ -4,12 +4,16 @@ const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9231';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8768/third-person.html?quality=low';
 
 const pages = await fetch(`${debugEndpoint}/json/list`).then(response => response.json());
-const expectedOrigin = new URL(gameUrl).origin;
-const target = pages.find(page => (
-  page.type === 'page'
-    && page.url.startsWith(expectedOrigin)
-    && page.url.includes('third-person')
-));
+const expectedUrl = new URL(gameUrl);
+const target = pages.find(page => {
+  if (page.type !== 'page') return false;
+  try {
+    const pageUrl = new URL(page.url);
+    return pageUrl.origin === expectedUrl.origin && pageUrl.pathname === expectedUrl.pathname;
+  } catch {
+    return false;
+  }
+});
 if (!target) throw new Error('No Moonhollow Chrome page target found');
 
 class CDP {

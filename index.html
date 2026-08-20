@@ -54,10 +54,10 @@
           </dl>
         </aside>
 
-        <aside class="route-panel" aria-label="Level 1 route objective">
-          <span>Technical route</span>
+        <aside class="route-panel" aria-label="Chapter 1 route objective">
+          <span id="route-label">Chapter 1 · Garden Maze</span>
           <strong id="route-objective">Cross the Moon Gate</strong>
-          <small id="route-progress">0 / 8 checkpoints · 0 / 4 runes</small>
+          <small id="route-progress">0 / 3 route beats · 0 / 3 West Rune fragments</small>
         </aside>
 
         <aside id="green-witch-party" class="party-panel" aria-label="Simulated Witch teammate">
@@ -95,36 +95,40 @@
             <button id="close-pouch" type="button" aria-label="Close pouch">×</button>
           </header>
           <div class="pouch-lining">
-            <section id="pouch-gear-section" class="pouch-section" aria-label="Purple Witch equipment">
-              <p>Held equipment · Purple Witch</p>
+            <section id="pouch-gear-section" class="pouch-section" aria-label="Witch equipment mode">
+              <p id="pouch-gear-heading">Equipment mode · Purple Witch</p>
               <button id="pouch-staff-item" class="pouch-item" type="button">
                 <span class="gear-icon gear-icon-staff" aria-hidden="true"><i></i><b></b></span>
-                <span><strong>Moon staff</strong><small id="staff-action-copy">Store staff in the pouch</small></span>
+                <span><strong id="pouch-staff-label">Moon staff</strong><small id="staff-action-copy">Store staff in the pouch</small></span>
                 <em id="pouch-staff-state">Held</em>
               </button>
-              <button id="pouch-geode-pick-item" class="pouch-item" type="button" disabled>
+              <button id="pouch-geode-pick-item" class="pouch-item" type="button">
                 <span class="gear-icon gear-icon-pick" aria-hidden="true"><i></i><b></b></span>
-                <span><strong>Crystal geode pick</strong><small id="geode-pick-action-copy">Hidden somewhere inside the maze</small></span>
-                <em id="pouch-geode-pick-state">Not found</em>
+                <span><strong id="pouch-geode-pick-label">Mining Tools</strong><small id="geode-pick-action-copy">Switch to the paired pick and hammer</small></span>
+                <em id="pouch-geode-pick-state">Stored</em>
               </button>
-              <button id="pouch-geode-hammer-item" class="pouch-item" type="button" disabled>
+              <button id="pouch-geode-hammer-item" class="pouch-item" type="button">
                 <span class="gear-icon gear-icon-hammer" aria-hidden="true"><i></i><b></b></span>
-                <span><strong>Geode hammer</strong><small id="geode-hammer-action-copy">Hidden elsewhere inside the maze</small></span>
-                <em id="pouch-geode-hammer-state">Not found</em>
+                <span><strong id="pouch-geode-hammer-label">Unique tool pair</strong><small id="geode-hammer-action-copy">Owned with the geode pick</small></span>
+                <em id="pouch-geode-hammer-state">Paired</em>
               </button>
             </section>
             <section class="pouch-section" aria-label="Quest relics">
               <p>Quest relics</p>
               <div class="pouch-item pouch-treasure" aria-label="Mined magical geodes">
                 <span class="geode-icon" aria-hidden="true"><i></i><i></i><i></i></span>
-                <span><strong>Magical geodes</strong><small id="geode-power-copy">Find both mining tools to open magical crystal rocks</small></span>
-                <em id="pouch-geode-count">0 geodes</em>
+                <span><strong id="pouch-geode-label">Raw Damage Crystals</strong><small id="geode-power-copy">Optional geodes may contain Raw Damage Crystals</small></span>
+                <em id="pouch-geode-count">0 raw crystals</em>
               </div>
               <div class="pouch-item pouch-treasure" aria-label="Recovered rune-door runes">
                 <span class="rune-icon" aria-hidden="true"><i></i><b></b></span>
-                <span><strong>Rune-door runes</strong><small id="rune-action-copy">4 runes remain · search the maze rooms</small></span>
-                <em id="pouch-rune-count">0 / 4</em>
+                <span><strong id="pouch-rune-label">West Route-Rune</strong><small id="rune-action-copy">3 fragments remain · 0 Keeper clues recovered</small></span>
+                <em id="pouch-rune-count">0 / 3</em>
               </div>
+            </section>
+            <section id="keeper-clues-section" class="pouch-section keeper-clues" aria-label="Recovered Keeper clues">
+              <p>Keeper clues</p>
+              <ol id="keeper-clue-list"><li class="is-empty">No Keeper clues recovered yet.</li></ol>
             </section>
             <p>Collected provisions</p>
             <button id="use-health-berry" class="pouch-item" type="button" disabled>
@@ -228,6 +232,6 @@
     </main>
 
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
-    <script type="module" src="third-person/main.js?v=20260819-expanded-maze-v1"></script>
+    <script type="module" src="third-person/main.js?v=20260820-chapter-one-v2"></script>
   </body>
 </html>
