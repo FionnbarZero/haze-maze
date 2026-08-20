@@ -1,5 +1,6 @@
 import { COMBAT, POUCH } from './config.js?v=20260819-expanded-maze-v1';
-import { ChapterOneInteractions, EQUIPMENT_MODES } from './chapter-interactions.js?v=20260820-chapter-one-v2';
+import { ChapterOneInteractions, EQUIPMENT_MODES } from './chapter-interactions.js?v=20260820-chapter-one-v3';
+import { ChapterOneGeodeState } from './chapter-geode-state.js?v=20260820-chapter-one-v3';
 import { hexColor3 } from './utils.js';
 
 export class PouchInventory {
@@ -22,8 +23,15 @@ export class PouchInventory {
     const chapterGeodes = this.chapterMode
       ? [...this.levelPlan.requiredGeodes, ...this.levelPlan.optionalGeodes]
       : [];
+    this.geodeState = this.chapterMode
+      ? options.geodeState || new ChapterOneGeodeState({ geodes: chapterGeodes })
+      : null;
     this.interactions = this.chapterMode
-      ? new ChapterOneInteractions({ actorId: this.activeCharacter, geodes: chapterGeodes })
+      ? new ChapterOneInteractions({
+        actorId: this.activeCharacter,
+        geodes: chapterGeodes,
+        geodeState: this.geodeState
+      })
       : null;
     this.ownedEquipment = this.chapterMode ? null : { staff: true, geodePick: false, geodeHammer: false };
     this.equippedItem = this.chapterMode ? null : 'staff';
@@ -498,6 +506,17 @@ export class PouchInventory {
     crystalMaterial.emissiveColor = hexColor3(this.BABYLON, '#7542b8');
     crystalMaterial.specularColor = hexColor3(this.BABYLON, '#fff4ff');
 
+    const requiredMarkerMaterial = new this.BABYLON.StandardMaterial('required-geode-marker-material', this.scene);
+    requiredMarkerMaterial.diffuseColor = hexColor3(this.BABYLON, '#f3d88d');
+    requiredMarkerMaterial.emissiveColor = hexColor3(this.BABYLON, '#c486ff');
+    requiredMarkerMaterial.specularColor = hexColor3(this.BABYLON, '#fff8d4');
+    requiredMarkerMaterial.alpha = .82;
+
+    const fragmentMaterial = new this.BABYLON.StandardMaterial('route-fragment-pickup-material', this.scene);
+    fragmentMaterial.diffuseColor = hexColor3(this.BABYLON, '#f5d998');
+    fragmentMaterial.emissiveColor = hexColor3(this.BABYLON, '#a45bdb');
+    fragmentMaterial.specularColor = hexColor3(this.BABYLON, '#fff8dc');
+
     const definitions = this.chapterMode
       ? [...this.levelPlan.requiredGeodes, ...this.levelPlan.optionalGeodes].map(geode => ({
         ...geode,
@@ -551,12 +570,67 @@ export class PouchInventory {
       glow.range = 3.4;
       glow.intensity = .65;
 
+      const discoveryMarker = new this.BABYLON.TransformNode(`required-geode-marker-${definition.id}`, this.scene);
+      discoveryMarker.parent = root;
+      const markerBeam = this.BABYLON.MeshBuilder.CreateCylinder(`required-geode-beam-${definition.id}`, {
+        height: 3.2,
+        diameter: .075,
+        tessellation: 8
+      }, this.scene);
+      markerBeam.parent = discoveryMarker;
+      markerBeam.position.y = 1.95;
+      markerBeam.material = requiredMarkerMaterial;
+      markerBeam.isPickable = false;
+      const markerRing = this.BABYLON.MeshBuilder.CreateTorus(`required-geode-ring-${definition.id}`, {
+        diameter: 1.48,
+        thickness: .075,
+        tessellation: 32
+      }, this.scene);
+      markerRing.parent = discoveryMarker;
+      markerRing.position.y = 1.18;
+      markerRing.material = requiredMarkerMaterial;
+      markerRing.isPickable = false;
+      discoveryMarker.setEnabled(this.chapterMode && Boolean(definition.required));
+
+      const rewardRoot = new this.BABYLON.TransformNode(`geode-reward-${definition.id}`, this.scene);
+      rewardRoot.parent = root;
+      rewardRoot.position.y = 1.08;
+      const rewardMesh = this.BABYLON.MeshBuilder.CreateCylinder(`geode-reward-mesh-${definition.id}`, {
+        height: .62,
+        diameterTop: .05,
+        diameterBottom: .38,
+        tessellation: definition.required ? 4 : 6
+      }, this.scene);
+      rewardMesh.parent = rewardRoot;
+      rewardMesh.material = definition.required ? fragmentMaterial : crystalMaterial;
+      rewardMesh.isPickable = false;
+      const rewardGlow = new this.BABYLON.PointLight(
+        `geode-reward-glow-${definition.id}`,
+        new this.BABYLON.Vector3(0, 0, 0),
+        this.scene
+      );
+      rewardGlow.parent = rewardRoot;
+      rewardGlow.diffuse = hexColor3(this.BABYLON, definition.required ? '#f3d88d' : '#cfacff');
+      rewardGlow.range = 3.1;
+      rewardGlow.intensity = .9;
+      rewardRoot.setEnabled(false);
+
       return {
         id: definition.id,
         root,
         stone,
         crystals,
         glow,
+        discoveryMarker,
+        reward: {
+          root: rewardRoot,
+          mesh: rewardMesh,
+          glow: rewardGlow,
+          available: false,
+          collected: false,
+          collectibleAt: 0,
+          content: null
+        },
         required: Boolean(definition.required),
         content: definition.content ? structuredClone(definition.content) : null,
         strikesRequired: definition.strikesRequired || 1,
@@ -728,7 +802,48 @@ export class PouchInventory {
     rock.stone.rotation.z = Math.sin(state.strikes * 2.17) * .055 * (1 - progress);
     rock.glow.intensity = state.broken ? .82 : .48 + progress * .32;
     rock.stone.setEnabled(!state.broken);
+    rock.discoveryMarker.setEnabled(rock.required && !state.broken);
     for (const crystal of rock.crystals) crystal.setEnabled(state.broken);
+  }
+
+  spawnChapterGeodeReward(rock, content) {
+    if (!rock || !content || rock.reward.available || rock.reward.collected) return false;
+    rock.reward.available = true;
+    rock.reward.content = structuredClone(content);
+    rock.reward.collectibleAt = performance.now() / 1000 + .65;
+    rock.reward.root.rotation.y = 0;
+    rock.reward.root.setEnabled(true);
+    this.onMessage(content.kind === 'route-rune-fragment'
+      ? 'Geode opened · a glowing Route-Rune fragment emerged'
+      : 'Geode opened · a Raw Damage Crystal emerged');
+    return true;
+  }
+
+  collectChapterGeodeReward(rock) {
+    const reward = rock?.reward;
+    if (!reward?.available || reward.collected || !reward.content) return false;
+    let message = '';
+    if (reward.content.kind === 'route-rune-fragment') {
+      const collected = this.progression.collectFragment(reward.content);
+      if (!collected.accepted) return false;
+      const clueTitle = reward.content.clue?.title || 'Keeper clue';
+      message = collected.completedNow
+        ? `${clueTitle} recovered · West Route-Rune completed · Sunken Gate unlocked`
+        : `${clueTitle} recovered · route-rune fragment ${collected.fragmentCount} / 3`;
+    } else if (reward.content.kind === 'raw-damage-crystal') {
+      this.rawDamageCrystals += reward.content.amount || 1;
+      this.combat.setDamageCrystalCount(this.rawDamageCrystals);
+      message = `Raw Damage Crystal collected · ${this.rawDamageCrystals} carried · +${this.rawDamageCrystals * 10}% spell damage`;
+    } else {
+      return false;
+    }
+    reward.available = false;
+    reward.collected = true;
+    reward.root.setEnabled(false);
+    this.geodes += 1;
+    this.onMessage(message);
+    this.updateInterface();
+    return true;
   }
 
   strikeNearbyGeode() {
@@ -757,23 +872,12 @@ export class PouchInventory {
       broken: result.brokenNow
     });
     if (!result.brokenNow) {
-      this.onMessage(`Geode struck · ${result.strikes} / ${result.strikesRequired} · ${result.remaining} remaining`);
+      this.onMessage('Geode struck · bright cracks spread through the stone');
       this.updateInterface();
       return true;
     }
 
-    this.geodes += 1;
-    if (result.content.kind === 'route-rune-fragment') {
-      const collected = this.progression.collectFragment(result.content);
-      const clueTitle = result.content.clue?.title || 'Keeper clue';
-      this.onMessage(collected.completedNow
-        ? `${clueTitle} recovered · West Route-Rune completed · Sunken Gate unlocked`
-        : `${clueTitle} recovered · route-rune fragment ${collected.fragmentCount} / 3`);
-    } else if (result.content.kind === 'raw-damage-crystal') {
-      this.rawDamageCrystals += result.content.amount || 1;
-      this.combat.setDamageCrystalCount(this.rawDamageCrystals);
-      this.onMessage(`Raw Damage Crystal revealed · ${this.rawDamageCrystals} carried · +${this.rawDamageCrystals * 10}% spell damage`);
-    }
+    this.spawnChapterGeodeReward(rock, result.content);
     this.updateInterface();
     return true;
   }
@@ -963,6 +1067,23 @@ export class PouchInventory {
       if (dx * dx + dz * dz <= pickupRadiusSquared) this.collectEquipment(pickup);
     }
 
+    if (this.chapterMode) {
+      for (const rock of this.geodeRocks) {
+        if (rock.discoveryMarker.isEnabled()) {
+          rock.discoveryMarker.rotation.y += deltaTime * .42;
+          rock.discoveryMarker.position.y = Math.sin(time * 1.8 + rock.phase) * .08;
+        }
+        if (!rock.reward.available || rock.reward.collected) continue;
+        rock.reward.root.rotation.y += deltaTime * 1.8;
+        rock.reward.root.position.y = 1.08 + Math.sin(time * 3.2 + rock.phase) * .12;
+        rock.reward.glow.intensity = .72 + (.5 + Math.sin(time * 4.4 + rock.phase) * .5) * .38;
+        if (time < rock.reward.collectibleAt) continue;
+        const dx = player.x - rock.position.x;
+        const dz = player.z - rock.position.z;
+        if (dx * dx + dz * dz <= pickupRadiusSquared) this.collectChapterGeodeReward(rock);
+      }
+    }
+
     const mineRadiusSquared = POUCH.geodeMineRadius * POUCH.geodeMineRadius;
     for (const rock of this.geodeRocks) {
       if (rock.mined) continue;
@@ -977,9 +1098,8 @@ export class PouchInventory {
       if (this.chapterMode) {
         if (!rock.blockedNotified) {
           rock.blockedNotified = true;
-          const state = this.interactions.geodes.find(geode => geode.id === rock.id);
           this.onMessage(this.interactions.canActorMine(this.activeCharacter)
-            ? `Geode ready · press O to strike · ${state?.strikes || 0} / ${state?.strikesRequired || rock.strikesRequired}`
+            ? 'Geode ready · press O to strike'
             : 'Unopened geode · equip Mining Tools from the pouch');
         }
         continue;
@@ -1143,7 +1263,10 @@ export class PouchInventory {
     this.totalUsed = 0;
     this.totalPotionsCollected = 0;
     this.totalPotionsUsed = 0;
-    if (this.chapterMode) this.interactions.reset(this.activeCharacter);
+    if (this.chapterMode) {
+      this.geodeState.reset();
+      this.interactions.reset(this.activeCharacter);
+    }
     for (const pickup of this.pickups) {
       pickup.collected = false;
       pickup.root.position.copyFrom(pickup.position);
@@ -1170,6 +1293,16 @@ export class PouchInventory {
       rock.stone.setEnabled(true);
       rock.stone.scaling.set(1.18, .72, .92);
       rock.stone.rotation.z = 0;
+      rock.discoveryMarker.position.y = 0;
+      rock.discoveryMarker.rotation.y = 0;
+      rock.discoveryMarker.setEnabled(this.chapterMode && rock.required);
+      rock.reward.available = false;
+      rock.reward.collected = false;
+      rock.reward.collectibleAt = 0;
+      rock.reward.content = null;
+      rock.reward.root.position.y = 1.08;
+      rock.reward.root.rotation.y = 0;
+      rock.reward.root.setEnabled(false);
       for (const crystal of rock.crystals) crystal.setEnabled(!this.chapterMode);
     }
     for (const rune of this.runePickups) {
@@ -1264,11 +1397,20 @@ export class PouchInventory {
         revealedContent: this.chapterMode
           ? interactionState.geodes.find(geode => geode.id === rock.id)?.content || null
           : null,
+        reward: this.chapterMode ? {
+          available: rock.reward.available,
+          collected: rock.reward.collected,
+          kind: rock.reward.content?.kind || null,
+          collectible: rock.reward.available && performance.now() / 1000 >= rock.reward.collectibleAt,
+          position: { x: rock.position.x, y: rock.position.y + rock.reward.root.position.y, z: rock.position.z },
+          visualEnabled: rock.reward.root.isEnabled()
+        } : null,
         visual: {
           stoneEnabled: rock.stone.isEnabled(),
           stoneScale: { x: rock.stone.scaling.x, y: rock.stone.scaling.y, z: rock.stone.scaling.z },
           revealedCrystals: rock.crystals.filter(crystal => crystal.isEnabled()).length,
-          glowIntensity: rock.glow.intensity
+          glowIntensity: rock.glow.intensity,
+          discoveryMarkerEnabled: rock.discoveryMarker.isEnabled()
         },
         position: { x: rock.position.x, y: rock.position.y, z: rock.position.z }
       })),

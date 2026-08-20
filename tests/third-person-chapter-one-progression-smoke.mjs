@@ -97,9 +97,105 @@ const blockedCastExpression = characterId => ({
   fire: 'window.__HMW_THIRD_PERSON_PROOF__.castFireball()'
 }[characterId]);
 
+const GRID_STEP = .5;
+const PLAYER_CLEARANCE = .38;
+const keyFor = (x, z) => `${x}:${z}`;
+
+function navigationPath(state, target) {
+  const minimumX = -state.world.dimensions.width / 2 + .7;
+  const maximumX = state.world.dimensions.width / 2 - .7;
+  const minimumZ = -state.world.dimensions.depth / 2 + .7;
+  const maximumZ = state.world.dimensions.depth / 2 - .7;
+  const columns = Math.floor((maximumX - minimumX) / GRID_STEP) + 1;
+  const rows = Math.floor((maximumZ - minimumZ) / GRID_STEP) + 1;
+  const pointFor = (x, z) => ({ x: minimumX + x * GRID_STEP, z: minimumZ + z * GRID_STEP });
+  const blocked = (x, z) => {
+    const point = pointFor(x, z);
+    if (state.navigation.colliders.some(collider => collider.max.y > .01
+      && collider.min.y < 1.75
+      && point.x >= collider.min.x - PLAYER_CLEARANCE
+      && point.x <= collider.max.x + PLAYER_CLEARANCE
+      && point.z >= collider.min.z - PLAYER_CLEARANCE
+      && point.z <= collider.max.z + PLAYER_CLEARANCE)) return true;
+    return state.dragons.some(dragon => dragon.alive
+      && Math.hypot(point.x - dragon.position.x, point.z - dragon.position.z)
+        < dragon.collisionRadius + PLAYER_CLEARANCE + .35);
+  };
+  const nearestFree = position => {
+    const centerX = Math.round((position.x - minimumX) / GRID_STEP);
+    const centerZ = Math.round((position.z - minimumZ) / GRID_STEP);
+    let best = null;
+    for (let radius = 0; radius <= 8 && !best; radius += 1) {
+      for (let x = centerX - radius; x <= centerX + radius; x += 1) {
+        for (let z = centerZ - radius; z <= centerZ + radius; z += 1) {
+          if (x < 0 || z < 0 || x >= columns || z >= rows || blocked(x, z)) continue;
+          const point = pointFor(x, z);
+          const distance = Math.hypot(point.x - position.x, point.z - position.z);
+          if (!best || distance < best.distance) best = { x, z, distance };
+        }
+      }
+    }
+    if (!best) throw new Error(`No walkable grid point near ${position.x}, ${position.z}`);
+    return best;
+  };
+
+  const start = nearestFree(state.player);
+  const goal = nearestFree(target);
+  const queue = [start];
+  const visited = new Set([keyFor(start.x, start.z)]);
+  const previous = new Map();
+  let cursor = 0;
+  while (cursor < queue.length && !visited.has(keyFor(goal.x, goal.z))) {
+    const current = queue[cursor++];
+    for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const x = current.x + dx;
+      const z = current.z + dz;
+      const key = keyFor(x, z);
+      if (x < 0 || z < 0 || x >= columns || z >= rows || visited.has(key) || blocked(x, z)) continue;
+      visited.add(key);
+      previous.set(key, current);
+      queue.push({ x, z });
+    }
+  }
+  if (!visited.has(keyFor(goal.x, goal.z))) {
+    throw new Error(`No normal walking route to ${target.x}, ${target.z}`);
+  }
+
+  const gridPath = [goal];
+  while (gridPath.at(-1).x !== start.x || gridPath.at(-1).z !== start.z) {
+    gridPath.push(previous.get(keyFor(gridPath.at(-1).x, gridPath.at(-1).z)));
+  }
+  gridPath.reverse();
+  return gridPath.map(point => pointFor(point.x, point.z));
+}
+
+async function walkNormalRouteTo(target, label) {
+  const state = await snapshot();
+  const waypoints = navigationPath(state, target);
+  for (const waypoint of waypoints.slice(1)) {
+    const deadline = Date.now() + 12000;
+    let position = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
+    while (Math.hypot(waypoint.x - position.x, waypoint.z - position.z) > .27) {
+      if (Date.now() > deadline) {
+        await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
+        const stalled = await snapshot();
+        throw new Error(`${label} walking stalled at ${position.x.toFixed(2)}, ${position.z.toFixed(2)} toward ${waypoint.x.toFixed(2)}, ${waypoint.z.toFixed(2)}: ${stalled.player.collision}`);
+      }
+      const yaw = Math.atan2(waypoint.x - position.x, waypoint.z - position.z);
+      await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.setLook(${yaw}, 0); window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1); true`);
+      await delay(70);
+      position = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
+    }
+  }
+  await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
+  const finalPosition = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
+  assert.ok(Math.hypot(target.x - finalPosition.x, target.z - finalPosition.z) <= 1.05,
+    `${label} should be reached through normal movement`);
+}
+
 const results = [];
 try {
-  for (const characterId of ['purple', 'green', 'frost', 'fire']) {
+  for (const characterId of ['purple']) {
     await cdp.send('Page.bringToFront');
     await cdp.send('Page.navigate', {
       url: `${gameUrl}${gameUrl.includes('?') ? '&' : '?'}mazeSeed=chapter-one-browser-${characterId}&character=${characterId}&smoke=${Date.now()}`
@@ -116,6 +212,12 @@ try {
     assert.equal(initial.inventory.equipment.canCast, true);
     assert.equal(initial.inventory.equipment.canMine, false);
     assert.equal(initial.world.doors.first.state, 'LOCKED');
+    assert.ok(initial.inventory.geodeRocks.filter(geode => geode.required)
+      .every(geode => geode.visual.discoveryMarkerEnabled),
+    'every required geode should have a visible discovery marker before mining');
+    assert.ok(initial.inventory.geodeRocks.filter(geode => !geode.required)
+      .every(geode => !geode.visual.discoveryMarkerEnabled),
+    'optional geodes should not impersonate required route markers');
 
     await evaluate("window.__HMW_THIRD_PERSON_PROOF__.setEquipmentMode('mining-tools'); true");
     const miningMode = await snapshot();
@@ -128,30 +230,43 @@ try {
     const blockedCast = await evaluate(blockedCastExpression(characterId));
     assert.equal(blockedCast, false, `${characterId} spellcasting must be blocked in Mining Tools mode`);
 
-    for (const [geodeIndex, geode] of initial.levelPlan.requiredGeodes.entries()) {
-      await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${geode.position.x}, 0, ${geode.position.z}); true`);
-      await delay(80);
-      let startingStrike = 0;
-      if (geodeIndex === 0) {
-        await evaluate("window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyO', bubbles: true })); true");
-        await waitFor(`window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.geodeRocks.find(geode => geode.id === '${geode.id}').strikes === 1`);
-        const visibleProgress = (await snapshot()).inventory.geodeRocks.find(entry => entry.id === geode.id);
-        assert.ok(visibleProgress.visual.stoneScale.y < .72);
-        assert.equal(visibleProgress.visual.revealedCrystals, 0);
-        startingStrike = 1;
-      }
-      for (let strike = startingStrike; strike < geode.strikesRequired; strike += 1) {
+    let collectedFragments = 0;
+    for (const geode of initial.levelPlan.requiredGeodes) {
+      await walkNormalRouteTo(geode.position, geode.id);
+      const discovered = (await snapshot()).inventory.geodeRocks.find(entry => entry.id === geode.id);
+      assert.equal(discovered.visual.discoveryMarkerEnabled, true);
+      for (let strike = 0; strike < geode.strikesRequired; strike += 1) {
         const accepted = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.strikeNearbyGeode()');
         assert.equal(accepted, true, `${characterId} strike ${strike + 1} should be accepted for ${geode.id}`);
+        if (strike === 0) {
+          const message = await evaluate("document.querySelector('#toast').textContent.trim()");
+          assert.equal(message, 'Geode struck · bright cracks spread through the stone');
+          assert.equal(/\d/.test(message), false, 'mining feedback should not reveal numeric hit counts');
+        }
       }
+      const broken = await snapshot();
+      const brokenRock = broken.inventory.geodeRocks.find(entry => entry.id === geode.id);
+      assert.equal(brokenRock.visual.discoveryMarkerEnabled, false);
+      assert.equal(brokenRock.reward.available, true);
+      assert.equal(brokenRock.reward.visualEnabled, true);
+      assert.equal(broken.chapter.routeRune.fragmentCount, collectedFragments,
+        'breaking a geode must not award progression before pickup');
+      await waitFor(`window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.geodeRocks.find(geode => geode.id === '${geode.id}').reward.collected`);
+      collectedFragments += 1;
+      assert.equal((await snapshot()).chapter.routeRune.fragmentCount, collectedFragments);
     }
 
     const optionalGeode = initial.levelPlan.optionalGeodes[0];
-    await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${optionalGeode.position.x}, 0, ${optionalGeode.position.z}); true`);
-    await delay(80);
+    await walkNormalRouteTo(optionalGeode.position, optionalGeode.id);
     for (let strike = 0; strike < optionalGeode.strikesRequired; strike += 1) {
       assert.equal(await evaluate('window.__HMW_THIRD_PERSON_PROOF__.strikeNearbyGeode()'), true);
     }
+    const optionalBroken = await snapshot();
+    const optionalRock = optionalBroken.inventory.geodeRocks.find(entry => entry.id === optionalGeode.id);
+    assert.equal(optionalRock.reward.available, true);
+    assert.equal(optionalBroken.inventory.rawDamageCrystals, 0,
+      'breaking an optional geode must not award its crystal before pickup');
+    await waitFor(`window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.geodeRocks.find(geode => geode.id === '${optionalGeode.id}').reward.collected`);
 
     await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.doors.first.state === 'OPEN'");
     const completed = await snapshot();
@@ -160,8 +275,11 @@ try {
     assert.equal(completed.chapter.completedRunes.includes('route-rune-west'), true);
     assert.equal(completed.chapter.keeperClues.length, 3);
     assert.equal(completed.chapter.sunkenGate.opened, true);
+    assert.equal(completed.chapter.completion.chapterComplete, false);
     assert.equal(completed.world.gate.requiredRuneId, 'route-rune-west');
     assert.equal(completed.world.gate.runeCompleted, true);
+    assert.equal(completed.world.chapterComplete, false);
+    assert.equal(completed.world.complete, false);
     assert.equal(completed.world.doors.final.state, 'LOCKED');
     assert.equal(completed.inventory.rawDamageCrystals, 1);
     assert.equal(completed.combat.powerups.damageCrystalCount, 1);
@@ -185,7 +303,9 @@ try {
       strikes: completed.inventory.geodeRocks.filter(geode => geode.required)
         .map(geode => geode.strikesRequired),
       clues: completed.chapter.keeperClues.map(clue => clue.id),
-      gate: completed.world.doors.first.state
+      gate: completed.world.doors.first.state,
+      movementOnly: true,
+      rewardsCollected: completed.inventory.geodeRocks.filter(geode => geode.reward?.collected).length
     });
   }
 

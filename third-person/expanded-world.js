@@ -531,6 +531,9 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     },
     snapshot(dragons = []) {
       const dragonStates = dragons.map(dragon => dragon.snapshot());
+      const gardenMazeComplete = routeMode === 'chapter1' && route.sunkenGate;
+      const chapterComplete = routeMode === 'chapter1'
+        && Boolean(chapterProgression?.completion?.chapterComplete);
       return {
         routeMode,
         seed: mazeSeed,
@@ -570,7 +573,9 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
         dragons: dragonStates,
         containedDragons: dragonStates.filter(dragon => !dragon.alive).length,
         objective: this.nextObjective(),
-        complete: routeMode === 'chapter1' ? route.sunkenGate : route.exit
+        gardenMazeComplete,
+        chapterComplete,
+        complete: routeMode === 'chapter1' ? chapterComplete : route.exit
       };
     }
   };
