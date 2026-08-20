@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
-const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low';
+const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&route=legacy';
 
 const pages = await fetch(`${debugEndpoint}/json/list`).then(response => response.json());
 const target = pages.find(page => page.type === 'page');
@@ -98,6 +98,20 @@ try {
   await delay(250);
 
   const initial = await snapshot();
+  const legacyLabels = await evaluate(`({
+    route: document.querySelector('#route-label').textContent.trim(),
+    pick: document.querySelector('#pouch-geode-pick-label').textContent.trim(),
+    geodes: document.querySelector('#pouch-geode-label').textContent.trim(),
+    runes: document.querySelector('#pouch-rune-label').textContent.trim(),
+    keeperCluesHidden: document.querySelector('#keeper-clues-section').hidden
+  })`);
+  assert.deepEqual(legacyLabels, {
+    route: 'Technical route',
+    pick: 'Crystal geode pick',
+    geodes: 'Magical geodes',
+    runes: 'Rune-door runes',
+    keeperCluesHidden: true
+  });
   assert.ok(initial.world.dimensions.areaMultiplier >= 3);
   assert.deepEqual(initial.world.featureCounts, {
     berries: 12,

@@ -1,5 +1,6 @@
 import { PLAYER, POUCH, WORLD } from './config.js?v=20260819-expanded-maze-v1';
 import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260819-expanded-maze-v1';
+import { createChapterOneLevelPlan } from './chapter-level-plan.js?v=20260820-chapter-one-v2';
 import { hexColor3 } from './utils.js';
 
 export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
@@ -11,12 +12,16 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
   const generatedSeed = globalThis.crypto?.randomUUID?.()
     || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const mazeSeed = options.seed || `${WORLD.defaultMazeSeed}:${generatedSeed}`;
+  const routeMode = options.routeMode === 'chapter1' ? 'chapter1' : 'legacy';
   const layout = createMazeLayout({
     seed: mazeSeed,
     width: WORLD.floorWidth,
     depth: WORLD.floorDepth,
     wallThickness: WORLD.wallThickness
   });
+  const levelPlan = routeMode === 'chapter1'
+    ? createChapterOneLevelPlan({ seed: mazeSeed, layout })
+    : null;
   const random = createSeededRandom(`${mazeSeed}:render`);
 
   const material = (name, diffuse, emissive = '#000000', alpha = 1) => {
@@ -346,19 +351,26 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     { material: finalDoorMaterial, kind: 'final-rune-door', castsShadow: true }
   );
 
-  const route = {
-    entrance: false,
-    southRunes: false,
-    firstDoor: false,
-    northRooms: false,
-    allRunes: false,
-    finalDoor: false,
-    moonDoor: false,
-    exit: false
-  };
+  const route = routeMode === 'chapter1'
+    ? {
+      entrance: false,
+      fragments: false,
+      sunkenGate: false
+    }
+    : {
+      entrance: false,
+      southRunes: false,
+      firstDoor: false,
+      northRooms: false,
+      allRunes: false,
+      finalDoor: false,
+      moonDoor: false,
+      exit: false
+    };
   const firstDoor = { state: 'LOCKED', progress: 0, mesh: firstDoorResult.mesh, collider: firstDoorResult.collider, material: runeDoorMaterial, baseAlpha: .82 };
   const finalDoor = { state: 'LOCKED', progress: 0, mesh: finalDoorResult.mesh, collider: finalDoorResult.collider, material: finalDoorMaterial, baseAlpha: .84 };
   let runeCount = 0;
+  let chapterProgression = null;
   let exitProgress = 0;
 
   const markRoute = (key, message, events) => {
@@ -427,13 +439,21 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     dragonPosition: new BABYLON.Vector3(layout.dragonSpawns[0].x, 0, layout.dragonSpawns[0].z),
     dragonSpawns: layout.dragonSpawns.map(spawn => ({ ...spawn })),
     mazeSeed,
+    routeMode,
+    levelPlan,
     setRuneCount(count) {
+      if (routeMode !== 'legacy') return 0;
       runeCount = Math.max(0, Math.min(POUCH.requiredRunes, Math.floor(Number(count) || 0)));
       return runeCount;
+    },
+    setChapterProgression(state) {
+      chapterProgression = state?.kind === 'CHAPTER_ONE_PROGRESSION' ? state : null;
+      return chapterProgression;
     },
     reset() {
       for (const key of Object.keys(route)) route[key] = false;
       runeCount = 0;
+      chapterProgression = null;
       exitProgress = 0;
       for (const door of [firstDoor, finalDoor]) {
         door.state = 'LOCKED';
@@ -447,34 +467,58 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     },
     update(player, dragons = [], deltaTime) {
       const events = [];
-      if (player.position.z > WORLD.entranceZ + .65) markRoute('entrance', 'Moon Gate crossed · search the southern rooms', events);
-      if (runeCount >= POUCH.firstDoorRunes) {
-        markRoute('southRunes', 'Two runes found · the inner seal is yielding', events);
-        beginOpening(firstDoor, events, 'Two runes joined · the first door is opening');
-      }
-      animateDoor(firstDoor, deltaTime, events, 'First rune door');
-      if (firstDoor.state === 'OPEN' && player.position.z > WORLD.firstDoorZ + .75) {
-        markRoute('firstDoor', 'First rune door crossed · northern rooms reached', events);
-      }
-      if (route.firstDoor && player.position.z > 6) markRoute('northRooms', 'Deep maze rooms reached', events);
-      if (runeCount >= POUCH.requiredRunes) {
-        markRoute('allRunes', 'All four runes found · the Moon Door recognizes the coven', events);
-        beginOpening(finalDoor, events, 'Four runes joined · the final Moon Door is opening');
-      }
-      animateDoor(finalDoor, deltaTime, events, 'Final Moon Door');
-      if (finalDoor.state === 'OPEN') route.finalDoor = true;
-      if (finalDoor.state === 'OPEN' && player.position.z >= WORLD.exitZ && !route.moonDoor) {
-        markRoute('moonDoor', 'The Witch enters the Moon Door', events);
-        exitProgress = .001;
-      }
-      if (route.moonDoor && !route.exit) {
-        exitProgress = Math.min(1, exitProgress + deltaTime / WORLD.exitDuration);
-        if (exitProgress >= 1) markRoute('exit', 'The Witch vanished into moonlight · route complete', events);
+      if (routeMode === 'chapter1') {
+        if (player.position.z > WORLD.entranceZ + .65) {
+          markRoute('entrance', 'Moon Gate crossed · mine the three marked Garden Maze geodes', events);
+        }
+        if (chapterProgression?.routeRune?.completed) {
+          markRoute('fragments', 'West Route-Rune completed · the Sunken Gate is yielding', events);
+        }
+        if (chapterProgression?.sunkenGate?.unlocked) {
+          beginOpening(firstDoor, events, 'West Route-Rune answered · the Sunken Gate is opening');
+        }
+        animateDoor(firstDoor, deltaTime, events, 'Sunken Gate');
+        if (firstDoor.state === 'OPEN' && player.position.z > WORLD.firstDoorZ + .75) {
+          markRoute('sunkenGate', 'Sunken Gate crossed · Garden Maze slice complete', events);
+        }
+      } else {
+        if (player.position.z > WORLD.entranceZ + .65) markRoute('entrance', 'Moon Gate crossed · search the southern rooms', events);
+        if (runeCount >= POUCH.firstDoorRunes) {
+          markRoute('southRunes', 'Two runes found · the inner seal is yielding', events);
+          beginOpening(firstDoor, events, 'Two runes joined · the first door is opening');
+        }
+        animateDoor(firstDoor, deltaTime, events, 'First rune door');
+        if (firstDoor.state === 'OPEN' && player.position.z > WORLD.firstDoorZ + .75) {
+          markRoute('firstDoor', 'First rune door crossed · northern rooms reached', events);
+        }
+        if (route.firstDoor && player.position.z > 6) markRoute('northRooms', 'Deep maze rooms reached', events);
+        if (runeCount >= POUCH.requiredRunes) {
+          markRoute('allRunes', 'All four runes found · the Moon Door recognizes the coven', events);
+          beginOpening(finalDoor, events, 'Four runes joined · the final Moon Door is opening');
+        }
+        animateDoor(finalDoor, deltaTime, events, 'Final Moon Door');
+        if (finalDoor.state === 'OPEN') route.finalDoor = true;
+        if (finalDoor.state === 'OPEN' && player.position.z >= WORLD.exitZ && !route.moonDoor) {
+          markRoute('moonDoor', 'The Witch enters the Moon Door', events);
+          exitProgress = .001;
+        }
+        if (route.moonDoor && !route.exit) {
+          exitProgress = Math.min(1, exitProgress + deltaTime / WORLD.exitDuration);
+          if (exitProgress >= 1) markRoute('exit', 'The Witch vanished into moonlight · route complete', events);
+        }
       }
       animateScenery();
       return events;
     },
     nextObjective() {
+      if (routeMode === 'chapter1') {
+        if (!route.entrance) return 'Cross the Moon Gate';
+        const fragmentCount = chapterProgression?.routeRune?.fragmentCount || 0;
+        if (fragmentCount < 3) return `Mine ${3 - fragmentCount} required Garden Maze ${3 - fragmentCount === 1 ? 'geode' : 'geodes'}`;
+        if (firstDoor.state !== 'OPEN') return 'Wait for the Sunken Gate to open';
+        if (!route.sunkenGate) return 'Pass through the Sunken Gate';
+        return 'Garden Maze slice complete · Rootbound Crossing is next';
+      }
       if (!route.entrance) return 'Cross the entrance Moon Gate';
       if (runeCount < POUCH.firstDoorRunes) return `Find ${POUCH.firstDoorRunes - runeCount} southern door ${POUCH.firstDoorRunes - runeCount === 1 ? 'rune' : 'runes'}`;
       if (firstDoor.state !== 'OPEN') return 'Wait for the first rune door';
@@ -488,12 +532,15 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     snapshot(dragons = []) {
       const dragonStates = dragons.map(dragon => dragon.snapshot());
       return {
+        routeMode,
         seed: mazeSeed,
         dimensions: { ...layout.dimensions },
         featureCounts: {
           berries: POUCH.berryBushes.length,
           fountains: layout.fountainPositions.length,
-          geodes: POUCH.geodeRocks.length,
+          geodes: routeMode === 'chapter1'
+            ? levelPlan.requiredGeodes.length + levelPlan.optionalGeodes.length
+            : POUCH.geodeRocks.length,
           potions: POUCH.powerups.length,
           dragons: layout.dragonSpawns.length,
           aggressiveDragons: layout.dragonSpawns.filter(spawn => spawn.aggressive).length,
@@ -501,15 +548,29 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
         },
         route: { ...route },
         doors: {
-          first: { state: firstDoor.state, progress: firstDoor.progress, requiredRunes: POUCH.firstDoorRunes },
+          first: routeMode === 'chapter1'
+            ? { state: firstDoor.state, progress: firstDoor.progress, requiredRuneId: levelPlan.sunkenGate.requiredRuneId }
+            : { state: firstDoor.state, progress: firstDoor.progress, requiredRunes: POUCH.firstDoorRunes },
           final: { state: finalDoor.state, progress: finalDoor.progress, requiredRunes: POUCH.requiredRunes }
         },
-        gate: { state: finalDoor.state, progress: finalDoor.progress, runes: runeCount, requiredRunes: POUCH.requiredRunes },
-        exit: { active: route.moonDoor, progress: exitProgress, witchVisible: Math.max(0, 1 - exitProgress) },
+        gate: routeMode === 'chapter1'
+          ? {
+            id: levelPlan.sunkenGate.id,
+            state: firstDoor.state,
+            progress: firstDoor.progress,
+            requiredRuneId: levelPlan.sunkenGate.requiredRuneId,
+            runeCompleted: Boolean(chapterProgression?.routeRune?.completed)
+          }
+          : { state: finalDoor.state, progress: finalDoor.progress, runes: runeCount, requiredRunes: POUCH.requiredRunes },
+        exit: {
+          active: routeMode === 'legacy' ? Boolean(route.moonDoor) : false,
+          progress: routeMode === 'legacy' ? exitProgress : 0,
+          witchVisible: routeMode === 'legacy' ? Math.max(0, 1 - exitProgress) : 1
+        },
         dragons: dragonStates,
         containedDragons: dragonStates.filter(dragon => !dragon.alive).length,
         objective: this.nextObjective(),
-        complete: route.exit
+        complete: routeMode === 'chapter1' ? route.sunkenGate : route.exit
       };
     }
   };

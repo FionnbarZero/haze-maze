@@ -1,1 +1,1 @@
-export { createWorld } from './expanded-world.js?v=20260819-expanded-maze-v1';
+export { createWorld } from './expanded-world.js?v=20260820-chapter-one-v2';

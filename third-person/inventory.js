@@ -1,18 +1,34 @@
 import { COMBAT, POUCH } from './config.js?v=20260819-expanded-maze-v1';
+import { ChapterOneInteractions, EQUIPMENT_MODES } from './chapter-interactions.js?v=20260820-chapter-one-v2';
 import { hexColor3 } from './utils.js';
 
 export class PouchInventory {
-  constructor(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch) {
+  constructor(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch, options = {}) {
     this.BABYLON = BABYLON;
     this.scene = scene;
     this.shadowGenerator = shadowGenerator;
     this.controller = controller;
     this.combat = combat;
     this.purpleWitch = purpleWitch;
+    this.activeWitch = purpleWitch;
     this.activeCharacter = 'purple';
-    this.ownedEquipment = { staff: true, geodePick: false, geodeHammer: false };
-    this.equippedItem = 'staff';
+    this.routeMode = options.routeMode === 'chapter1' ? 'chapter1' : 'legacy';
+    this.chapterMode = this.routeMode === 'chapter1';
+    this.levelPlan = options.levelPlan || null;
+    this.progression = options.progression || null;
+    if (this.chapterMode && (!this.levelPlan || !this.progression)) {
+      throw new Error('Chapter 1 inventory requires a validated level plan and progression state');
+    }
+    const chapterGeodes = this.chapterMode
+      ? [...this.levelPlan.requiredGeodes, ...this.levelPlan.optionalGeodes]
+      : [];
+    this.interactions = this.chapterMode
+      ? new ChapterOneInteractions({ actorId: this.activeCharacter, geodes: chapterGeodes })
+      : null;
+    this.ownedEquipment = this.chapterMode ? null : { staff: true, geodePick: false, geodeHammer: false };
+    this.equippedItem = this.chapterMode ? null : 'staff';
     this.geodes = 0;
+    this.rawDamageCrystals = 0;
     this.runes = 0;
     this.healthBerries = 0;
     this.gold = 0;
@@ -25,6 +41,7 @@ export class PouchInventory {
     this.open = false;
     this.onMessage = () => {};
     this.onOpenChange = () => {};
+    this.onEquipmentModeChange = () => {};
     this.overlay = document.querySelector('#pouch-overlay');
     this.closeButton = document.querySelector('#close-pouch');
     this.berryButton = document.querySelector('#use-health-berry');
@@ -40,19 +57,29 @@ export class PouchInventory {
     this.aegisPotionCountCopy = document.querySelector('#pouch-aegis-potion-count');
     this.aegisPotionActionCopy = document.querySelector('#aegis-potion-action-copy');
     this.gearSection = document.querySelector('#pouch-gear-section');
+    this.gearHeading = document.querySelector('#pouch-gear-heading');
     this.staffButton = document.querySelector('#pouch-staff-item');
+    this.staffLabel = document.querySelector('#pouch-staff-label');
     this.staffActionCopy = document.querySelector('#staff-action-copy');
     this.staffStateCopy = document.querySelector('#pouch-staff-state');
     this.geodePickButton = document.querySelector('#pouch-geode-pick-item');
+    this.geodePickLabel = document.querySelector('#pouch-geode-pick-label');
     this.geodePickActionCopy = document.querySelector('#geode-pick-action-copy');
     this.geodePickStateCopy = document.querySelector('#pouch-geode-pick-state');
     this.geodeHammerButton = document.querySelector('#pouch-geode-hammer-item');
+    this.geodeHammerLabel = document.querySelector('#pouch-geode-hammer-label');
     this.geodeHammerActionCopy = document.querySelector('#geode-hammer-action-copy');
     this.geodeHammerStateCopy = document.querySelector('#pouch-geode-hammer-state');
     this.geodeCountCopy = document.querySelector('#pouch-geode-count');
+    this.geodeLabel = document.querySelector('#pouch-geode-label');
     this.geodePowerCopy = document.querySelector('#geode-power-copy');
     this.runeCountCopy = document.querySelector('#pouch-rune-count');
+    this.runeLabel = document.querySelector('#pouch-rune-label');
     this.runeActionCopy = document.querySelector('#rune-action-copy');
+    this.spellHelpCopy = document.querySelector('#selected-spell-help');
+    this.keeperCluesSection = document.querySelector('#keeper-clues-section');
+    this.keeperClueList = document.querySelector('#keeper-clue-list');
+    this.configureRouteLabels();
     this.pickups = this.createBerryBushes();
     this.chest = this.createGoldChest();
     this.powerupPickups = this.createPowerupPickups();
@@ -62,6 +89,49 @@ export class PouchInventory {
     this.bindInterface();
     this.applyEquippedItem();
     this.updateInterface();
+  }
+
+  configureRouteLabels() {
+    this.keeperCluesSection.hidden = !this.chapterMode;
+    this.geodeLabel.closest('.pouch-item').setAttribute(
+      'aria-label',
+      this.chapterMode ? 'Carried Raw Damage Crystals' : 'Mined magical geodes'
+    );
+    this.runeLabel.closest('.pouch-item').setAttribute(
+      'aria-label',
+      this.chapterMode ? 'West Route-Rune fragments and completion' : 'Recovered rune-door runes'
+    );
+    if (this.chapterMode) return;
+    this.gearHeading.textContent = 'Held equipment · Purple Witch';
+    this.staffLabel.textContent = 'Moon staff';
+    this.geodePickLabel.textContent = 'Crystal geode pick';
+    this.geodeHammerLabel.textContent = 'Geode hammer';
+    this.geodeLabel.textContent = 'Magical geodes';
+    this.runeLabel.textContent = 'Rune-door runes';
+  }
+
+  renderKeeperClues(clues) {
+    if (!this.chapterMode) return;
+    const signature = clues.map(clue => clue.id).join('|');
+    if (signature === this.keeperClueSignature) return;
+    this.keeperClueSignature = signature;
+    this.keeperClueList.replaceChildren();
+    if (!clues.length) {
+      const empty = document.createElement('li');
+      empty.className = 'is-empty';
+      empty.textContent = 'No Keeper clues recovered yet.';
+      this.keeperClueList.append(empty);
+      return;
+    }
+    for (const clue of clues) {
+      const item = document.createElement('li');
+      const title = document.createElement('strong');
+      const text = document.createElement('small');
+      title.textContent = clue.title;
+      text.textContent = clue.text;
+      item.append(title, text);
+      this.keeperClueList.append(item);
+    }
   }
 
   createBerryBushes() {
@@ -351,6 +421,7 @@ export class PouchInventory {
   }
 
   createEquipmentPickups() {
+    if (this.chapterMode) return [];
     const handleMaterial = new this.BABYLON.StandardMaterial('field-tool-handle-material', this.scene);
     handleMaterial.diffuseColor = hexColor3(this.BABYLON, '#725037');
     handleMaterial.specularColor = hexColor3(this.BABYLON, '#25170f');
@@ -427,7 +498,15 @@ export class PouchInventory {
     crystalMaterial.emissiveColor = hexColor3(this.BABYLON, '#7542b8');
     crystalMaterial.specularColor = hexColor3(this.BABYLON, '#fff4ff');
 
-    return POUCH.geodeRocks.map((definition, rockIndex) => {
+    const definitions = this.chapterMode
+      ? [...this.levelPlan.requiredGeodes, ...this.levelPlan.optionalGeodes].map(geode => ({
+        ...geode,
+        x: geode.position.x,
+        y: geode.position.y,
+        z: geode.position.z
+      }))
+      : POUCH.geodeRocks;
+    return definitions.map((definition, rockIndex) => {
       const root = new this.BABYLON.TransformNode(`geode-rock-${definition.id}`, this.scene);
       root.position.set(definition.x, definition.y, definition.z);
 
@@ -457,6 +536,7 @@ export class PouchInventory {
         crystal.rotation.z = tilt;
         crystal.material = crystalMaterial;
         crystal.isPickable = false;
+        if (this.chapterMode) crystal.setEnabled(false);
         this.shadowGenerator.addShadowCaster(crystal);
         crystals.push(crystal);
       }
@@ -474,8 +554,13 @@ export class PouchInventory {
       return {
         id: definition.id,
         root,
+        stone,
         crystals,
         glow,
+        required: Boolean(definition.required),
+        content: definition.content ? structuredClone(definition.content) : null,
+        strikesRequired: definition.strikesRequired || 1,
+        strikes: 0,
         position: new this.BABYLON.Vector3(definition.x, definition.y, definition.z),
         mined: false,
         blockedNotified: false,
@@ -485,6 +570,7 @@ export class PouchInventory {
   }
 
   createRunePickups() {
+    if (this.chapterMode) return [];
     const runeMaterial = new this.BABYLON.StandardMaterial('gate-rune-material', this.scene);
     runeMaterial.diffuseColor = hexColor3(this.BABYLON, '#f0c46e');
     runeMaterial.emissiveColor = hexColor3(this.BABYLON, '#a749d2');
@@ -542,18 +628,49 @@ export class PouchInventory {
     });
   }
 
-  setCharacter(characterId) {
+  setCharacter(characterId, witch = this.activeWitch) {
     this.activeCharacter = ['purple', 'green', 'frost', 'fire'].includes(characterId) ? characterId : 'purple';
-    if (this.gearSection) this.gearSection.hidden = this.activeCharacter !== 'purple';
+    this.activeWitch = witch || this.purpleWitch;
+    if (this.chapterMode) {
+      this.interactions.assignToolsToActor(this.activeCharacter);
+      if (this.gearSection) this.gearSection.hidden = false;
+    } else if (this.gearSection) {
+      this.gearSection.hidden = this.activeCharacter !== 'purple';
+    }
     this.applyEquippedItem();
     this.updateInterface();
+    this.onEquipmentModeChange(this.currentEquipmentMode());
+  }
+
+  currentEquipmentMode() {
+    return this.chapterMode ? this.interactions.mode : this.equippedItem;
   }
 
   applyEquippedItem() {
-    this.purpleWitch?.setHeldItem(this.equippedItem);
+    const equippedItem = this.currentEquipmentMode();
+    const presentationItem = this.chapterMode && equippedItem === EQUIPMENT_MODES.miningTools
+      ? 'miningTools'
+      : equippedItem;
+    this.activeWitch?.setHeldItem(presentationItem);
   }
 
   toggleEquipment(item) {
+    if (this.chapterMode) {
+      const mode = item === 'staff'
+        ? EQUIPMENT_MODES.staff
+        : ['miningTools', 'mining-tools', 'geodePick', 'geodeHammer'].includes(item)
+          ? EQUIPMENT_MODES.miningTools
+          : null;
+      if (!mode) return false;
+      this.interactions.setMode(mode);
+      this.applyEquippedItem();
+      this.updateInterface();
+      this.onEquipmentModeChange(mode);
+      this.onMessage(mode === EQUIPMENT_MODES.staff
+        ? 'Wand or staff ready · spellcasting enabled'
+        : 'Mining Tools ready · press O near a geode to strike · spells stored');
+      return true;
+    }
     if (this.activeCharacter !== 'purple') return false;
     if (!this.ownedEquipment[item]) {
       this.onMessage(item === 'geodePick'
@@ -564,6 +681,7 @@ export class PouchInventory {
     this.equippedItem = this.equippedItem === item ? null : item;
     this.applyEquippedItem();
     this.updateInterface();
+    this.onEquipmentModeChange(this.currentEquipmentMode());
     if (!this.equippedItem) this.onMessage('Hands free · equipment stored in the pouch');
     else if (item === 'staff') this.onMessage('Moon staff equipped · spellcasting ready');
     else this.onMessage(`${item === 'geodePick' ? 'Crystal geode pick' : 'Geode hammer'} equipped · staff stored`);
@@ -571,6 +689,7 @@ export class PouchInventory {
   }
 
   canCastWithStaff() {
+    if (this.chapterMode) return this.interactions.canActorCast(this.activeCharacter);
     return this.activeCharacter !== 'purple' || this.equippedItem === 'staff';
   }
 
@@ -597,6 +716,65 @@ export class PouchInventory {
     this.updateInterface();
     const increase = Math.round(this.geodes * POUCH.geodePowerPerCrystal * 100);
     this.onMessage(`Magical geode mined · lightning power permanently increased ${increase}%`);
+    return true;
+  }
+
+  applyChapterGeodeVisual(rock, state) {
+    if (!rock || !state) return;
+    rock.strikes = state.strikes;
+    rock.mined = state.broken;
+    const progress = state.strikes / state.strikesRequired;
+    rock.stone.scaling.set(1.18 - progress * .12, .72 - progress * .17, .92 - progress * .1);
+    rock.stone.rotation.z = Math.sin(state.strikes * 2.17) * .055 * (1 - progress);
+    rock.glow.intensity = state.broken ? .82 : .48 + progress * .32;
+    rock.stone.setEnabled(!state.broken);
+    for (const crystal of rock.crystals) crystal.setEnabled(state.broken);
+  }
+
+  strikeNearbyGeode() {
+    if (!this.chapterMode) return false;
+    if (!this.interactions.canActorMine(this.activeCharacter)) {
+      this.onMessage('Equip Mining Tools from the pouch before striking a geode');
+      return false;
+    }
+    const player = this.controller.position;
+    const radiusSquared = POUCH.geodeMineRadius * POUCH.geodeMineRadius;
+    const rock = this.geodeRocks.find(candidate => {
+      if (candidate.mined) return false;
+      const dx = player.x - candidate.position.x;
+      const dz = player.z - candidate.position.z;
+      return dx * dx + dz * dz <= radiusSquared;
+    });
+    if (!rock) {
+      this.onMessage('Mining Tools ready · move beside an unopened geode');
+      return false;
+    }
+    const result = this.interactions.strikeGeode(rock.id, this.activeCharacter);
+    if (!result.accepted) return false;
+    this.applyChapterGeodeVisual(rock, {
+      strikes: result.strikes,
+      strikesRequired: result.strikesRequired,
+      broken: result.brokenNow
+    });
+    if (!result.brokenNow) {
+      this.onMessage(`Geode struck · ${result.strikes} / ${result.strikesRequired} · ${result.remaining} remaining`);
+      this.updateInterface();
+      return true;
+    }
+
+    this.geodes += 1;
+    if (result.content.kind === 'route-rune-fragment') {
+      const collected = this.progression.collectFragment(result.content);
+      const clueTitle = result.content.clue?.title || 'Keeper clue';
+      this.onMessage(collected.completedNow
+        ? `${clueTitle} recovered · West Route-Rune completed · Sunken Gate unlocked`
+        : `${clueTitle} recovered · route-rune fragment ${collected.fragmentCount} / 3`);
+    } else if (result.content.kind === 'raw-damage-crystal') {
+      this.rawDamageCrystals += result.content.amount || 1;
+      this.combat.setDamageCrystalCount(this.rawDamageCrystals);
+      this.onMessage(`Raw Damage Crystal revealed · ${this.rawDamageCrystals} carried · +${this.rawDamageCrystals * 10}% spell damage`);
+    }
+    this.updateInterface();
     return true;
   }
 
@@ -796,6 +974,16 @@ export class PouchInventory {
         rock.blockedNotified = false;
         continue;
       }
+      if (this.chapterMode) {
+        if (!rock.blockedNotified) {
+          rock.blockedNotified = true;
+          const state = this.interactions.geodes.find(geode => geode.id === rock.id);
+          this.onMessage(this.interactions.canActorMine(this.activeCharacter)
+            ? `Geode ready · press O to strike · ${state?.strikes || 0} / ${state?.strikesRequired || rock.strikesRequired}`
+            : 'Unopened geode · equip Mining Tools from the pouch');
+        }
+        continue;
+      }
       if (this.activeCharacter !== 'purple') continue;
       if (this.ownedEquipment.geodePick && this.ownedEquipment.geodeHammer) {
         this.mineGeodeRock(rock);
@@ -876,8 +1064,40 @@ export class PouchInventory {
 
     const equipmentState = item => this.equippedItem === item ? 'Held' : 'Stored';
     const equipmentAction = (item, label) => this.equippedItem === item
-      ? `Store ${label} in the pouch`
-      : `Equip ${label} in the right hand`;
+      ? `${label} currently active`
+      : `Switch to ${label}`;
+    if (this.chapterMode) {
+      const chapterState = this.progression.snapshot();
+      const miningActive = this.interactions.mode === EQUIPMENT_MODES.miningTools;
+      this.gearHeading.textContent = `Equipment mode · ${this.activeCharacter[0].toUpperCase()}${this.activeCharacter.slice(1)} Witch`;
+      this.staffButton.disabled = false;
+      this.staffStateCopy.textContent = miningActive ? 'Stored' : 'Held';
+      this.staffActionCopy.textContent = miningActive ? 'Switch to spellcasting mode' : 'Spellcasting enabled';
+      this.geodePickButton.disabled = false;
+      this.geodePickStateCopy.textContent = miningActive ? 'Held' : 'Stored';
+      this.geodePickActionCopy.textContent = miningActive
+        ? 'Pick and hammer ready · O strikes nearby geodes'
+        : 'Switch to the paired Mining Tools';
+      this.geodeHammerButton.disabled = false;
+      this.geodeHammerStateCopy.textContent = 'Paired';
+      this.geodeHammerActionCopy.textContent = 'Unique hammer · owned with the geode pick';
+      this.spellHelpCopy.textContent = miningActive
+        ? 'Mining Tools active · O strikes geodes'
+        : '1 / 2 / 3 select · O casts';
+      this.geodeCountCopy.textContent = `${this.rawDamageCrystals} raw ${this.rawDamageCrystals === 1 ? 'crystal' : 'crystals'}`;
+      this.geodePowerCopy.textContent = this.rawDamageCrystals
+        ? `Personal spell damage · +${this.rawDamageCrystals * 10}%`
+        : miningActive
+          ? 'Press O beside an unopened geode to strike'
+          : 'Optional geodes may contain Raw Damage Crystals';
+      this.runeCountCopy.textContent = `${chapterState.routeRune.fragmentCount} / ${chapterState.routeRune.requiredFragments}`;
+      const clueCount = chapterState.keeperClues.length;
+      this.renderKeeperClues(chapterState.keeperClues);
+      this.runeActionCopy.textContent = chapterState.routeRune.completed
+        ? `West Route-Rune complete · permanent · ${clueCount} Keeper clues recovered`
+        : `${chapterState.routeRune.requiredFragments - chapterState.routeRune.fragmentCount} fragments remain · ${clueCount} Keeper ${clueCount === 1 ? 'clue' : 'clues'} recovered`;
+      return;
+    }
     this.staffButton.disabled = false;
     this.staffStateCopy.textContent = equipmentState('staff');
     this.staffActionCopy.textContent = equipmentAction('staff', 'staff');
@@ -910,9 +1130,10 @@ export class PouchInventory {
 
   reset() {
     this.setOpen(false);
-    this.ownedEquipment = { staff: true, geodePick: false, geodeHammer: false };
-    this.equippedItem = 'staff';
+    this.ownedEquipment = this.chapterMode ? null : { staff: true, geodePick: false, geodeHammer: false };
+    this.equippedItem = this.chapterMode ? null : 'staff';
     this.geodes = 0;
+    this.rawDamageCrystals = 0;
     this.runes = 0;
     this.healthBerries = 0;
     this.gold = 0;
@@ -922,6 +1143,7 @@ export class PouchInventory {
     this.totalUsed = 0;
     this.totalPotionsCollected = 0;
     this.totalPotionsUsed = 0;
+    if (this.chapterMode) this.interactions.reset(this.activeCharacter);
     for (const pickup of this.pickups) {
       pickup.collected = false;
       pickup.root.position.copyFrom(pickup.position);
@@ -942,9 +1164,13 @@ export class PouchInventory {
     }
     for (const rock of this.geodeRocks) {
       rock.mined = false;
+      rock.strikes = 0;
       rock.blockedNotified = false;
       rock.glow.intensity = .65;
-      for (const crystal of rock.crystals) crystal.setEnabled(true);
+      rock.stone.setEnabled(true);
+      rock.stone.scaling.set(1.18, .72, .92);
+      rock.stone.rotation.z = 0;
+      for (const crystal of rock.crystals) crystal.setEnabled(!this.chapterMode);
     }
     for (const rune of this.runePickups) {
       const definition = POUCH.runes.find(entry => entry.id === rune.id);
@@ -961,11 +1187,23 @@ export class PouchInventory {
     this.chest.lidPivot.rotation.x = 0;
     this.chest.glow.intensity = .18;
     this.combat.setGeodeCount(0);
+    this.combat.setDamageCrystalCount(0);
     this.applyEquippedItem();
     this.updateInterface();
+    this.onEquipmentModeChange(this.currentEquipmentMode());
   }
 
   snapshot() {
+    const chapterState = this.chapterMode ? this.progression.snapshot() : null;
+    const interactionState = this.chapterMode ? this.interactions.snapshot() : null;
+    const equippedItem = interactionState?.mode || this.equippedItem;
+    const ownedEquipment = interactionState
+      ? {
+        staff: true,
+        geodePick: interactionState.tools.pick.ownerId === this.activeCharacter,
+        geodeHammer: interactionState.tools.hammer.ownerId === this.activeCharacter
+      }
+      : { ...this.ownedEquipment };
     return {
       open: this.open,
       healthBerries: this.healthBerries,
@@ -974,14 +1212,20 @@ export class PouchInventory {
       aegisPotions: this.aegisPotions,
       activeCharacter: this.activeCharacter,
       equipment: {
-        owned: { ...this.ownedEquipment },
-        equipped: this.equippedItem,
-        staffStored: this.equippedItem !== 'staff'
+        owned: ownedEquipment,
+        equipped: equippedItem,
+        staffStored: equippedItem !== 'staff',
+        mode: equippedItem,
+        tools: interactionState?.tools || null,
+        canCast: interactionState?.canCast ?? this.canCastWithStaff(),
+        canMine: interactionState?.canMine ?? false
       },
       geodes: this.geodes,
-      geodeDamageMultiplier: 1 + this.geodes * POUCH.geodePowerPerCrystal,
-      runes: this.runes,
-      requiredRunes: POUCH.requiredRunes,
+      rawDamageCrystals: this.rawDamageCrystals,
+      geodeDamageMultiplier: 1 + (this.chapterMode ? this.rawDamageCrystals : this.geodes) * POUCH.geodePowerPerCrystal,
+      runes: this.chapterMode ? chapterState.routeRune.fragmentCount : this.runes,
+      requiredRunes: this.chapterMode ? chapterState.routeRune.requiredFragments : POUCH.requiredRunes,
+      chapter: chapterState,
       restoreAmount: POUCH.healthBerryRestore,
       totalCollected: this.totalCollected,
       totalUsed: this.totalUsed,
@@ -1009,6 +1253,23 @@ export class PouchInventory {
       geodeRocks: this.geodeRocks.map(rock => ({
         id: rock.id,
         mined: rock.mined,
+        required: rock.required,
+        strikes: this.chapterMode
+          ? interactionState.geodes.find(geode => geode.id === rock.id)?.strikes || 0
+          : rock.mined ? 1 : 0,
+        strikesRequired: rock.strikesRequired,
+        remaining: this.chapterMode
+          ? interactionState.geodes.find(geode => geode.id === rock.id)?.remaining ?? rock.strikesRequired
+          : rock.mined ? 0 : 1,
+        revealedContent: this.chapterMode
+          ? interactionState.geodes.find(geode => geode.id === rock.id)?.content || null
+          : null,
+        visual: {
+          stoneEnabled: rock.stone.isEnabled(),
+          stoneScale: { x: rock.stone.scaling.x, y: rock.stone.scaling.y, z: rock.stone.scaling.z },
+          revealedCrystals: rock.crystals.filter(crystal => crystal.isEnabled()).length,
+          glowIntensity: rock.glow.intensity
+        },
         position: { x: rock.position.x, y: rock.position.y, z: rock.position.z }
       })),
       runePickups: this.runePickups.map(rune => ({

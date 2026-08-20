@@ -1,5 +1,5 @@
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
-const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&narration=instant';
+const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&narration=instant&route=legacy';
 
 const pages = await fetch(`${debugEndpoint}/json/list`).then(response => response.json());
 const target = pages.find(page => page.type === 'page');

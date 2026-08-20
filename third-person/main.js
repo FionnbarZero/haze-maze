@@ -1,23 +1,25 @@
-import { createWorld } from './world.js?v=20260819-expanded-maze-v1';
-import { createPlaceholderWitch } from './witch.js?v=20260819-purple-progression-v1';
+import { createWorld } from './world.js?v=20260820-chapter-one-v2';
+import { createPlaceholderWitch } from './witch.js?v=20260820-chapter-one-v1';
 import { createPlaceholderDragon } from './dragon.js?v=20260819-expanded-maze-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
 import { ShoulderCamera } from './camera.js?v=20260819-runtime-audit-v1';
-import { LightningCombat } from './combat.js?v=20260819-expanded-maze-v1';
-import { PouchInventory } from './inventory.js?v=20260819-expanded-maze-v1';
+import { LightningCombat } from './combat.js?v=20260820-chapter-one-v2';
+import { PouchInventory } from './inventory.js?v=20260820-chapter-one-v2';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260819-runtime-audit-v1';
-import { GreenWitchAbilities } from './green-witch.js?v=20260819-expanded-maze-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260820-chapter-one-v2';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
+import { ChapterOneProgression } from './chapter-progression.js?v=20260820-chapter-one-v2';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
 const queryParameters = new URLSearchParams(location.search);
 const simulatedPartyEnabled = queryParameters.get('party') === 'simulated';
 const mazeSeed = queryParameters.get('mazeSeed') || undefined;
+const routeMode = queryParameters.get('route') === 'legacy' ? 'legacy' : 'chapter1';
 const loading = document.querySelector('#loading');
 const loadingCopy = document.querySelector('#loading-copy');
 
@@ -63,7 +65,8 @@ try {
   shadowGenerator.bias = .0005;
   const sceneInstrumentation = new BABYLON.SceneInstrumentation(scene);
 
-  const world = createWorld(BABYLON, scene, shadowGenerator, { seed: mazeSeed });
+  const world = createWorld(BABYLON, scene, shadowGenerator, { seed: mazeSeed, routeMode });
+  const chapterProgression = routeMode === 'chapter1' ? new ChapterOneProgression() : null;
   const purpleWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, { label: 'Purple Witch' });
   const dragons = world.dragonSpawns.map(spawn => createPlaceholderDragon(
     BABYLON,
@@ -206,12 +209,19 @@ try {
   const input = new ProofInput(canvas);
   const combat = new LightningCombat(BABYLON, scene, shoulderCamera, purpleWitch, dragons, controller);
   const greenAbilities = new GreenWitchAbilities(BABYLON, scene, greenWitch, purpleWitch, dragons, combat);
-  const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch);
+  const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch, {
+    routeMode,
+    levelPlan: world.levelPlan,
+    progression: chapterProgression
+  });
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
   const routePanel = document.querySelector('.route-panel');
+  const routeLabel = document.querySelector('#route-label');
   const routeObjective = document.querySelector('#route-objective');
   const routeProgress = document.querySelector('#route-progress');
+  routeLabel.textContent = routeMode === 'chapter1' ? 'Chapter 1 · Garden Maze' : 'Technical route';
+  routePanel.setAttribute('aria-label', routeMode === 'chapter1' ? 'Chapter 1 route objective' : 'Legacy technical route objective');
   let toastTimer = 0;
   let completed = false;
   let qualification = null;
@@ -237,6 +247,13 @@ try {
   };
   const castActiveSpell = spell => {
     const now = performance.now() / 1000;
+    if (routeMode === 'chapter1' && !inventory.canCastWithStaff()) {
+      if (spell) {
+        showMessage('Mining Tools are active · equip the wand or staff to cast');
+        return false;
+      }
+      return inventory.strikeNearbyGeode();
+    }
     if (selectedCharacter !== 'green') {
       if (!inventory.canCastWithStaff()) {
         showMessage('Equip the Moon staff from the pouch before casting · press P');
@@ -259,10 +276,26 @@ try {
   inventory.onMessage = showMessage;
   greenAbilities.onMessage = showMessage;
   inventory.onOpenChange = open => input.setModalOpen(open);
-  input.onGreenVine = () => greenAbilities.castVineTrap(performance.now() / 1000);
-  input.onGreenRestore = () => greenAbilities.castSmartRestore(performance.now() / 1000);
+  const castGreenUtility = cast => {
+    if (selectedCharacter === 'green' && !inventory.canCastWithStaff()) {
+      showMessage('Mining Tools are active · equip the wand or staff to cast');
+      return false;
+    }
+    return cast(performance.now() / 1000);
+  };
+  input.onGreenVine = () => castGreenUtility(now => greenAbilities.castVineTrap(now));
+  input.onGreenRestore = () => castGreenUtility(now => greenAbilities.castSmartRestore(now));
   document.querySelector('#green-vine-demo').addEventListener('click', () => input.onGreenVine());
   document.querySelector('#green-restore-demo').addEventListener('click', () => input.onGreenRestore());
+  const syncEquipmentMode = () => {
+    const localSpellcastingEnabled = inventory.canCastWithStaff();
+    combat.setSpellcastingEnabled(
+      selectedCharacter !== 'green' && localSpellcastingEnabled,
+      localSpellcastingEnabled ? 'alternate-character' : 'mining-tools'
+    );
+    greenAbilities.setSpellcastingEnabled(selectedCharacter !== 'green' || localSpellcastingEnabled);
+  };
+  inventory.onEquipmentModeChange = syncEquipmentMode;
 
   const playerNameCopy = document.querySelector('#player-character-name');
   const teammateNameCopy = document.querySelector('#teammate-character-name');
@@ -343,7 +376,6 @@ try {
       greenReplica.update(0, performance.now() / 1000);
     }
     combat.setCharacter(characterId, localWitch, PLAYABLE_WITCHES[characterId].name);
-    combat.setSpellcastingEnabled(characterId !== 'green');
     greenAbilities.setMode({
       locallyControlled: characterId === 'green',
       friendWitch: simulatedPartyEnabled
@@ -351,12 +383,21 @@ try {
         : localWitch,
       friendAvailable: simulatedPartyEnabled
     });
-    inventory.setCharacter(characterId);
+    inventory.setCharacter(characterId, localWitch);
     updateCharacterInterface();
     return true;
   };
 
   const updateRouteHud = worldState => {
+    if (worldState.routeMode === 'chapter1') {
+      const chapterState = chapterProgression.snapshot();
+      const checkpointKeys = ['entrance', 'fragments', 'sunkenGate'];
+      const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
+      routeObjective.textContent = worldState.objective;
+      routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} route beats · ${chapterState.routeRune.fragmentCount} / 3 West Rune fragments`;
+      routePanel.classList.toggle('is-complete', worldState.complete);
+      return;
+    }
     const checkpointKeys = ['entrance', 'southRunes', 'firstDoor', 'northRooms', 'allRunes', 'finalDoor', 'moonDoor', 'exit'];
     const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
     routeObjective.textContent = worldState.objective;
@@ -372,9 +413,11 @@ try {
     document.querySelector('#hud').classList.add('is-active');
     input.start();
     qualification?.recordEvent('gameplay-start');
-    showMessage(characterId === 'purple'
-      ? 'Explore the maze rooms · find four runes to open both doors · P opens the pouch'
-      : 'Explore the maze rooms · recover four runes to open both doors · P opens the pouch');
+    showMessage(routeMode === 'chapter1'
+      ? 'Cross the Moon Gate · equip Mining Tools with P · press O beside three required geodes'
+      : characterId === 'purple'
+        ? 'Explore the maze rooms · find four runes to open both doors · P opens the pouch'
+        : 'Explore the maze rooms · recover four runes to open both doors · P opens the pouch');
     return true;
   };
 
@@ -417,6 +460,7 @@ try {
     input.setCrouched(false);
     input.active = true;
     input.updateBlockedState();
+    chapterProgression?.reset();
     world.reset();
     for (const [index, actor] of dragons.entries()) {
       const spawn = world.dragonSpawns[index];
@@ -440,6 +484,7 @@ try {
     updateCharacterInterface();
     shoulderCamera.setLook(0, 0);
     shoulderCamera.snapNextUpdate();
+    if (chapterProgression) world.setChapterProgression(chapterProgression.snapshot());
     updateRouteHud(world.snapshot(dragons));
     showMessage('Qualification route reset · begin at the Moon Gate');
   };
@@ -499,6 +544,8 @@ try {
     dragons: dragons.map(actor => actor.snapshot()),
     combat: combat.snapshot(),
     inventory: inventory.snapshot(),
+    chapter: chapterProgression?.snapshot() || null,
+    levelPlan: world.levelPlan,
     world: world.snapshot(dragons),
     performance: telemetry.snapshot(),
     quality: qualityController.snapshot(),
@@ -543,9 +590,19 @@ try {
     combat.update();
     greenAbilities.update(now, selectedCharacter === 'green' ? shoulderCamera : null);
     inventory.update(now, deltaTime);
-    world.setRuneCount(inventory.runes);
+    if (chapterProgression) {
+      if (chapterProgression.hasCompletedRune()) chapterProgression.unlockSunkenGate();
+      world.setChapterProgression(chapterProgression.snapshot());
+    } else {
+      world.setRuneCount(inventory.runes);
+    }
     const routeEvents = world.update(controller, dragons, deltaTime);
-    const worldState = world.snapshot(dragons);
+    let worldState = world.snapshot(dragons);
+    if (chapterProgression && worldState.doors.first.state === 'OPEN') {
+      chapterProgression.markSunkenGateOpened();
+      world.setChapterProgression(chapterProgression.snapshot());
+      worldState = world.snapshot(dragons);
+    }
     for (const event of routeEvents) {
       showMessage(event.message);
     }
@@ -554,7 +611,7 @@ try {
       localWitch.setVisibility(visibility);
       localWitch.root.scaling.setAll(Math.max(.01, visibility));
     }
-    if (worldState.complete && !completed) {
+    if (worldState.routeMode === 'legacy' && worldState.complete && !completed) {
       completed = true;
       input.active = false;
       input.clearHeldInput();
@@ -674,6 +731,8 @@ try {
     useLightningPotion: () => inventory.useLightningPotion(),
     useAegisPotion: () => inventory.useAegisPotion(),
     equipPurpleItem: item => inventory.toggleEquipment(item),
+    setEquipmentMode: mode => inventory.toggleEquipment(mode),
+    strikeNearbyGeode: () => inventory.strikeNearbyGeode(),
     teleport: (x, y, z) => { controller.teleport(x, y, z); shoulderCamera.snapNextUpdate(); },
     resetRoute: resetTechnicalRoute,
     resetPerformance: () => telemetry.reset(),

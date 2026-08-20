@@ -119,13 +119,13 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
     height: .92,
     diameter: .085,
     tessellation: 10
-  }, scene), staffSocket, new BABYLON.Vector3(0, .12, 0), wood);
-  hammerHandle.rotation.z = -.08;
+  }, scene), staffSocket, new BABYLON.Vector3(.16, .08, .08), wood);
+  hammerHandle.rotation.z = .12;
   const hammerHead = addMesh(BABYLON.MeshBuilder.CreateBox(named('geode-hammer-head'), {
     width: .5,
     height: .2,
     depth: .22
-  }, scene), staffSocket, new BABYLON.Vector3(-.02, .6, 0), leather);
+  }, scene), staffSocket, new BABYLON.Vector3(.21, .56, .08), leather);
 
   let gait = 0;
   let moveWeight = 0;
@@ -164,11 +164,16 @@ export function createPlaceholderWitch(BABYLON, scene, shadowGenerator, options 
   const equipmentMeshes = {
     staff: [staff, orb],
     geodePick: [pickHandle, pickHead],
-    geodeHammer: [hammerHandle, hammerHead]
+    geodeHammer: [hammerHandle, hammerHead],
+    miningTools: [pickHandle, pickHead, hammerHandle, hammerHead]
   };
   const applyEquipmentVisibility = () => {
-    for (const [item, itemMeshes] of Object.entries(equipmentMeshes)) {
-      for (const mesh of itemMeshes) mesh.visibility = heldItem === item ? visibility : 0;
+    for (const mesh of [staff, orb]) mesh.visibility = heldItem === 'staff' ? visibility : 0;
+    for (const mesh of [pickHandle, pickHead]) {
+      mesh.visibility = ['geodePick', 'miningTools'].includes(heldItem) ? visibility : 0;
+    }
+    for (const mesh of [hammerHandle, hammerHead]) {
+      mesh.visibility = ['geodeHammer', 'miningTools'].includes(heldItem) ? visibility : 0;
     }
     if (heldItem !== 'staff') orbLight.intensity = 0;
   };

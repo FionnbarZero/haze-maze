@@ -20,6 +20,19 @@ export const CHARACTER_LOADOUTS = Object.freeze({
 
 const createCooldowns = () => Object.fromEntries(Object.keys(SPELLS).map(spell => [spell, 0]));
 
+export function spellDamageMultiplier({
+  spell,
+  damageCrystalMultiplier = 1,
+  legacyGeodeMultiplier = 1,
+  lightningPotionMultiplier = 1
+} = {}) {
+  if (!['lightning', 'iceLance', 'fireball'].includes(spell)) return 1;
+  const lightningMultiplier = spell === 'lightning'
+    ? legacyGeodeMultiplier * lightningPotionMultiplier
+    : 1;
+  return damageCrystalMultiplier * lightningMultiplier;
+}
+
 export class LightningCombat {
   constructor(BABYLON, scene, camera, witch, dragonOrDragons, controller) {
     this.BABYLON = BABYLON;
@@ -30,6 +43,7 @@ export class LightningCombat {
     this.activeCharacter = 'purple';
     this.loadout = [...CHARACTER_LOADOUTS.purple];
     this.spellcastingEnabled = true;
+    this.spellcastingDisabledReason = null;
     this.dragons = (Array.isArray(dragonOrDragons) ? dragonOrDragons : [dragonOrDragons]).filter(Boolean);
     if (!this.dragons.length) throw new Error('LightningCombat requires at least one dragon');
     this.dragon = this.dragons[0];
@@ -50,6 +64,8 @@ export class LightningCombat {
     this.lightningBoostUntil = 0;
     this.geodeCount = 0;
     this.geodeDamageMultiplier = 1;
+    this.damageCrystalCount = 0;
+    this.damageCrystalMultiplier = 1;
     this.aegisBoostPrimed = false;
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
@@ -163,8 +179,16 @@ export class LightningCombat {
     return this.geodeDamageMultiplier;
   }
 
-  setSpellcastingEnabled(value) {
+  setDamageCrystalCount(count = 0) {
+    this.damageCrystalCount = Math.max(0, Math.floor(Number(count) || 0));
+    this.damageCrystalMultiplier = 1 + this.damageCrystalCount * POUCH.geodePowerPerCrystal;
+    this.updatePlayerHud(this.lastTime);
+    return this.damageCrystalMultiplier;
+  }
+
+  setSpellcastingEnabled(value, disabledReason = 'alternate-character') {
     this.spellcastingEnabled = Boolean(value);
+    this.spellcastingDisabledReason = this.spellcastingEnabled ? null : disabledReason;
     if (!this.spellcastingEnabled) {
       this.targeted = false;
       this.candidateTargeted = false;
@@ -545,8 +569,9 @@ export class LightningCombat {
     this.playerHealthCopy.textContent = `${this.playerHealth} / ${this.playerMaximumHealth}`;
     if (!this.spellcastingEnabled) {
       this.playerVitals.classList.remove('is-aegis', 'is-powered');
-      this.aegisStatus.textContent = 'Plant magic ready';
-      this.powerupStatus.textContent = 'Vine Trap · Restore';
+      const miningToolsActive = this.spellcastingDisabledReason === 'mining-tools';
+      this.aegisStatus.textContent = miningToolsActive ? 'Mining Tools equipped' : 'Plant magic ready';
+      this.powerupStatus.textContent = miningToolsActive ? 'Spellcasting stored' : 'Vine Trap · Restore';
       return;
     }
     const aegisActive = time < this.aegisUntil;
@@ -575,6 +600,9 @@ export class LightningCombat {
       powerups.push(`Lightning ×${COMBAT.lightningPotionDamageMultiplier} · ${(this.lightningBoostUntil - time).toFixed(1)}s`);
     }
     if (this.geodeCount) powerups.push(`${this.geodeCount} geode · permanent ×${this.geodeDamageMultiplier.toFixed(1)}`);
+    if (this.damageCrystalCount) {
+      powerups.push(`${this.damageCrystalCount} Raw Crystal · carried ×${this.damageCrystalMultiplier.toFixed(1)}`);
+    }
     if (this.aegisBoostPrimed) powerups.push(`Next Aegis ×${COMBAT.aegisPotionDurationMultiplier}`);
     const defaultStatus = this.activeCharacter === 'frost'
       ? 'Freeze · Ice Lance'
@@ -586,6 +614,12 @@ export class LightningCombat {
   }
 
   cast(time, requestedSpell = this.selectedSpell) {
+    if (!this.spellcastingEnabled) {
+      this.onMessage(this.spellcastingDisabledReason === 'mining-tools'
+        ? 'Spellcasting is unavailable while Mining Tools are active'
+        : 'This Witch uses a different spellcasting system');
+      return false;
+    }
     const selected = this.selectSpell(requestedSpell, false);
     const spell = SPELLS[selected];
     if (time < this.cooldownUntil[selected]) {
@@ -611,8 +645,12 @@ export class LightningCombat {
     const potionMultiplier = spell === 'lightning' && this.lightningBoostActive(time)
       ? COMBAT.lightningPotionDamageMultiplier
       : 1;
-    const lightningMultiplier = potionMultiplier * this.geodeDamageMultiplier;
-    const damageMultiplier = spell === 'lightning' ? lightningMultiplier : 1;
+    const damageMultiplier = spellDamageMultiplier({
+      spell,
+      damageCrystalMultiplier: this.damageCrystalMultiplier,
+      legacyGeodeMultiplier: this.geodeDamageMultiplier,
+      lightningPotionMultiplier: potionMultiplier
+    });
     const baseDamage = spell === 'lightning'
       ? COMBAT.lightningDamage
       : spell === 'iceLance'
@@ -657,7 +695,7 @@ export class LightningCombat {
         this.onMessage(`${SPELLS[spell].label} bound the dragon · ${COMBAT.frostDuration.toFixed(1)}s`);
       } else {
         intendedTarget.damage(damage, time);
-        const powerCopy = spell === 'lightning' && lightningMultiplier > 1 ? ` ×${lightningMultiplier.toFixed(1)}` : '';
+        const powerCopy = damageMultiplier > 1 ? ` ×${damageMultiplier.toFixed(1)}` : '';
         this.onMessage(intendedTarget.alive
           ? `${SPELLS[spell].label}${powerCopy} hit · ${intendedTarget.health} health remains`
           : 'Training dragon contained');
@@ -844,6 +882,8 @@ export class LightningCombat {
     this.lightningBoostUntil = 0;
     this.geodeCount = 0;
     this.geodeDamageMultiplier = 1;
+    this.damageCrystalCount = 0;
+    this.damageCrystalMultiplier = 1;
     this.aegisBoostPrimed = false;
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
@@ -881,6 +921,7 @@ export class LightningCombat {
       loadout: [...this.loadout],
       selectedSpell: this.selectedSpell,
       spellcastingEnabled: this.spellcastingEnabled,
+      spellcastingDisabledReason: this.spellcastingDisabledReason,
       playerName: this.playerName,
       targeted: this.targeted,
       candidateTargeted: this.candidateTargeted,
@@ -914,10 +955,12 @@ export class LightningCombat {
         lightningActive: this.lightningBoostActive(this.lastTime),
         lightningRemaining: Math.max(0, this.lightningBoostUntil - this.lastTime),
         lightningDamageMultiplier: this.lightningBoostActive(this.lastTime)
-          ? COMBAT.lightningPotionDamageMultiplier * this.geodeDamageMultiplier
-          : this.geodeDamageMultiplier,
+          ? COMBAT.lightningPotionDamageMultiplier * this.geodeDamageMultiplier * this.damageCrystalMultiplier
+          : this.geodeDamageMultiplier * this.damageCrystalMultiplier,
         geodeCount: this.geodeCount,
         geodeDamageMultiplier: this.geodeDamageMultiplier,
+        damageCrystalCount: this.damageCrystalCount,
+        damageCrystalMultiplier: this.damageCrystalMultiplier,
         aegisPrimed: this.aegisBoostPrimed,
         aegisDurationMultiplier: this.aegisBoostPrimed ? COMBAT.aegisPotionDurationMultiplier : 1
       },

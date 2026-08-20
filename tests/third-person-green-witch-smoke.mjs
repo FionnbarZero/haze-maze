@@ -1,5 +1,5 @@
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
-const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&party=simulated';
+const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&party=simulated&route=legacy';
 
 const pages = await fetch(`${debugEndpoint}/json/list`).then(response => response.json());
 const target = pages.find(page => page.type === 'page');
@@ -117,7 +117,7 @@ const interpolationSettled = await snapshot();
 
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.setGreenSimulationEnabled(true); window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 5.5); true');
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().greenWitch.abilities.dragonInRange');
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castGreenVine(); true');
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.castGreenVine()');
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().greenWitch.abilities.bindingCount === 3');
 const vine = await snapshot();
 const vineUi = await evaluate(`({

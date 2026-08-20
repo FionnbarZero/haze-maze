@@ -30,6 +30,7 @@ export class GreenWitchAbilities {
     this.dragon = this.dragons[0];
     this.combat = combat;
     this.locallyControlled = false;
+    this.spellcastingEnabled = true;
     this.friendAvailable = false;
     this.selectedSpell = 'vineTrap';
     this.maximumHealth = GREEN_WITCH.maximumHealth;
@@ -139,6 +140,23 @@ export class GreenWitchAbilities {
     if (this.locallyControlled) this.updateSpellSelection(false);
   }
 
+  setSpellcastingEnabled(value) {
+    this.spellcastingEnabled = Boolean(value);
+    if (!this.spellcastingEnabled) {
+      this.friendTargeted = false;
+      this.crosshair.classList.remove('is-targeting', 'is-assisted', 'is-obstructed', 'is-self-cast');
+      this.crosshairLabel.dataset.stateLabel = '';
+    }
+    this.updateSpellSelection(false);
+    this.updateHud(this.lastTime);
+  }
+
+  rejectDisabledCast() {
+    if (this.spellcastingEnabled) return false;
+    this.onMessage('Spellcasting is unavailable while Mining Tools are active');
+    return true;
+  }
+
   selectSpell(value, announce = true) {
     const selected = value === 'restore' ? 'restore' : 'vineTrap';
     const changed = selected !== this.selectedSpell;
@@ -151,7 +169,9 @@ export class GreenWitchAbilities {
     if (!this.locallyControlled) return;
     const spell = GREEN_WITCH_SPELLS[this.selectedSpell];
     this.spellNameCopy.textContent = spell.label;
-    this.spellHelpCopy.textContent = this.selectedSpell === 'restore'
+    this.spellHelpCopy.textContent = !this.spellcastingEnabled
+      ? 'Mining Tools active · O strikes geodes'
+      : this.selectedSpell === 'restore'
       ? this.friendAvailable
         ? 'Aim at your friend to heal them · otherwise heals self · O casts'
         : 'Restores your health · O casts'
@@ -161,6 +181,7 @@ export class GreenWitchAbilities {
   }
 
   castSelected(time = performance.now() / 1000) {
+    if (this.rejectDisabledCast()) return false;
     return this.selectedSpell === 'restore'
       ? this.castRestore(time, this.friendTargeted)
       : this.castVineTrap(time);
@@ -191,6 +212,7 @@ export class GreenWitchAbilities {
   }
 
   castVineTrap(time = performance.now() / 1000) {
+    if (this.rejectDisabledCast()) return false;
     this.lastTime = time;
     this.resolveDragon();
     if (time < this.cooldownUntil.vineTrap) {
@@ -263,6 +285,7 @@ export class GreenWitchAbilities {
   }
 
   castRestore(time = performance.now() / 1000, friendTargeted = this.friendTargeted) {
+    if (this.rejectDisabledCast()) return false;
     this.lastTime = time;
     if (time < this.cooldownUntil.restore) {
       this.onMessage(`Restore ready in ${(this.cooldownUntil.restore - time).toFixed(1)}s`);
@@ -338,6 +361,12 @@ export class GreenWitchAbilities {
 
   updateLocalTargeting(camera) {
     if (!this.locallyControlled || !camera) return;
+    if (!this.spellcastingEnabled) {
+      this.crosshair.classList.remove('is-targeting', 'is-assisted', 'is-obstructed', 'is-self-cast');
+      this.crosshairLabel.dataset.stateLabel = '';
+      this.updateSpellSelection(false);
+      return;
+    }
     this.resolveDragon();
     let friendTargeted = false;
     if (this.friendAvailable && this.selectedSpell === 'restore' && this.friendDistance() <= GREEN_WITCH.restoreRange) {
@@ -410,8 +439,8 @@ export class GreenWitchAbilities {
     const vineRemaining = Math.max(0, this.cooldownUntil.vineTrap - time);
     const restoreRemaining = Math.max(0, this.cooldownUntil.restore - time);
     const vineInRange = this.dragonDistance() <= GREEN_WITCH.vineTrapRange;
-    if (this.vineButton) this.vineButton.disabled = vineRemaining > 0 || !vineInRange || !this.dragon.alive;
-    if (this.restoreButton) this.restoreButton.disabled = restoreRemaining > 0;
+    if (this.vineButton) this.vineButton.disabled = !this.spellcastingEnabled || vineRemaining > 0 || !vineInRange || !this.dragon.alive;
+    if (this.restoreButton) this.restoreButton.disabled = !this.spellcastingEnabled || restoreRemaining > 0;
     if (this.statusCopy) {
       this.statusCopy.textContent = this.locallyControlled
         ? this.friendAvailable
@@ -450,6 +479,7 @@ export class GreenWitchAbilities {
       character: 'GREEN WITCH',
       role: 'RESTORATIVE PLANT MAGIC',
       locallyControlled: this.locallyControlled,
+      spellcastingEnabled: this.spellcastingEnabled,
       friendAvailable: this.friendAvailable,
       friendName: this.friendName,
       selectedSpell: this.selectedSpell,
