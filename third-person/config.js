@@ -195,7 +195,7 @@ export const WORLD = Object.freeze({
   gateOpenResponse: 0.55,
   exitDuration: 1.15,
   dragonCount: 10,
-  aggressiveDragonRatio: .1,
+  aggressiveDragonRatio: 1,
   defaultMazeSeed: 'moonhollow-expanded-v1'
 });
 

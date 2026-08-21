@@ -1,4 +1,4 @@
-import { PERFORMANCE, PLAYER } from './config.js?v=20260818-rewards-v1';
+import { PERFORMANCE, PLAYER } from './config.js?v=20260820-all-dragon-danger-v1';
 import { circleIntersectsBox, dampAngle, verticalRangesOverlap } from './utils.js';
 import { facingYawToward } from './targeting.js?v=20260818-rewards-v1';
 
@@ -62,6 +62,14 @@ export class CharacterController {
     } else {
       input.setCrouched(true);
       this.crouched = true;
+    }
+
+    // Space should feel responsive after crouching: stand and jump in one action
+    // when there is headroom, while still respecting a low ceiling.
+    if (this.jumpBufferRemaining > 0 && this.crouched
+      && this.canOccupy(this.position.x, this.position.y, this.position.z, PLAYER.standingHeight)) {
+      input.setCrouched(false);
+      this.crouched = false;
     }
 
     if (this.grounded) this.coyoteRemaining = PLAYER.coyoteTime;

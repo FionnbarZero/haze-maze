@@ -1,4 +1,4 @@
-import { CAMERA } from './config.js?v=20260818-rewards-v1';
+import { CAMERA } from './config.js?v=20260820-all-dragon-danger-v1';
 import { clamp, damp } from './utils.js';
 
 const SHOULDER_STORAGE_KEY = 'moonWitchShoulder';
@@ -49,7 +49,13 @@ export class ShoulderCamera {
   }
 
   addBlockers(meshes) {
-    for (const mesh of meshes) this.blockers.add(mesh);
+    // Creatures may overlap the boom in close combat. Treating their individual
+    // meshes as camera walls collapses the camera into the Witch and triggers a
+    // distracting transparency fade. World geometry remains a true blocker.
+    for (const mesh of meshes) {
+      if (mesh.metadata?.kind === 'dragon') continue;
+      this.blockers.add(mesh);
+    }
   }
 
   updateLook(input) {

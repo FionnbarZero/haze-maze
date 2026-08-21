@@ -1,9 +1,9 @@
-import { createWorld } from './world.js?v=20260820-chapter-one-v2';
+import { createWorld } from './world.js?v=20260820-all-dragon-danger-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260820-chapter-one-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260819-expanded-maze-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260820-all-dragon-danger-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
-import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
-import { ShoulderCamera } from './camera.js?v=20260819-runtime-audit-v1';
+import { CharacterController } from './controller.js?v=20260820-all-dragon-danger-v1';
+import { ShoulderCamera } from './camera.js?v=20260820-all-dragon-danger-v1';
 import { LightningCombat } from './combat.js?v=20260820-chapter-one-v2';
 import { PouchInventory } from './inventory.js?v=20260820-chapter-one-v3';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
@@ -79,7 +79,7 @@ try {
     scene,
     shadowGenerator,
     new BABYLON.Vector3(spawn.x, 0, spawn.z),
-    { id: spawn.id, aggressive: spawn.aggressive }
+    { id: spawn.id, aggressive: spawn.aggressive, navigationColliders: world.colliders }
   ));
   const dragon = dragons[0];
   const applyDragonPatrol = (actor, spawn) => {

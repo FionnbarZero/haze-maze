@@ -23,5 +23,5 @@ test('public homepage exposes the same runtime DOM contract as the direct protot
 
 test('public homepage and direct prototype load the same cache-busted game entry', () => {
   assert.equal(moduleEntry(homepage), moduleEntry(directPrototype));
-  assert.equal(moduleEntry(homepage), 'third-person/main.js?v=20260820-chapter-one-v3');
+  assert.equal(moduleEntry(homepage), 'third-person/main.js?v=20260820-all-dragon-danger-v1');
 });

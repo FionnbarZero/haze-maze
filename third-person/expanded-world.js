@@ -1,5 +1,5 @@
-import { PLAYER, POUCH, WORLD } from './config.js?v=20260819-expanded-maze-v1';
-import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260819-expanded-maze-v1';
+import { PLAYER, POUCH, WORLD } from './config.js?v=20260820-all-dragon-danger-v1';
+import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260820-all-dragon-danger-v1';
 import { createChapterOneLevelPlan } from './chapter-level-plan.js?v=20260820-chapter-one-v2';
 import { hexColor3 } from './utils.js';
 

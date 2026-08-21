@@ -172,6 +172,14 @@ await evaluate('window.__HMW_THIRD_PERSON_PROOF__.crouch(); true');
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().player.crouched');
 const resumedCrouch = await snapshot();
 
+await evaluate(`(() => {
+  window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Space', key: ' ' }));
+  window.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code: 'Space', key: ' ' }));
+  return true;
+})()`);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().player.didJump');
+const crouchJump = await snapshot();
+
 await reset();
 const resumedControlsBefore = await snapshot();
 await evaluate(`(() => {
@@ -217,6 +225,9 @@ const checks = {
   ordinaryCrouchResumed: resumedCrouch.player.crouched
     && resumedCrouch.player.capsuleHeight < 1.75
     && noPendingActions(resumedCrouch),
+  spaceStandsAndJumpsFromCrouch: crouchJump.player.didJump
+    && crouchJump.player.maximumAirHeight > 0
+    && !crouchJump.player.crouched,
   ordinaryShoulderResumed: resumedControlsAfter.camera.side !== resumedControlsBefore.camera.side,
   ordinarySpellSelectionResumed: resumedControlsAfter.combat.selectedSpell === 'frost',
   ordinaryCastingResumed: resumedControlsAfter.combat.lastCast?.spell === 'frost',
@@ -252,6 +263,7 @@ console.log(JSON.stringify({
     resumed: {
       jump: inputEvidence(resumedJump),
       crouch: inputEvidence(resumedCrouch),
+      crouchJump: inputEvidence(crouchJump),
       before: inputEvidence(resumedControlsBefore),
       after: inputEvidence(resumedControlsAfter)
     },

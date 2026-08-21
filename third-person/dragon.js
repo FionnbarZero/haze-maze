@@ -1,4 +1,5 @@
-import { COMBAT } from './config.js?v=20260819-expanded-maze-v1';
+import { COMBAT } from './config.js?v=20260820-all-dragon-danger-v1';
+import { circleIntersectsBox, verticalRangesOverlap } from './utils.js';
 
 export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position, options = {}) {
   const id = options.id || 'dragon-0';
@@ -29,6 +30,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
   let patrolSpeed = 1.2;
   let patrolWaitUntil = 0;
   let patrolWaitDuration = 0.9;
+  let navigationColliders = [];
   const material = new BABYLON.StandardMaterial(named('material'), scene);
   material.diffuseColor = BABYLON.Color3.FromHexString(basePalette.diffuse);
   material.emissiveColor = BABYLON.Color3.FromHexString(basePalette.emissive);
@@ -77,6 +79,9 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       patrolIndex = 0;
       patrolWaitUntil = 0;
     },
+    setNavigationColliders(colliders = []) {
+      navigationColliders = Array.isArray(colliders) ? colliders : [];
+    },
     setAggressive(value) {
       this.aggressive = Boolean(value);
       this.collisionName = this.aggressive ? 'AGGRESSIVE DRAGON' : 'PASSIVE DRAGON';
@@ -93,6 +98,31 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       const nextPosition = position instanceof BABYLON.Vector3 ? position : new BABYLON.Vector3(position.x, position.y, position.z);
       root.position.copyFrom(nextPosition);
       patrolWaitUntil = 0;
+    },
+    canOccupy(x, z) {
+      return navigationColliders.every(collider => {
+        if (!verticalRangesOverlap(root.position.y, this.collisionHeight, collider)) return true;
+        return !circleIntersectsBox(x, z, this.collisionRadius, collider);
+      });
+    },
+    moveWithCollision(direction, distance) {
+      const deltaX = direction.x * distance;
+      const deltaZ = direction.z * distance;
+      if (this.canOccupy(root.position.x + deltaX, root.position.z + deltaZ)) {
+        root.position.x += deltaX;
+        root.position.z += deltaZ;
+        return true;
+      }
+      let moved = false;
+      if (this.canOccupy(root.position.x + deltaX, root.position.z)) {
+        root.position.x += deltaX;
+        moved = true;
+      }
+      if (this.canOccupy(root.position.x, root.position.z + deltaZ)) {
+        root.position.z += deltaZ;
+        moved = true;
+      }
+      return moved;
     },
     getAimPoint() {
       return root.position.add(new BABYLON.Vector3(0, COMBAT.dragonAimHeight, 0));
@@ -189,8 +219,12 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
             } else {
               const moveDistance = Math.min(distance, patrolSpeed * deltaTime);
               const direction = toTargetXZ.normalize();
-              root.position.addInPlace(direction.scale(moveDistance));
-              root.rotation.y = Math.atan2(direction.x, direction.z);
+              const moved = this.moveWithCollision(direction, moveDistance);
+              if (moved) root.rotation.y = Math.atan2(direction.x, direction.z);
+              else {
+                patrolIndex = (patrolIndex + 1) % patrolPoints.length;
+                patrolWaitUntil = now + patrolWaitDuration;
+              }
               root.position.y = spawnPosition.y;
             }
           }
@@ -294,5 +328,6 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     parent = node;
   }
 
+  actor.setNavigationColliders(options.navigationColliders);
   return actor;
 }

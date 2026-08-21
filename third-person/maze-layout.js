@@ -120,7 +120,7 @@ export const createMazeLayout = ({
     }
   });
 
-  const passiveCandidates = shuffle([
+  const dragonCandidates = shuffle([
     [-9.4, -21], [9.1, -20.4], [-8.8, -12], [8.9, -11.4],
     [-9.2, -.2], [9.2, .4], [-8.9, 9.8], [8.8, 10.6],
     [-9.1, 19.7], [0, 20.5], [9, 20.2], [-.2, -11.5]
@@ -134,11 +134,11 @@ export const createMazeLayout = ({
       patrolRadius: 0,
       patrolSpeed: 0
     },
-    ...passiveCandidates.map(([x, z], index) => ({
+    ...dragonCandidates.map(([x, z], index) => ({
       id: `dragon-${index + 1}`,
       x: x + (random() - .5) * 1.1,
       z: z + (random() - .5) * 1.1,
-      aggressive: false,
+      aggressive: true,
       patrolRadius: .55 + random() * .45,
       patrolSpeed: .55 + random() * .45
     }))

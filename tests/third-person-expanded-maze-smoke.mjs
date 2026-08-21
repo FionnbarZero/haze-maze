@@ -84,6 +84,13 @@ const waitFor = async (expression, timeoutMilliseconds = 45000) => {
   throw new Error(`Timed out waiting for ${expression}`);
 };
 const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
+const dragonsClearOfWalls = state => state.dragons.every(dragon => state.navigation.colliders
+  .filter(collider => collider.max.y > .01 && collider.min.y < 2.25)
+  .every(collider => {
+    const nearestX = Math.max(collider.min.x, Math.min(dragon.position.x, collider.max.x));
+    const nearestZ = Math.max(collider.min.z, Math.min(dragon.position.z, collider.max.z));
+    return Math.hypot(dragon.position.x - nearestX, dragon.position.z - nearestZ) >= dragon.collisionRadius - .01;
+  }));
 const teleportToRune = async index => {
   const state = await snapshot();
   const rune = state.inventory.runePickups[index];
@@ -119,18 +126,22 @@ try {
     geodes: 4,
     potions: 8,
     dragons: 10,
-    aggressiveDragons: 1,
+    aggressiveDragons: 10,
     variableWalls: initial.world.featureCounts.variableWalls
   });
   assert.ok(initial.world.featureCounts.variableWalls >= 20);
   assert.equal(initial.dragons.length, 10);
-  assert.equal(initial.dragons.filter(dragon => dragon.aggressive).length, 1);
+  assert.equal(initial.dragons.filter(dragon => dragon.aggressive).length, 10);
+  await delay(1800);
+  assert.equal(dragonsClearOfWalls(await snapshot()), true, 'dragon patrols must not overlap maze walls');
 
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.teleportNearDragon(1, 1.8); true');
-  await delay(1350);
-  const passiveContact = await snapshot();
-  assert.equal(passiveContact.dragons[1].aggressive, false);
-  assert.equal(passiveContact.combat.damageTaken, 0, 'passive dragons must not attack');
+  await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.damageTaken > 0', 5000);
+  const secondDragonContact = await snapshot();
+  assert.equal(secondDragonContact.dragons[1].aggressive, true);
+  assert.equal(secondDragonContact.combat.threatDragonId, 'dragon-1');
+  assert.equal(/dragon/i.test(secondDragonContact.camera.collisionMesh), false,
+    'a nearby dragon must not collapse the third-person camera boom');
 
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.teleportNearDragon(0, 1.8); true');
   await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.damageTaken > 0', 5000);
@@ -175,7 +186,7 @@ try {
     dragonPopulation: {
       total: initial.dragons.length,
       aggressive: initial.dragons.filter(dragon => dragon.aggressive).length,
-      passiveDamageTaken: passiveContact.combat.damageTaken,
+      secondDragonDamageTaken: secondDragonContact.combat.damageTaken,
       hostileDamageTaken: hostileContact.combat.damageTaken
     },
     doors: completed.world.doors,
