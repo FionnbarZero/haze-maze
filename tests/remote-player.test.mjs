@@ -94,3 +94,24 @@ test('pausing the simulated feed keeps the replica available for network snapsho
   replica.update(1, 1);
   assert.ok(replica.snapshot().position.x > 0);
 });
+
+test('resetting a simulated feed without a timestamp stays in its current simulation-time epoch', () => {
+  const replica = new RemotePlayerReplica(BABYLON, createPresentation(), initialSnapshot);
+  const player = {
+    x: 0,
+    y: 0,
+    z: 0,
+    facingYaw: 0,
+    grounded: true,
+    crouched: false,
+    state: 'IDLE'
+  };
+  const feed = new SimulatedTeammateFeed(replica, player);
+
+  feed.update(.4, player);
+  feed.reset(player);
+  assert.equal(feed.snapshot().nextSnapshotIn, 0);
+
+  feed.update(.4, player);
+  assert.equal(replica.snapshot().latestSequence, 3);
+});

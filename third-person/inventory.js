@@ -1,4 +1,4 @@
-import { COMBAT, POUCH } from './config.js?v=20260819-expanded-maze-v1';
+import { COMBAT, POUCH } from './config.js?v=20260821-simulation-time-v1';
 import { ChapterOneInteractions, EQUIPMENT_MODES } from './chapter-interactions.js?v=20260820-chapter-one-v3';
 import { ChapterOneGeodeState } from './chapter-geode-state.js?v=20260820-chapter-one-v3';
 import { hexColor3 } from './utils.js';
@@ -46,6 +46,7 @@ export class PouchInventory {
     this.totalUsed = 0;
     this.totalPotionsCollected = 0;
     this.totalPotionsUsed = 0;
+    this.lastTime = 0;
     this.open = false;
     this.onMessage = () => {};
     this.onOpenChange = () => {};
@@ -810,7 +811,7 @@ export class PouchInventory {
     if (!rock || !content || rock.reward.available || rock.reward.collected) return false;
     rock.reward.available = true;
     rock.reward.content = structuredClone(content);
-    rock.reward.collectibleAt = performance.now() / 1000 + .65;
+    rock.reward.collectibleAt = this.lastTime + .65;
     rock.reward.root.rotation.y = 0;
     rock.reward.root.setEnabled(true);
     this.onMessage(content.kind === 'route-rune-fragment'
@@ -1035,6 +1036,7 @@ export class PouchInventory {
   }
 
   update(time, deltaTime) {
+    this.lastTime = time;
     const player = this.controller.position;
     const pickupRadiusSquared = POUCH.pickupRadius * POUCH.pickupRadius;
     for (const pickup of this.pickups) {
@@ -1159,14 +1161,14 @@ export class PouchInventory {
         : `Eat berry · restore up to ${POUCH.healthBerryRestore} health`;
 
     const lightningLabel = `${this.lightningPotions} ${this.lightningPotions === 1 ? 'potion' : 'potions'}`;
-    const lightningActive = this.combat.lightningBoostActive();
+    const lightningActive = this.combat.lightningBoostActive(this.lastTime);
     const purplePowerupsAvailable = this.activeCharacter === 'purple';
     this.lightningPotionCountCopy.textContent = lightningLabel;
     this.lightningPotionButton.disabled = !purplePowerupsAvailable || this.lightningPotions === 0 || lightningActive;
     this.lightningPotionActionCopy.textContent = !purplePowerupsAvailable
       ? 'Purple Witch only · potion preserved'
       : lightningActive
-      ? `Active · ×${COMBAT.lightningPotionDamageMultiplier} damage · ${Math.max(0, this.combat.lightningBoostUntil - performance.now() / 1000).toFixed(1)}s`
+      ? `Active · ×${COMBAT.lightningPotionDamageMultiplier} damage · ${Math.max(0, this.combat.lightningBoostUntil - this.lastTime).toFixed(1)}s`
       : this.lightningPotions
         ? `Drink · ×${COMBAT.lightningPotionDamageMultiplier} lightning damage for ${COMBAT.lightningPotionDuration}s`
         : 'Find the amber storm potion in the arena';
@@ -1248,7 +1250,8 @@ export class PouchInventory {
       : 'Complete set · the Moon Door can open';
   }
 
-  reset() {
+  reset(time = 0) {
+    this.lastTime = Number.isFinite(time) ? Math.max(0, time) : 0;
     this.setOpen(false);
     this.ownedEquipment = this.chapterMode ? null : { staff: true, geodePick: false, geodeHammer: false };
     this.equippedItem = this.chapterMode ? null : 'staff';
@@ -1401,7 +1404,7 @@ export class PouchInventory {
           available: rock.reward.available,
           collected: rock.reward.collected,
           kind: rock.reward.content?.kind || null,
-          collectible: rock.reward.available && performance.now() / 1000 >= rock.reward.collectibleAt,
+          collectible: rock.reward.available && this.lastTime >= rock.reward.collectibleAt,
           position: { x: rock.position.x, y: rock.position.y + rock.reward.root.position.y, z: rock.position.z },
           visualEnabled: rock.reward.root.isEnabled()
         } : null,

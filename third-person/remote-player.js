@@ -1,4 +1,4 @@
-import { GREEN_WITCH } from './config.js?v=20260818-witchselect-v1';
+import { GREEN_WITCH } from './config.js?v=20260821-simulation-time-v1';
 import { damp } from './utils.js?v=20260818-witchselect-v1';
 
 const finite = (value, fallback = 0) => Number.isFinite(value) ? value : fallback;
@@ -148,6 +148,7 @@ export class SimulatedTeammateFeed {
     this.sequence = 0;
     this.nextSnapshotAt = 0;
     this.previousPosition = this.companionPosition(initialPlayerState);
+    this.lastTime = 0;
   }
 
   companionPosition(player) {
@@ -166,6 +167,7 @@ export class SimulatedTeammateFeed {
   }
 
   update(time, player) {
+    this.lastTime = time;
     if (!this.enabled || time < this.nextSnapshotAt) return;
     const position = this.companionPosition(player);
     const distance = Math.hypot(position.x - this.previousPosition.x, position.z - this.previousPosition.z);
@@ -192,7 +194,8 @@ export class SimulatedTeammateFeed {
     this.nextSnapshotAt = time + GREEN_WITCH.snapshotInterval;
   }
 
-  reset(player, time = performance.now() / 1000) {
+  reset(player, time = this.lastTime) {
+    this.lastTime = time;
     this.sequence += 1;
     this.nextSnapshotAt = time;
     this.previousPosition = this.companionPosition(player);
@@ -212,7 +215,7 @@ export class SimulatedTeammateFeed {
     return {
       enabled: this.enabled,
       sequence: this.sequence,
-      nextSnapshotIn: Math.max(0, this.nextSnapshotAt - performance.now() / 1000)
+      nextSnapshotIn: Math.max(0, this.nextSnapshotAt - this.lastTime)
     };
   }
 }

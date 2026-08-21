@@ -93,7 +93,7 @@ export class GreenWitchAbilities {
   }
 
   resolveDragon() {
-    const time = this.lastTime || performance.now() / 1000;
+    const time = this.lastTime;
     if (this.dragon?.alive && this.dragon.isRestrained(time)) return this.dragon;
     const self = this.greenWitch.root.position;
     const living = this.dragons.filter(dragon => dragon.alive);
@@ -180,7 +180,7 @@ export class GreenWitchAbilities {
     if (announce) this.onMessage(`${spell.label} selected`);
   }
 
-  castSelected(time = performance.now() / 1000) {
+  castSelected(time = this.lastTime) {
     if (this.rejectDisabledCast()) return false;
     return this.selectedSpell === 'restore'
       ? this.castRestore(time, this.friendTargeted)
@@ -211,7 +211,7 @@ export class GreenWitchAbilities {
     return restored;
   }
 
-  castVineTrap(time = performance.now() / 1000) {
+  castVineTrap(time = this.lastTime) {
     if (this.rejectDisabledCast()) return false;
     this.lastTime = time;
     this.resolveDragon();
@@ -284,7 +284,7 @@ export class GreenWitchAbilities {
     return mesh.name;
   }
 
-  castRestore(time = performance.now() / 1000, friendTargeted = this.friendTargeted) {
+  castRestore(time = this.lastTime, friendTargeted = this.friendTargeted) {
     if (this.rejectDisabledCast()) return false;
     this.lastTime = time;
     if (time < this.cooldownUntil.restore) {
@@ -318,7 +318,7 @@ export class GreenWitchAbilities {
     return true;
   }
 
-  castSmartRestore(time = performance.now() / 1000) {
+  castSmartRestore(time = this.lastTime) {
     const friendNeedsHealing = this.friendAvailable && (this.locallyControlled
       ? this.friendHealth < this.friendMaximumHealth
       : this.combat.playerHealth < this.combat.playerMaximumHealth);
@@ -456,7 +456,8 @@ export class GreenWitchAbilities {
     }
   }
 
-  reset() {
+  reset(time = 0) {
+    this.lastTime = Number.isFinite(time) ? Math.max(0, time) : 0;
     this.health = this.maximumHealth;
     this.friendHealth = this.friendMaximumHealth;
     this.cooldownUntil = { vineTrap: 0, restore: 0 };
@@ -469,7 +470,7 @@ export class GreenWitchAbilities {
       effect.material?.dispose();
     }
     this.transientEffects = [];
-    this.updateHud(0);
+    this.updateHud(this.lastTime);
   }
 
   snapshot() {

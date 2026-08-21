@@ -233,7 +233,14 @@ async function walkWaypoint(target, waypoint, label, replans) {
     });
     if (samples.length > 16) samples.shift();
 
-    if (!state.active || state.input.blocked || state.combat.playerDefeated) {
+    if (state.combat.playerDefeated) {
+      await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
+      const diagnostics = walkDiagnostics(
+        state, target, waypoint, samples, replans, await evaluate('location.href')
+      );
+      throw new Error(`${label} deterministic low-FPS route player was defeated: ${JSON.stringify(diagnostics)}`);
+    }
+    if (!state.active || state.input.blocked) {
       await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
       const diagnostics = walkDiagnostics(
         state, target, waypoint, samples, replans, await evaluate('location.href')
@@ -272,7 +279,7 @@ async function walkNormalRouteTo(target, label) {
       return;
     } catch (error) {
       lastFailure = error;
-      if (/normal movement became unavailable/.test(error.message)) throw error;
+      if (/(normal movement became unavailable|route player was defeated)/.test(error.message)) throw error;
     }
   }
   throw new Error(`${label} exhausted ${MAX_ROUTE_REPLANS} bounded replans: ${lastFailure?.message}`);
@@ -371,6 +378,8 @@ try {
     assert.equal(completed.world.chapterComplete, false);
     assert.equal(completed.world.complete, false);
     assert.equal(completed.world.doors.final.state, 'LOCKED');
+    assert.equal(completed.combat.playerDefeated, false,
+      'the deterministic low-FPS qualification route must not be defeated because hostile timing advances faster than movement');
     assert.equal(completed.inventory.rawDamageCrystals, 1);
     assert.equal(completed.combat.powerups.damageCrystalCount, 1);
     assert.equal(completed.combat.powerups.damageCrystalMultiplier, 1.1);

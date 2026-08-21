@@ -1,4 +1,4 @@
-import { COMBAT } from './config.js?v=20260820-all-dragon-danger-v1';
+import { COMBAT } from './config.js?v=20260821-simulation-time-v1';
 import { circleIntersectsBox, verticalRangesOverlap } from './utils.js';
 
 export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, position, options = {}) {
@@ -56,6 +56,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     restrainedUntil: 0,
     attackUntil: 0,
     defeatedAt: 0,
+    time: 0,
     deathProgress: 0,
     state: 'IDLE',
     setPatrol(pathPoints = [], speed = 1.2, pauseDuration = 0.9) {
@@ -129,6 +130,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     },
     damage(amount, time) {
       if (!this.alive) return false;
+      this.time = time;
       this.health = Math.max(0, this.health - amount);
       this.hitUntil = time + .16;
       if (this.health === 0) {
@@ -140,12 +142,14 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     },
     freeze(time, duration = COMBAT.frostDuration) {
       if (!this.alive) return false;
+      this.time = time;
       this.frozenUntil = Math.max(this.frozenUntil, time + duration);
       this.state = 'FROZEN';
       return true;
     },
     restrain(time, duration) {
       if (!this.alive) return false;
+      this.time = time;
       this.restrainedUntil = Math.max(this.restrainedUntil, time + duration);
       this.state = 'VINEBOUND';
       return true;
@@ -158,6 +162,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
     },
     attack(time) {
       if (!this.aggressive || !this.alive || this.isFrozen(time) || this.isRestrained(time)) return false;
+      this.time = time;
       this.attackUntil = time + COMBAT.dragonAttackAnimationDuration;
       this.state = 'ATTACK';
       return true;
@@ -171,6 +176,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       this.attackUntil = 0;
       this.defeatedAt = 0;
       this.deathProgress = 0;
+      this.time = 0;
       this.state = 'IDLE';
       root.position.copyFrom(spawnPosition);
       root.rotation.set(0, Math.PI, 0);
@@ -183,6 +189,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       patrolWaitUntil = 0;
     },
     update(time, deltaTime) {
+      this.time = time;
       if (!this.alive) {
         this.deathProgress = Math.min(1, (time - this.defeatedAt) / COMBAT.dragonDefeatDuration);
         root.rotation.z = this.deathProgress * 1.32;
@@ -259,7 +266,7 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         tailNodes.forEach((node, index) => { node.rotation.y = Math.sin(time * 2 + index * .7) * (.12 + index * .04); });
       }
     },
-    snapshot() {
+    snapshot(time = this.time) {
       return {
         id: this.id,
         aggressive: this.aggressive,
@@ -267,10 +274,10 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
         maximumHealth: this.maximumHealth,
         alive: this.alive,
         state: this.state,
-        frozen: this.isFrozen(performance.now() / 1000),
-        frozenRemaining: Math.max(0, this.frozenUntil - performance.now() / 1000),
-        restrained: this.isRestrained(performance.now() / 1000),
-        restrainedRemaining: Math.max(0, this.restrainedUntil - performance.now() / 1000),
+        frozen: this.isFrozen(time),
+        frozenRemaining: Math.max(0, this.frozenUntil - time),
+        restrained: this.isRestrained(time),
+        restrainedRemaining: Math.max(0, this.restrainedUntil - time),
         deathProgress: this.deathProgress,
         enabled: root.isEnabled(),
         position: { x: root.position.x, y: root.position.y, z: root.position.z },

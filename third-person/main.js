@@ -1,19 +1,21 @@
 import { createWorld } from './world.js?v=20260820-all-dragon-danger-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260820-chapter-one-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260820-all-dragon-danger-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260821-simulation-time-v1';
 import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260820-all-dragon-danger-v1';
 import { ShoulderCamera } from './camera.js?v=20260820-all-dragon-danger-v1';
-import { LightningCombat } from './combat.js?v=20260820-chapter-one-v2';
-import { PouchInventory } from './inventory.js?v=20260820-chapter-one-v3';
+import { LightningCombat } from './combat.js?v=20260821-simulation-time-v1';
+import { PouchInventory } from './inventory.js?v=20260821-simulation-time-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
-import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260819-runtime-audit-v1';
-import { GreenWitchAbilities } from './green-witch.js?v=20260820-chapter-one-v2';
+import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260821-simulation-time-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260821-simulation-time-v1';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
 import { ChapterOneProgression } from './chapter-progression.js?v=20260820-chapter-one-v3';
 import { ChapterOneGeodeState } from './chapter-geode-state.js?v=20260820-chapter-one-v3';
+import { PERFORMANCE } from './config.js?v=20260821-simulation-time-v1';
+import { SimulationClock, runSimulationSteps } from './simulation-clock.js?v=20260821-simulation-time-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -213,6 +215,12 @@ try {
   const shoulderCamera = new ShoulderCamera(BABYLON, scene, world, mobile);
   shoulderCamera.addBlockers(dragons.flatMap(actor => actor.meshes));
   const input = new ProofInput(canvas);
+  const simulationClock = new SimulationClock({
+    maximumStep: PERFORMANCE.maximumSimulationDelta,
+    maximumCatchUp: PERFORMANCE.maximumSimulationCatchUp,
+    maximumSteps: PERFORMANCE.maximumSimulationSteps
+  });
+  simulationClock.reset(performance.now() / 1000);
   const combat = new LightningCombat(BABYLON, scene, shoulderCamera, purpleWitch, dragons, controller);
   const greenAbilities = new GreenWitchAbilities(BABYLON, scene, greenWitch, purpleWitch, dragons, combat);
   const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch, {
@@ -233,6 +241,7 @@ try {
   let completed = false;
   let qualification = null;
   let openingFlow = null;
+  let worldState = world.snapshot(dragons);
 
   const showMessage = message => {
     toast.textContent = message;
@@ -253,7 +262,7 @@ try {
       : combat.selectSpell(selected);
   };
   const castActiveSpell = spell => {
-    const now = performance.now() / 1000;
+    const now = simulationClock.time;
     if (routeMode === 'chapter1' && !inventory.canCastWithStaff()) {
       if (spell) {
         showMessage('Mining Tools are active · equip the wand or staff to cast');
@@ -288,7 +297,7 @@ try {
       showMessage('Mining Tools are active · equip the wand or staff to cast');
       return false;
     }
-    return cast(performance.now() / 1000);
+    return cast(simulationClock.time);
   };
   input.onGreenVine = () => castGreenUtility(now => greenAbilities.castVineTrap(now));
   input.onGreenRestore = () => castGreenUtility(now => greenAbilities.castSmartRestore(now));
@@ -379,8 +388,8 @@ try {
     greenSimulation.setEnabled(simulatedPartyEnabled);
     greenReplica.setEnabled(simulatedPartyEnabled);
     if (simulatedPartyEnabled) {
-      greenSimulation.reset(controller.snapshot());
-      greenReplica.update(0, performance.now() / 1000);
+      greenSimulation.reset(controller.snapshot(), simulationClock.time);
+      greenReplica.update(0, simulationClock.time);
     }
     combat.setCharacter(characterId, localWitch, PLAYABLE_WITCHES[characterId].name);
     greenAbilities.setMode({
@@ -430,7 +439,7 @@ try {
 
   openingFlow = new CharacterSelectionFlow({
     onConfirm: characterId => startProof(characterId),
-    onNarrationLine: (_line, index) => covenLeader.setCast(performance.now() / 1000, `address ${index + 1}`),
+    onNarrationLine: (_line, index) => covenLeader.setCast(simulationClock.time, `address ${index + 1}`),
     onPreviewChange: (selectedId, focusedId, step) => {
       if (step === 'COMPLETE') return;
       if (step === 'BRIEFING') {
@@ -461,8 +470,11 @@ try {
     }
   });
 
+  let defeatResetAt = 0;
   const resetTechnicalRoute = () => {
     completed = false;
+    defeatResetAt = 0;
+    simulationClock.reset(performance.now() / 1000);
     input.clearHeldInput();
     input.setCrouched(false);
     input.active = true;
@@ -477,25 +489,26 @@ try {
       applyDragonPatrol(actor, spawn);
     }
     combat.reset();
-    inventory.reset();
+    inventory.reset(simulationClock.time);
     controller.reset();
-    localWitch.update(controller, input, 0, performance.now() / 1000);
-    greenAbilities.reset();
+    localWitch.update(controller, input, 0, simulationClock.time);
+    greenAbilities.reset(simulationClock.time);
     localWitch.root.setEnabled(true);
     localWitch.root.scaling.setAll(1);
     localWitch.setVisibility(1);
     if (simulatedPartyEnabled) {
-      greenSimulation.reset(controller.snapshot());
-      greenReplica.update(0, performance.now() / 1000);
+      greenSimulation.reset(controller.snapshot(), simulationClock.time);
+      greenReplica.update(0, simulationClock.time);
     }
     updateCharacterInterface();
     shoulderCamera.setLook(0, 0);
     shoulderCamera.snapNextUpdate();
     if (chapterProgression) world.setChapterProgression(chapterProgression.snapshot());
-    updateRouteHud(world.snapshot(dragons));
+    worldState = world.snapshot(dragons);
+    updateRouteHud(worldState);
     showMessage('Qualification route reset · begin at the Moon Gate');
   };
-  combat.onPlayerDefeated = () => setTimeout(resetTechnicalRoute, 850);
+  combat.onPlayerDefeated = () => { defeatResetAt = simulationClock.time + .85; };
 
   const snapshotProof = () => ({
     ready: scene.isReady(),
@@ -564,6 +577,7 @@ try {
       }))
     },
     performance: telemetry.snapshot(),
+    timing: simulationClock.snapshot(),
     quality: qualityController.snapshot(),
     meshCount: scene.meshes.length,
     engine: `Babylon.js WebGL ${engine.webGLVersion}`
@@ -580,62 +594,62 @@ try {
   let lastTime = performance.now();
   engine.runRenderLoop(() => {
     const nowMilliseconds = performance.now();
-    const now = nowMilliseconds / 1000;
+    const wallTime = nowMilliseconds / 1000;
     const measuredDeltaTime = Math.max(.001, (nowMilliseconds - lastTime) / 1000);
-    const deltaTime = Math.min(.05, measuredDeltaTime);
     lastTime = nowMilliseconds;
     shoulderCamera.updateLook(input);
-    controller.update(input, shoulderCamera.yaw, deltaTime);
-    const cameraWitch = openingFlow?.step === 'BRIEFING' ? covenLeader : localWitch;
-    shoulderCamera.update(controller, input, deltaTime, cameraWitch);
-    if (input.active) {
-      localWitch.update(controller, input, deltaTime, now);
-    } else {
-      for (const [characterId, actor] of Object.entries(playableWitchActors)) {
-        actor.update(previewWitchStates[characterId], previewInput, deltaTime, now);
+    runSimulationSteps(simulationClock, simulationClock.advance(wallTime), ({ deltaTime, time }) => {
+      controller.update(input, shoulderCamera.yaw, deltaTime);
+      const cameraWitch = openingFlow?.step === 'BRIEFING' ? covenLeader : localWitch;
+      shoulderCamera.update(controller, input, deltaTime, cameraWitch);
+      if (input.active) {
+        localWitch.update(controller, input, deltaTime, time);
+      } else {
+        for (const [characterId, actor] of Object.entries(playableWitchActors)) {
+          actor.update(previewWitchStates[characterId], previewInput, deltaTime, time);
+        }
       }
-    }
-    covenLeaderState.stateLabel = openingFlow?.narrationStatus === 'SPEAKING' ? 'ADDRESSING COVEN' : 'IDLE';
-    covenLeader.update(covenLeaderState, covenLeaderInput, deltaTime, now);
-    const currentPlayerState = controller.snapshot();
-    if (input.active) {
-      greenSimulation.update(now, currentPlayerState);
-      greenReplica.update(deltaTime, now);
-    }
-    for (const actor of dragons) actor.update(now, deltaTime);
-    combat.update();
-    greenAbilities.update(now, selectedCharacter === 'green' ? shoulderCamera : null);
-    inventory.update(now, deltaTime);
-    if (chapterProgression) {
-      if (chapterProgression.hasCompletedRune()) chapterProgression.unlockSunkenGate();
-      world.setChapterProgression(chapterProgression.snapshot());
-    } else {
-      world.setRuneCount(inventory.runes);
-    }
-    const routeEvents = world.update(controller, dragons, deltaTime);
-    let worldState = world.snapshot(dragons);
-    if (chapterProgression && worldState.doors.first.state === 'OPEN') {
-      chapterProgression.markSunkenGateOpened();
-      if (worldState.route.sunkenGate) chapterProgression.completeGardenMaze();
-      world.setChapterProgression(chapterProgression.snapshot());
+      covenLeaderState.stateLabel = openingFlow?.narrationStatus === 'SPEAKING' ? 'ADDRESSING COVEN' : 'IDLE';
+      covenLeader.update(covenLeaderState, covenLeaderInput, deltaTime, time);
+      const currentPlayerState = controller.snapshot();
+      if (input.active) {
+        greenSimulation.update(time, currentPlayerState);
+        greenReplica.update(deltaTime, time);
+      }
+      for (const actor of dragons) actor.update(time, deltaTime);
+      combat.update(time);
+      greenAbilities.update(time, selectedCharacter === 'green' ? shoulderCamera : null);
+      inventory.update(time, deltaTime);
+      if (chapterProgression) {
+        if (chapterProgression.hasCompletedRune()) chapterProgression.unlockSunkenGate();
+        world.setChapterProgression(chapterProgression.snapshot());
+      } else {
+        world.setRuneCount(inventory.runes);
+      }
+      const routeEvents = world.update(controller, dragons, deltaTime);
       worldState = world.snapshot(dragons);
-    }
-    for (const event of routeEvents) {
-      showMessage(event.message);
-    }
-    if (worldState.exit.active) {
-      const visibility = worldState.exit.witchVisible;
-      localWitch.setVisibility(visibility);
-      localWitch.root.scaling.setAll(Math.max(.01, visibility));
-    }
-    if (worldState.routeMode === 'legacy' && worldState.complete && !completed) {
-      completed = true;
-      input.active = false;
-      input.clearHeldInput();
-      localWitch.setVisibility(0);
-      localWitch.root.setEnabled(false);
-      document.exitPointerLock?.();
-    }
+      if (chapterProgression && worldState.doors.first.state === 'OPEN') {
+        chapterProgression.markSunkenGateOpened();
+        if (worldState.route.sunkenGate) chapterProgression.completeGardenMaze();
+        world.setChapterProgression(chapterProgression.snapshot());
+        worldState = world.snapshot(dragons);
+      }
+      for (const event of routeEvents) showMessage(event.message);
+      if (worldState.exit.active) {
+        const visibility = worldState.exit.witchVisible;
+        localWitch.setVisibility(visibility);
+        localWitch.root.scaling.setAll(Math.max(.01, visibility));
+      }
+      if (worldState.routeMode === 'legacy' && worldState.complete && !completed) {
+        completed = true;
+        input.active = false;
+        input.clearHeldInput();
+        localWitch.setVisibility(0);
+        localWitch.root.setEnabled(false);
+        document.exitPointerLock?.();
+      }
+      if (defeatResetAt && time >= defeatResetAt) resetTechnicalRoute();
+    });
     updateRouteHud(worldState);
     scene.render();
     telemetry.markFirstRenderedFrame();
@@ -646,7 +660,7 @@ try {
     const dragonState = dragon.snapshot();
     const witchState = localWitch.snapshot();
     telemetry.update(
-      now,
+      wallTime,
       measuredDeltaTime,
       playerState,
       cameraState,
@@ -718,18 +732,18 @@ try {
     castIceLance: () => castActiveSpell('iceLance'),
     castFireball: () => castActiveSpell('fireball'),
     castFireRing: () => castActiveSpell('fireRing'),
-    castGreenVine: () => greenAbilities.castVineTrap(performance.now() / 1000),
+    castGreenVine: () => greenAbilities.castVineTrap(simulationClock.time),
     castGreenRestore: (target = 'smart') => target === 'smart'
-      ? greenAbilities.castSmartRestore(performance.now() / 1000)
-      : greenAbilities.castRestore(performance.now() / 1000, target === 'friend'),
+      ? greenAbilities.castSmartRestore(simulationClock.time)
+      : greenAbilities.castRestore(simulationClock.time, target === 'friend'),
     setGreenRestoreFriendTargeted: value => greenAbilities.setFriendTargeted(value),
     damageGreenWitch: amount => greenAbilities.receiveDamage(amount),
-    resetGreenWitch: () => greenAbilities.reset(),
+    resetGreenWitch: () => greenAbilities.reset(simulationClock.time),
     setGreenSimulationEnabled: value => greenSimulation.setEnabled(value),
     receiveGreenSnapshot: snapshot => greenReplica.receiveSnapshot(snapshot),
-    receiveDragonDamage: amount => combat.receiveDragonDamage(amount),
-    damageActiveDragon: amount => (combat.currentTarget || dragon).damage(amount, performance.now() / 1000),
-    damageDragon: (index, amount) => dragons[index]?.damage(amount, performance.now() / 1000) || false,
+    receiveDragonDamage: amount => combat.receiveDragonDamage(amount, simulationClock.time),
+    damageActiveDragon: amount => (combat.currentTarget || dragon).damage(amount, simulationClock.time),
+    damageDragon: (index, amount) => dragons[index]?.damage(amount, simulationClock.time) || false,
     focusDragon: index => {
       const target = dragons[index];
       if (!target) return null;

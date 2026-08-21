@@ -201,6 +201,8 @@ export const WORLD = Object.freeze({
 
 export const PERFORMANCE = Object.freeze({
   maximumSimulationDelta: 0.05,
+  maximumSimulationCatchUp: 0.35,
+  maximumSimulationSteps: 8,
   telemetrySamples: 36000,
   telemetryDomInterval: 0.12,
   renderScaleDivisor: 1.6,

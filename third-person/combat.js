@@ -1,4 +1,4 @@
-import { COMBAT, PLAYER, POUCH } from './config.js?v=20260819-expanded-maze-v1';
+import { COMBAT, PLAYER, POUCH } from './config.js?v=20260821-simulation-time-v1';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
 
 export const SPELLS = Object.freeze({
@@ -78,6 +78,8 @@ export class LightningCombat {
     this.dragonInAttackRange = false;
     this.nextDragonAttackAt = 0;
     this.playerDefeated = false;
+    this.dragonAttackEvents = [];
+    this.playerDamageEvents = [];
     this.onMessage = () => {};
     this.onPlayerDefeated = () => {};
     this.crosshair = document.querySelector('#crosshair');
@@ -349,8 +351,8 @@ export class LightningCombat {
     };
   }
 
-  update() {
-    this.lastTime = performance.now() / 1000;
+  update(time = this.lastTime) {
+    this.lastTime = time;
     if (this.spellcastingEnabled) {
       const targetedSpell = SPELLS[this.selectedSpell].targeted;
       const solution = targetedSpell ? this.resolveAim() : null;
@@ -504,10 +506,14 @@ export class LightningCombat {
     }
     if (time < this.nextDragonAttackAt) return;
     this.nextDragonAttackAt = time + COMBAT.dragonAttackInterval;
-    if (threat.attack(time)) this.receiveDragonDamage(COMBAT.dragonAttackDamage, time);
+    if (threat.attack(time)) {
+      this.dragonAttackEvents.push({ time, dragonId: threat.id });
+      if (this.dragonAttackEvents.length > 32) this.dragonAttackEvents.shift();
+      this.receiveDragonDamage(COMBAT.dragonAttackDamage, time, threat.id);
+    }
   }
 
-  receiveDragonDamage(amount, time = performance.now() / 1000) {
+  receiveDragonDamage(amount, time = this.lastTime, dragonId = this.threatDragon?.id || null) {
     if (this.playerDefeated || amount <= 0) return false;
     if (time < this.fireRingUntil) {
       this.fireRingAbsorbedHits += 1;
@@ -523,6 +529,13 @@ export class LightningCombat {
     }
     this.playerHealth = Math.max(0, this.playerHealth - amount);
     this.damageTaken += amount;
+    this.playerDamageEvents.push({
+      time,
+      dragonId,
+      amount,
+      playerHealth: this.playerHealth
+    });
+    if (this.playerDamageEvents.length > 32) this.playerDamageEvents.shift();
     this.playerVitals.classList.add('is-hit');
     setTimeout(() => this.playerVitals.classList.remove('is-hit'), 180);
     if (this.playerHealth === 0) {
@@ -546,11 +559,11 @@ export class LightningCombat {
     return restored;
   }
 
-  lightningBoostActive(time = performance.now() / 1000) {
+  lightningBoostActive(time = this.lastTime) {
     return time < this.lightningBoostUntil;
   }
 
-  activateLightningBoost(time = performance.now() / 1000) {
+  activateLightningBoost(time = this.lastTime) {
     if (this.lightningBoostActive(time)) return false;
     this.lightningBoostUntil = time + COMBAT.lightningPotionDuration;
     this.updatePlayerHud(time);
@@ -897,6 +910,8 @@ export class LightningCombat {
     this.threatDragon = null;
     this.nextDragonAttackAt = 0;
     this.playerDefeated = false;
+    this.dragonAttackEvents = [];
+    this.playerDamageEvents = [];
     this.aegis.mesh.setEnabled(false);
     this.aegis.light.intensity = 0;
     this.fireRing.root.setEnabled(false);
@@ -967,6 +982,8 @@ export class LightningCombat {
       dragonInAttackRange: this.dragonInAttackRange,
       targetDragonId: this.currentTarget?.id || null,
       threatDragonId: this.threatDragon?.id || null,
+      dragonAttackEvents: this.dragonAttackEvents.map(event => ({ ...event })),
+      playerDamageEvents: this.playerDamageEvents.map(event => ({ ...event })),
       dragonCount: this.dragons.length,
       aggressiveDragonCount: this.dragons.filter(dragon => dragon.aggressive).length,
       activeLightningStreams: this.scene.meshes.filter(mesh => mesh.name.startsWith('lightning-stream-')).length,
