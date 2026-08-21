@@ -255,11 +255,12 @@ The 45-minute target is a scope and pacing tool for the first complete version, 
 | Chapter segment | Target |
 | --- | ---: |
 | Coven House introduction and briefing | 5 minutes |
-| Moon Gate and Garden Maze traversal | 10 minutes |
-| Investigation and approach to the Sunken Court | 6 minutes |
+| Moon Gate crossing | 4 minutes |
+| Garden Maze investigation and route-rune progression | 9 minutes |
+| Rootbound Crossing collaboration lesson | 6 minutes |
 | Briarheart and Briarling containment encounter | 12 minutes |
-| West Tower discovery and moon-seal restoration | 8 minutes |
-| Visible resolution, return, and Chapter 2 hook | 4 minutes |
+| West Tower discovery and moon-seal restoration | 6 minutes |
+| Visible resolution, return, and Chapter 2 hook | 3 minutes |
 | **Total critical path** | **45 minutes** |
 
 ### Working terms required by the loop
@@ -274,13 +275,26 @@ The 45-minute target is a scope and pacing tool for the first complete version, 
 1. **Coven House — establish the personal reason to go:** Introduce Purple Witch and Green Witch, the nearby settlements endangered by Moonhollow's spreading maze, and the missing Keeper who mentored both witches. Their shared objective is to bring the Keeper home; their different instincts create tension over whether corrupted magic should be destroyed or healed.
 2. **Briefing — state one clear mission:** The Coven Leader plays the Keeper's interrupted warning. The West Sentinel Tower has failed. The witches must enter Moonhollow, find the Keeper, and restore the tower before the local Rift reaches inhabited land. The Coven Leader withholds part of the message, creating suspicion without proving guilt.
 3. **Moon Gate — cross the threshold:** The witches pass through the only stable entrance and see the immediate consequence of the distorted tower: the Garden Maze is moving outside its intended boundaries and the route home is becoming unstable.
-4. **Garden Maze — explore, learn, and investigate:** Players navigate the outer district, learn the visual language of containment circles, and find physical evidence that the Keeper reached the tower alive. Different role strengths create safer or more revealing approaches, but both witches can continue alone.
-5. **Sunken Court — contain Briarheart's outbreak:** Briarheart blocks the tower and releases finite, telegraphed waves of Briarlings. Active Briarlings protect or restore Briarheart, so every one must be weakened, staggered, and contained before the boss's corruption becomes vulnerable again. Green specializes in restraint and recovery; Purple specializes in pressure, interruption, and protection. Solo play uses the same rules with fewer simultaneous threats and longer recovery windows.
-6. **Battle revelation — overturn the briefing's assumption:** Containment reveals that the Briarlings are pieces of Briarheart and that Briarheart is a native guardian, not an invader from the Rift. The black splinter corrupting it carries an authenticated High Coven command pattern, turning an apparent monster attack into evidence of deliberate sabotage.
-7. **West Sentinel Tower — change the rescue mystery:** The tower is empty, but the Keeper left supplies, traces, and a message intentionally. She was not abducted. She received the false command, recognized the sabotage, and entered the deeper maze voluntarily to follow its source.
-8. **Moon-seal restoration — complete the collaborative objective:** The witches remove the corruption, align the fixed seal's physical rings, and attune its magical channels. A group can hold complementary channels simultaneously; a solo witch can charge them sequentially while facing greater pressure.
-9. **Visible resolution — prove the action mattered:** The West Tower relights, its warning beam resumes, the local Rift closes, the Garden Maze settles into stable paths, and the route home opens. The threatened settlements receive temporary safety.
-10. **Return and hook — close one question and open a stronger one:** The witches return to the Coven House with evidence that someone used an authorized Coven channel to sabotage the tower. The Keeper is alive somewhere deeper in Moonhollow, and her final warning makes clear that she does not know whom inside the Coven she can trust.
+4. **Garden Maze — explore, mine, and investigate:** Players navigate the outer district, mine three guaranteed route-rune fragments from safe geodes, and find physical evidence that the Keeper reached the tower alive. Each fragment also supplies a distinct clue: a personal trail mark, evidence that the Keeper prepared rather than fled, and a damaged command pattern. The completed route-rune opens the Sunken Gate. Different role strengths create safer or more revealing approaches, but both witches can continue alone.
+5. **Rootbound Crossing — learn collaboration before the climax:** The witches use containment circles to clear dangerous magical growth from the route. In co-op, one Witch restrains or protects while the other channels the circle; solo players do both in sequence with more generous timing. This teaches the containment language without becoming a second major combat encounter.
+6. **Sunken Court — contain Briarheart's outbreak:** Briarheart blocks the tower and releases finite, telegraphed waves of Briarlings. Active Briarlings protect or restore Briarheart, so every one must be weakened, staggered, and contained before the boss's corruption becomes vulnerable again. Green specializes in restraint and recovery; Purple specializes in pressure, interruption, and protection. Solo play uses the same rules with fewer simultaneous threats and longer recovery windows.
+7. **Battle revelation — overturn the briefing's assumption:** Containment reveals that the Briarlings are pieces of Briarheart and that Briarheart is a native guardian, not an invader from the Rift. The black splinter corrupting it carries an authenticated High Coven command pattern, turning an apparent monster attack into evidence of deliberate sabotage.
+8. **West Sentinel Tower — change the rescue mystery:** The tower is empty, but the Keeper left supplies, traces, and a message intentionally. She was not abducted. She received the false command, recognized the sabotage, and entered the deeper maze voluntarily to follow its source.
+9. **Moon-seal restoration — complete the collaborative objective:** The witches remove the corruption, align the fixed seal's physical rings, and attune its magical channels. A group can hold complementary channels simultaneously; a solo witch can charge them sequentially while facing greater pressure.
+10. **Visible resolution and hook — prove the action mattered:** The West Tower relights, its warning beam resumes, the local Rift closes, the Garden Maze settles into stable paths, and the route home opens. Back at the Coven House, the witches bring evidence of authorized sabotage: the Keeper is alive somewhere deeper in Moonhollow and does not know whom inside the Coven she can trust.
+
+### Plan A expression in Chapter 1
+
+Chapter 1 teaches a deliberately small, story-driven portion of Plan A. The
+route-rune is a portable attunement pattern that opens an old maze gate; it is
+not a moon-seal fragment. The moon-seal remains the fixed lens inside the West
+Sentinel Tower.
+
+- Required: one named route-rune made from three guaranteed, safely placed geode fragments; one Sunken Gate; Mining Tools supplied as field equipment.
+- Optional: Raw Damage Crystals found in side geodes, used as preparation for Briarheart.
+- Deferred from the required Chapter 1 path: multiple crafting tiers, Water Sprite thefts, and the full four-rune Plan A chain.
+- Guardian system: Briarheart is the Chapter 1 guardian. The Plan A Boss Dragon is a greybox actor/system placeholder, not Chapter 1 lore.
+- Exit: Restoring the West Tower activates the Moon Door, which ends the chapter when the Witch leaves through it.
 
 ### Story logic commitments from this chapter
 
@@ -313,6 +327,36 @@ Before code implementation, rewrite the loop as scene cards. Every required beat
 - and the question that pulls the player into the next beat.
 
 Read the cards aloud with at least two people taking the witches' roles. A beat that cannot be explained clearly, does not follow from the previous beat with “therefore” or “but,” or leaves players unable to state why they care should be revised on paper before it becomes a coded objective.
+
+## Chapter 2 story loop (working draft)
+
+- Working title: **The Broken Routes**
+- Design status: **Working narrative framework; not approved for implementation**
+- Provisional critical-path playtime: **45 minutes**
+- Central question: If the Coven's own network can lie, what evidence can the witches trust?
+
+The relit West Tower catches a brief reply from the Keeper that points deeper
+into Moonhollow, then an authorized command erases the signal. Purple and Green
+enter a newly opened district to reach the next waystation before the trail
+disappears. Restoring the West Tower has made the route accessible, raising the
+uneasy possibility that the saboteur wanted it reopened.
+
+### Provisional Chapter 2 sequence
+
+1. **Coven House — the new signal (5 minutes):** The party decodes the Keeper's partial reply and is sent to the next waystation before the evidence disappears.
+2. **Moon Gate — a newly opened route (5 minutes):** The restored West Tower has revealed a previously sealed district, proving both the value and risk of restoration.
+3. **Broken Conservatory — explore and form a route-rune (8 minutes):** The witches mine three guaranteed fragments, each paired with a Keeper clue, and use the completed rune to open the main ward gate.
+4. **Reflection Garden — solve a cooperative route puzzle (7 minutes):** The party aligns water channels, mirrors, or magical roots to form a crossing. Co-op permits parallel action; solo uses a longer sequential timing window. A side space can hold optional crystals, altar access, and a fountain risk.
+5. **Collapsed Relay Court — guardian encounter (10 minutes):** A corrupted Route Warden controls several arena waystones. The witches reclaim the waystones while surviving its attacks; reclaimed stones create safe ground and weaken the guardian.
+6. **East Waystation — evidence changes meaning (6 minutes):** The Keeper has passed through. A command ledger appears to implicate the Coven Leader, until a second clue proves the order was issued while she was publicly elsewhere. The signature is real, but its source is not straightforward.
+7. **Return and hook (4 minutes):** The next trace points toward a district tied to Moonhollow's original disaster. The saboteur is following a deliberate path toward the Hollow's center.
+
+### Plan A expression in Chapter 2
+
+- Required: one three-fragment route-rune and one gate.
+- Optional: geodes, crystals, crafting access, fountains, and Water Sprite encounters.
+- Guardian: the Route Warden uses the same reusable dedicated-guardian arena framework as Briarheart, but its waystone-reclamation objective keeps the encounter mechanically distinct.
+- Chapter outcome: The party leaves through a Moon Door or stabilized return route after the waystation is cleared.
 
 ## Controls and presentation
 
