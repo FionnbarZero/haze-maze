@@ -9,6 +9,7 @@ import {
   validateChapterOneLevelPlan
 } from '../third-person/chapter-level-plan.js';
 import { ChapterOneInteractions, EQUIPMENT_MODES } from '../third-person/chapter-interactions.js';
+import { ChapterOneGeodeState } from '../third-person/chapter-geode-state.js';
 import { ChapterOneProgression } from '../third-person/chapter-progression.js';
 import { spellDamageMultiplier } from '../third-person/combat.js';
 import { createMazeLayout } from '../third-person/maze-layout.js';
@@ -108,6 +109,12 @@ test('exactly three unique matching fragments complete the permanent route-rune'
   assert.equal(progression.hasCompletedRune(), true);
   assert.equal(progression.unlockSunkenGate(), true);
   assert.equal(progression.markSunkenGateOpened(), true);
+  assert.equal(progression.snapshot().completion.gardenMazeComplete, false,
+    'opening the gate is not the same as crossing the Garden Maze boundary');
+  assert.equal(progression.completeGardenMaze(), true);
+  assert.equal(progression.snapshot().completion.gardenMazeComplete, true);
+  assert.equal(progression.snapshot().completion.chapterComplete, false,
+    'Garden Maze completion must not complete Chapter 1');
   assert.equal(progression.hasCompletedRune(), true, 'opening the gate must not consume the rune');
   assert.equal(progression.snapshot().keeperClues.length, 3);
 
@@ -153,6 +160,96 @@ test('staff and Mining Tools modes enforce their mutually exclusive actions', ()
   assert.equal(interactions.strikeGeode(geode.id, 'purple').accepted, true);
 });
 
+test('geode damage belongs to shared world state and persists when a new Witch takes the tools', () => {
+  const { plan } = createPlan('shared-geode-damage');
+  const geode = structuredClone(plan.requiredGeodes[0]);
+  geode.strikesRequired = 15;
+  const geodeState = new ChapterOneGeodeState({ geodes: [geode] });
+  const interactions = new ChapterOneInteractions({
+    actorId: 'purple',
+    geodes: [geode],
+    geodeState
+  });
+  interactions.setMode(EQUIPMENT_MODES.miningTools);
+
+  for (let strike = 0; strike < 14; strike += 1) {
+    const result = interactions.strikeGeode(geode.id, 'purple');
+    assert.equal(result.accepted, true);
+    assert.equal(result.brokenNow, false);
+  }
+  assert.equal(geodeState.snapshot().geodes[0].strikes, 14);
+
+  interactions.assignToolsToActor('green');
+  assert.equal(interactions.canActorMine('purple'), false);
+  assert.equal(interactions.canActorMine('green'), true);
+  const finalStrike = interactions.strikeGeode(geode.id, 'green');
+  assert.equal(finalStrike.accepted, true);
+  assert.equal(finalStrike.strikes, 15);
+  assert.equal(finalStrike.brokenNow, true);
+  assert.deepEqual(finalStrike.content, geode.content);
+  assert.equal(geodeState.snapshot().geodes[0].broken, true);
+});
+
+test('future Chapter 1 stages advance only through ordered controlled transitions', () => {
+  const progression = new ChapterOneProgression();
+  progression.rootboundCrossing = { state: 'COMPLETE', complete: true };
+  progression.encounter = { state: 'COMPLETE', complete: true };
+  progression.westTower = { accessible: true, complete: true };
+  progression.moonSeal = { state: 'LIT' };
+  progression.moonDoor = { active: true, crossed: true };
+  progression.chapter = { complete: true };
+
+  assert.equal(progression.completeRootboundCrossing(), false);
+  assert.equal(progression.startBriarheartEncounter(), false);
+  assert.equal(progression.completeBriarheartEncounter(), false);
+  assert.equal(progression.advanceMoonSeal('LIT'), false);
+  assert.equal(progression.completeChapter(), false);
+  assert.deepEqual(progression.snapshot().rootboundCrossing, { state: 'LOCKED', complete: false });
+  assert.deepEqual(progression.snapshot().encounter, { state: 'LOCKED', complete: false });
+  assert.deepEqual(progression.snapshot().westTower, { accessible: false, complete: false });
+  assert.deepEqual(progression.snapshot().moonSeal, { state: 'DISTORTED' });
+  assert.deepEqual(progression.snapshot().moonDoor, { active: false, crossed: false });
+  assert.equal(progression.snapshot().completion.chapterComplete, false);
+
+  for (let index = 0; index < CHAPTER_ONE_FRAGMENT_IDS.length; index += 1) {
+    progression.collectFragment({
+      runeId: CHAPTER_ONE_ROUTE_RUNE_ID,
+      fragmentId: CHAPTER_ONE_FRAGMENT_IDS[index],
+      clue: CHAPTER_ONE_KEEPER_CLUES[index]
+    });
+  }
+  assert.equal(progression.unlockSunkenGate(), true);
+  assert.equal(progression.markSunkenGateOpened(), true);
+  assert.equal(progression.completeGardenMaze(), true);
+  assert.equal(progression.completeRootboundCrossing(), true);
+  assert.equal(progression.startBriarheartEncounter(), true);
+  assert.equal(progression.completeBriarheartEncounter(), true);
+  for (const state of ['CORRUPTION_REMOVED', 'RINGS_ALIGNED', 'ATTUNED', 'LIT']) {
+    assert.equal(progression.advanceMoonSeal(state), true);
+  }
+  assert.equal(progression.snapshot().westTower.complete, true);
+  assert.deepEqual(progression.snapshot().moonDoor, { active: true, crossed: false });
+  assert.equal(progression.snapshot().completion.chapterComplete, false);
+  assert.equal(progression.completeChapter(), false, 'lighting the seal must not bypass the Moon Door exit');
+  assert.equal(progression.markMoonDoorCrossed(), true);
+  assert.equal(progression.completeChapter(), true);
+  assert.equal(progression.snapshot().completion.chapterComplete, true);
+
+  const escaped = progression.snapshot();
+  escaped.rootboundCrossing.state = 'LOCKED';
+  escaped.encounter.complete = false;
+  escaped.westTower.accessible = false;
+  escaped.moonSeal.state = 'DISTORTED';
+  escaped.moonDoor.crossed = false;
+  escaped.completion.chapterComplete = false;
+  assert.equal(progression.snapshot().rootboundCrossing.complete, true);
+  assert.equal(progression.snapshot().encounter.complete, true);
+  assert.equal(progression.snapshot().westTower.accessible, true);
+  assert.equal(progression.snapshot().moonSeal.state, 'LIT');
+  assert.equal(progression.snapshot().moonDoor.crossed, true);
+  assert.equal(progression.snapshot().completion.chapterComplete, true);
+});
+
 test('Raw Damage Crystals multiply every damaging Witch spell without changing legacy geode semantics', () => {
   for (const spell of ['lightning', 'iceLance', 'fireball']) {
     assert.equal(spellDamageMultiplier({ spell, damageCrystalMultiplier: 1.1 }), 1.1);
@@ -189,7 +286,10 @@ test('every selectable Witch can complete the required solo Garden Maze state lo
     assert.equal(progression.hasCompletedRune(), true, `${actorId} should complete the route-rune`);
     assert.equal(progression.unlockSunkenGate(), true);
     assert.equal(progression.markSunkenGateOpened(), true);
+    assert.equal(progression.completeGardenMaze(), true);
     assert.equal(progression.snapshot().sunkenGate.opened, true);
+    assert.equal(progression.snapshot().completion.gardenMazeComplete, true);
+    assert.equal(progression.snapshot().completion.chapterComplete, false);
     assert.equal(progression.hasCompletedRune(), true);
   }
 });

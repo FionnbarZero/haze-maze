@@ -5,14 +5,15 @@ import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
 import { CharacterController } from './controller.js?v=20260818-witchselect-v1';
 import { ShoulderCamera } from './camera.js?v=20260819-runtime-audit-v1';
 import { LightningCombat } from './combat.js?v=20260820-chapter-one-v2';
-import { PouchInventory } from './inventory.js?v=20260820-chapter-one-v2';
+import { PouchInventory } from './inventory.js?v=20260820-chapter-one-v3';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260819-runtime-audit-v1';
 import { GreenWitchAbilities } from './green-witch.js?v=20260820-chapter-one-v2';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
-import { ChapterOneProgression } from './chapter-progression.js?v=20260820-chapter-one-v2';
+import { ChapterOneProgression } from './chapter-progression.js?v=20260820-chapter-one-v3';
+import { ChapterOneGeodeState } from './chapter-geode-state.js?v=20260820-chapter-one-v3';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -67,6 +68,11 @@ try {
 
   const world = createWorld(BABYLON, scene, shadowGenerator, { seed: mazeSeed, routeMode });
   const chapterProgression = routeMode === 'chapter1' ? new ChapterOneProgression() : null;
+  const chapterGeodeState = routeMode === 'chapter1'
+    ? new ChapterOneGeodeState({
+      geodes: [...world.levelPlan.requiredGeodes, ...world.levelPlan.optionalGeodes]
+    })
+    : null;
   const purpleWitch = createPlaceholderWitch(BABYLON, scene, shadowGenerator, { label: 'Purple Witch' });
   const dragons = world.dragonSpawns.map(spawn => createPlaceholderDragon(
     BABYLON,
@@ -212,7 +218,8 @@ try {
   const inventory = new PouchInventory(BABYLON, scene, shadowGenerator, controller, combat, purpleWitch, {
     routeMode,
     levelPlan: world.levelPlan,
-    progression: chapterProgression
+    progression: chapterProgression,
+    geodeState: chapterGeodeState
   });
   const telemetry = new DebugTelemetry(engine, scene, sceneInstrumentation, moduleStartedAt);
   const toast = document.querySelector('#toast');
@@ -395,7 +402,7 @@ try {
       const completedCheckpoints = checkpointKeys.filter(key => worldState.route[key]).length;
       routeObjective.textContent = worldState.objective;
       routeProgress.textContent = `${completedCheckpoints} / ${checkpointKeys.length} route beats · ${chapterState.routeRune.fragmentCount} / 3 West Rune fragments`;
-      routePanel.classList.toggle('is-complete', worldState.complete);
+      routePanel.classList.toggle('is-complete', worldState.gardenMazeComplete);
       return;
     }
     const checkpointKeys = ['entrance', 'southRunes', 'firstDoor', 'northRooms', 'allRunes', 'finalDoor', 'moonDoor', 'exit'];
@@ -545,8 +552,17 @@ try {
     combat: combat.snapshot(),
     inventory: inventory.snapshot(),
     chapter: chapterProgression?.snapshot() || null,
+    chapterGeodes: chapterGeodeState?.snapshot() || null,
     levelPlan: world.levelPlan,
     world: world.snapshot(dragons),
+    navigation: {
+      colliders: world.colliders.map(collider => ({
+        name: collider.name,
+        kind: collider.kind,
+        min: { x: collider.min.x, y: collider.min.y, z: collider.min.z },
+        max: { x: collider.max.x, y: collider.max.y, z: collider.max.z }
+      }))
+    },
     performance: telemetry.snapshot(),
     quality: qualityController.snapshot(),
     meshCount: scene.meshes.length,
@@ -600,6 +616,7 @@ try {
     let worldState = world.snapshot(dragons);
     if (chapterProgression && worldState.doors.first.state === 'OPEN') {
       chapterProgression.markSunkenGateOpened();
+      if (worldState.route.sunkenGate) chapterProgression.completeGardenMaze();
       world.setChapterProgression(chapterProgression.snapshot());
       worldState = world.snapshot(dragons);
     }
@@ -684,6 +701,7 @@ try {
       if (sprint) input.keys.add('ShiftLeft'); else input.keys.delete('ShiftLeft');
     },
     stopMovement: () => { input.move.x = 0; input.move.y = 0; input.keys.delete('ShiftLeft'); },
+    playerPosition: () => ({ x: controller.position.x, y: controller.position.y, z: controller.position.z }),
     look: (yawDelta, pitchDelta = 0) => { input.lookDelta.x += yawDelta; input.lookDelta.y += pitchDelta; },
     setLook: (yaw, pitch) => shoulderCamera.setLook(yaw, pitch),
     setAim: value => { input.aiming = Boolean(value); },
