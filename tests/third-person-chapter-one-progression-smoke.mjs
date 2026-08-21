@@ -98,8 +98,11 @@ const blockedCastExpression = characterId => ({
   fire: 'window.__HMW_THIRD_PERSON_PROOF__.castFireball()'
 }[characterId]);
 
-const GRID_STEP = .5;
-const PLAYER_CLEARANCE = .38;
+// Match the Chapter 1 level validator so browser navigation honours the same
+// floor clearance that proves the required sockets are reachable.
+const GRID_STEP = .4;
+const PLAYER_CLEARANCE = .42;
+const MAX_ROUTE_REPLANS = 8;
 const keyFor = (x, z) => `${x}:${z}`;
 
 function navigationPath(state, target) {
@@ -170,28 +173,109 @@ function navigationPath(state, target) {
   return gridPath.map(point => pointFor(point.x, point.z));
 }
 
+const walkDiagnostics = (state, target, waypoint, samples, replans, loadedUrl) => ({
+  loadedUrl,
+  player: state.player,
+  input: state.input,
+  camera: state.camera,
+  combat: {
+    playerHealth: state.combat.playerHealth,
+    playerDefeated: state.combat.playerDefeated,
+    threatDragonId: state.combat.threatDragonId,
+    targetDragonId: state.combat.targetDragonId
+  },
+  target,
+  waypoint,
+  replans,
+  route: state.world.route,
+  chapter: state.chapter,
+  performance: {
+    sampleCount: state.performance.sampleCount,
+    averageFps: state.performance.averageFps,
+    averageFrameTimeMs: state.performance.averageFrameTimeMs,
+    p95FrameTimeMs: state.performance.p95FrameTimeMs,
+    frameSpikesOver50Ms: state.performance.frameSpikesOver50Ms
+  },
+  nearbyDragons: state.dragons.map(dragon => ({
+    id: dragon.id,
+    state: dragon.state,
+    alive: dragon.alive,
+    distance: Math.hypot(dragon.position.x - state.player.x, dragon.position.z - state.player.z),
+    position: dragon.position
+  })).filter(dragon => dragon.distance < 6),
+  samples
+});
+
+async function walkWaypoint(target, waypoint, label, replans) {
+  const initial = await snapshot();
+  const frameTime = Math.max(80, Math.min(600, initial.performance.averageFrameTimeMs || 120));
+  const pollMilliseconds = Math.max(90, Math.min(350, Math.round(frameTime * .75)));
+  const stalledAfterMilliseconds = Math.max(2200, Math.round(frameTime * 14));
+  let bestDistance = Infinity;
+  let lastProgressAt = Date.now();
+  const samples = [];
+
+  while (true) {
+    const state = await snapshot();
+    const position = state.player;
+    const distance = Math.hypot(waypoint.x - position.x, waypoint.z - position.z);
+    samples.push({
+      elapsedMilliseconds: Date.now() - lastProgressAt,
+      x: position.x,
+      z: position.z,
+      distance,
+      speed: position.speed,
+      state: position.state,
+      collision: position.collision,
+      input: { active: state.active, blocked: state.input.blocked, movement: state.input.movement },
+      playerHealth: state.combat.playerHealth,
+      playerDefeated: state.combat.playerDefeated
+    });
+    if (samples.length > 16) samples.shift();
+
+    if (!state.active || state.input.blocked || state.combat.playerDefeated) {
+      await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
+      const diagnostics = walkDiagnostics(
+        state, target, waypoint, samples, replans, await evaluate('location.href')
+      );
+      throw new Error(`${label} normal movement became unavailable: ${JSON.stringify(diagnostics)}`);
+    }
+    if (distance <= .27) return;
+    if (distance < bestDistance - .04) {
+      bestDistance = distance;
+      lastProgressAt = Date.now();
+    }
+    if (Date.now() - lastProgressAt > stalledAfterMilliseconds) {
+      await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
+      const diagnostics = walkDiagnostics(
+        state, target, waypoint, samples, replans, await evaluate('location.href')
+      );
+      throw new Error(`${label} waypoint made no progress: ${JSON.stringify(diagnostics)}`);
+    }
+    const yaw = Math.atan2(waypoint.x - position.x, waypoint.z - position.z);
+    await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.setLook(${yaw}, 0); window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1); true`);
+    await delay(pollMilliseconds);
+  }
+}
+
 async function walkNormalRouteTo(target, label) {
-  const state = await snapshot();
-  const waypoints = navigationPath(state, target);
-  for (const waypoint of waypoints.slice(1)) {
-    const deadline = Date.now() + 12000;
-    let position = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
-    while (Math.hypot(waypoint.x - position.x, waypoint.z - position.z) > .27) {
-      if (Date.now() > deadline) {
-        await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
-        const stalled = await snapshot();
-        throw new Error(`${label} walking stalled at ${position.x.toFixed(2)}, ${position.z.toFixed(2)} toward ${waypoint.x.toFixed(2)}, ${waypoint.z.toFixed(2)}: ${stalled.player.collision}`);
-      }
-      const yaw = Math.atan2(waypoint.x - position.x, waypoint.z - position.z);
-      await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.setLook(${yaw}, 0); window.__HMW_THIRD_PERSON_PROOF__.setMovement(0, 1); true`);
-      await delay(70);
-      position = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
+  let lastFailure = null;
+  for (let replans = 0; replans <= MAX_ROUTE_REPLANS; replans += 1) {
+    const state = await snapshot();
+    const waypoints = navigationPath(state, target);
+    try {
+      for (const waypoint of waypoints.slice(1)) await walkWaypoint(target, waypoint, label, replans);
+      await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
+      const finalPosition = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
+      assert.ok(Math.hypot(target.x - finalPosition.x, target.z - finalPosition.z) <= 1.05,
+        `${label} should be reached through normal movement`);
+      return;
+    } catch (error) {
+      lastFailure = error;
+      if (/normal movement became unavailable/.test(error.message)) throw error;
     }
   }
-  await evaluate('window.__HMW_THIRD_PERSON_PROOF__.stopMovement(); true');
-  const finalPosition = await evaluate('window.__HMW_THIRD_PERSON_PROOF__.playerPosition()');
-  assert.ok(Math.hypot(target.x - finalPosition.x, target.z - finalPosition.z) <= 1.05,
-    `${label} should be reached through normal movement`);
+  throw new Error(`${label} exhausted ${MAX_ROUTE_REPLANS} bounded replans: ${lastFailure?.message}`);
 }
 
 const results = [];

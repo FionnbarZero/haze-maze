@@ -92,7 +92,11 @@ const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
 const navigate = async () => {
   await navigateToProof(cdp, gameUrl, {
     route: 'legacy',
-    params: { mazeSeed: LEGACY_SMOKE_SEED, openingTest: Date.now() }
+    params: {
+      mazeSeed: LEGACY_SMOKE_SEED,
+      narration: 'instant',
+      openingTest: Date.now()
+    }
   });
   await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
   await waitFor("document.querySelector('#loading')?.classList.contains('is-hidden')");

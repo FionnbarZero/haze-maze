@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
 
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
@@ -67,9 +68,13 @@ await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
 await cdp.send('Emulation.clearDeviceMetricsOverride');
 await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false });
-await navigateToProof(cdp, gameUrl, {
+const loadedUrl = await navigateToProof(cdp, gameUrl, {
   route: 'legacy',
-  params: { mazeSeed: LEGACY_SMOKE_SEED, greenWitchTest: Date.now() }
+  params: {
+    mazeSeed: LEGACY_SMOKE_SEED,
+    party: 'simulated',
+    greenWitchTest: Date.now()
+  }
 });
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -89,6 +94,10 @@ const waitFor = async (expression, timeoutMilliseconds = 45000) => {
 const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
 
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
+const loadedMode = await snapshot();
+assert.equal(new URL(loadedUrl).searchParams.get('party'), 'simulated');
+assert.equal(loadedMode.characterSelection.partyMode, 'SIMULATED');
+assert.equal(loadedMode.greenWitch.simulation.enabled, true);
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().greenWitch.replica.snapshotsReceived >= 2');
 const initial = await snapshot();
@@ -200,6 +209,12 @@ const checks = {
 console.log(JSON.stringify({
   checks,
   evidence: {
+    loadedUrl,
+    loadedMode: {
+      partyMode: loadedMode.characterSelection.partyMode,
+      simulationEnabled: loadedMode.greenWitch.simulation.enabled,
+      replicaSnapshotsReceived: loadedMode.greenWitch.replica.snapshotsReceived
+    },
     initial: initial.greenWitch,
     initialUi,
     interpolation: { early: earlyReplica, settled: settledReplica },
