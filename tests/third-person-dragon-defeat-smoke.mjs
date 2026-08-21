@@ -1,3 +1,5 @@
+import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
+
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/?quality=low';
 
@@ -63,7 +65,10 @@ await cdp.send('Runtime.enable');
 await cdp.send('Page.enable');
 await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-await cdp.send('Page.navigate', { url: gameUrl });
+await navigateToProof(cdp, gameUrl, {
+  route: 'legacy',
+  params: { mazeSeed: LEGACY_SMOKE_SEED, dragonDefeatTest: Date.now() }
+});
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const evaluate = async expression => {
@@ -80,14 +85,22 @@ const waitFor = async (expression, timeoutMilliseconds = 45000) => {
   throw new Error(`Timed out waiting for ${expression}`);
 };
 const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
-const resetAt = async (x, z) => {
-  await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.teleport(${x}, 0, ${z}); true`);
+const TEST_DRAGON_INDEX = 1;
+const TEST_DRAGON_ID = `dragon-${TEST_DRAGON_INDEX}`;
+// expanded-smoke-seed: this north-west room position has a direct rendered line to dragon-1.
+const TEST_DRAGON_SIGHT_LINE = Object.freeze({ x: -9, z: 17 });
+const testDragon = state => state.dragons[TEST_DRAGON_INDEX];
+const resetNearTestDragon = async () => {
+  await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.focusDragon(${TEST_DRAGON_INDEX}); window.__HMW_THIRD_PERSON_PROOF__.teleport(${TEST_DRAGON_SIGHT_LINE.x}, 0, ${TEST_DRAGON_SIGHT_LINE.z}); true`);
   await delay(250);
 };
-const aimAtDragon = async () => {
-  for (let pass = 0; pass < 7; pass += 1) {
+const acquireTestDragonTarget = async (label, timeoutMilliseconds = 12000) => {
+  const startedAt = Date.now();
+  let finalState;
+  while (Date.now() - startedAt < timeoutMilliseconds) {
     const state = await snapshot();
-    const [targetX, targetY, targetZ] = state.dragon.aimPoint;
+    finalState = state;
+    const [targetX, targetY, targetZ] = testDragon(state).aimPoint;
     const camera = state.camera.position;
     const deltaX = targetX - camera.x;
     const deltaY = targetY - camera.y;
@@ -96,8 +109,17 @@ const aimAtDragon = async () => {
     const yaw = Math.atan2(deltaX, deltaZ);
     const pitch = Math.asin(deltaY / distance);
     await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.setLook(${yaw}, ${pitch}); true`);
-    await delay(190);
+    await delay(120);
+    finalState = await snapshot();
+    if (finalState.combat.targeted && finalState.combat.targetDragonId === TEST_DRAGON_ID) return finalState;
   }
+  const state = finalState || await snapshot();
+  throw new Error(`Timed out acquiring ${TEST_DRAGON_ID} for ${label}: ${JSON.stringify({
+    player: state.player,
+    camera: state.camera,
+    dragon: testDragon(state),
+    combat: state.combat
+  })}`);
 };
 const castLightningWithO = async () => {
   await evaluate(`(() => {
@@ -111,44 +133,18 @@ const castLightningWithO = async () => {
 
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
-await resetAt(0, 4.8);
-const treeRunePosition = (await snapshot()).inventory.runePickups.find(rune => rune.source === 'tree').position;
-await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${treeRunePosition.x}, 0, ${treeRunePosition.z}); true`);
-await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 1');
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); true');
-await delay(220);
-await aimAtDragon();
+await resetNearTestDragon();
+const targetingBeforeDamage = await acquireTestDragonTarget('initial damage');
 
-const phaseOneHealth = [];
-const phaseOneDamage = [];
-for (let hit = 0; hit < 3; hit += 1) {
-  const state = await castLightningWithO();
-  phaseOneHealth.push(state.dragon.health);
-  phaseOneDamage.push(state.combat.lastCast?.damage);
-}
-const phaseOneFinalCast = await castLightningWithO();
-phaseOneDamage.push(phaseOneFinalCast.combat.lastCast?.damage);
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.firstDragon === true");
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'IDLE' && window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.health === 100");
-const phaseOneDefeated = await snapshot();
-const firstRunePosition = phaseOneDefeated.inventory.runePickups.find(rune => rune.source === 'firstDragon').position;
-await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${firstRunePosition.x}, 0, ${firstRunePosition.z}); true`);
-await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 2');
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.teleport(0, 0, 4.8); true');
-await delay(220);
-await aimAtDragon();
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.targeted === true");
-const phaseTwoTargeting = await snapshot();
-
-const phaseTwoHealth = [];
-const phaseTwoDamage = [];
-const phaseTwoResolutions = [];
+const healthAfterHits = [];
+const damageAfterHits = [];
+const castResolutions = [];
 for (let hit = 0; hit < 4; hit += 1) {
-  await aimAtDragon();
+  await acquireTestDragonTarget(`damage cast ${hit + 1}`);
   const state = await castLightningWithO();
-  phaseTwoHealth.push(state.dragon.health);
-  phaseTwoDamage.push(state.combat.lastCast?.damage);
-  phaseTwoResolutions.push({
+  healthAfterHits.push(testDragon(state).health);
+  damageAfterHits.push(state.combat.lastCast?.damage);
+  castResolutions.push({
     resolution: state.combat.lastCast?.resolution,
     intendedKind: state.combat.lastCast?.intendedKind,
     actualKind: state.combat.lastCast?.actualKind,
@@ -156,16 +152,10 @@ for (let hit = 0; hit < 4; hit += 1) {
     actualTarget: state.combat.lastCast?.actualTarget
   });
 }
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.state === 'DEFEATED'");
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.dragon === true");
-const gateWaitingForFinalRune = await snapshot();
-await delay(750);
-const defeatedGuardianSettled = await snapshot();
-const secondRunePosition = gateWaitingForFinalRune.inventory.runePickups.find(rune => rune.source === 'secondDragon').position;
-await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.teleport(${secondRunePosition.x}, 0, ${secondRunePosition.z}); true`);
-await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 3');
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.gate.state === 'OPEN'");
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragons[1].state === 'DEFEATED'");
 const defeated = await snapshot();
+await delay(750);
+const defeatedSettled = await snapshot();
 const hud = await evaluate(`({
   health: document.querySelector('#target-health-copy').textContent,
   fill: document.querySelector('#target-health-fill').style.transform
@@ -173,67 +163,53 @@ const hud = await evaluate(`({
 await castLightningWithO();
 const afterDuplicateCast = await snapshot();
 
-await resetAt(0, 4.8);
-await aimAtDragon();
-const afterRouteReset = await snapshot();
+await resetNearTestDragon();
+const afterRouteReset = await acquireTestDragonTarget('frost after route reset');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castFrost(); true');
 await delay(250);
 const frozenBeforeLightning = await snapshot();
 await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'Digit1', key: '1' })); true`);
+await acquireTestDragonTarget('lightning after frost');
 const frostThenLightning = await castLightningWithO();
 
-await resetAt(0, 4.8);
-await aimAtDragon();
+await resetNearTestDragon();
+await acquireTestDragonTarget('pointer-lock interruption setup');
 await evaluate(`document.dispatchEvent(new Event('pointerlockchange')); true`);
 await delay(100);
-const afterPointerLockLoss = await snapshot();
+const afterPointerLockLoss = await acquireTestDragonTarget('lightning after pointer-lock interruption');
 const resumedAfterPointerLockLoss = await castLightningWithO();
 
 const checks = {
-  eachPhaseOneHitDealtConfiguredDamage: phaseOneDamage.every(damage => damage === 25),
-  phaseOneHealthReachedFinalHit: JSON.stringify(phaseOneHealth) === JSON.stringify([75, 50, 25])
-    && phaseOneFinalCast.combat.lastCast?.damage === 25,
-  firstPhaseRecorded: phaseOneDefeated.world.route.firstDragon
-    && !phaseOneDefeated.world.route.dragon
-    && phaseOneDefeated.world.route.secondRoom
-    && phaseOneDefeated.dragon.health === 100
-    && phaseOneDefeated.dragon.alive,
-  secondDragonTargetableThroughOpenedDoor: phaseTwoTargeting.combat.targeted
-    && phaseTwoTargeting.combat.candidateTargeted
-    && ['DIRECT', 'ASSISTED'].includes(phaseTwoTargeting.combat.aimState),
-  eachPhaseTwoHitDealtConfiguredDamage: phaseTwoDamage.every(damage => damage === 25),
-  eachPhaseTwoCastReachedDragon: phaseTwoResolutions.every(cast => cast.intendedKind === 'dragon'
+  dragonTargetedBeforeDamage: targetingBeforeDamage.combat.targeted
+    && targetingBeforeDamage.combat.candidateTargeted
+    && targetingBeforeDamage.combat.targetDragonId === TEST_DRAGON_ID
+    && ['DIRECT', 'ASSISTED'].includes(targetingBeforeDamage.combat.aimState),
+  eachHitDealtConfiguredDamage: damageAfterHits.every(damage => damage === 25),
+  eachCastReachedDragon: castResolutions.every(cast => cast.intendedKind === 'dragon'
     && cast.actualKind === 'dragon'
-    && cast.intendedTarget !== 'proof-second-room-door'
-    && cast.actualTarget !== 'proof-second-room-door'
     && ['TARGET', 'TARGET_ASSISTED'].includes(cast.resolution)),
-  phaseTwoHealthReachedZero: JSON.stringify(phaseTwoHealth) === JSON.stringify([75, 50, 25, 0]),
-  defeatedGuardianStopsPatrolling: Math.hypot(
-    defeatedGuardianSettled.dragon.aimPoint[0] - gateWaitingForFinalRune.dragon.aimPoint[0],
-    defeatedGuardianSettled.dragon.aimPoint[2] - gateWaitingForFinalRune.dragon.aimPoint[2]
+  healthReachedZero: JSON.stringify(healthAfterHits) === JSON.stringify([75, 50, 25, 0]),
+  defeatedDragonSettled: Math.hypot(
+    testDragon(defeatedSettled).aimPoint[0] - testDragon(defeated).aimPoint[0],
+    testDragon(defeatedSettled).aimPoint[2] - testDragon(defeated).aimPoint[2]
   ) < .001,
-  dragonDefeatedOnce: !defeated.dragon.alive && defeated.dragon.state === 'DEFEATED' && !defeated.dragon.enabled,
-  defeatRecorded: defeated.world.route.dragon,
-  gateWaitedForFinalRune: gateWaitingForFinalRune.inventory.runes === 2
-    && gateWaitingForFinalRune.world.gate.state === 'LOCKED',
-  gateUnlocked: defeated.world.gate.state === 'OPEN',
+  dragonDefeatedOnce: !testDragon(defeated).alive && testDragon(defeated).state === 'DEFEATED' && !testDragon(defeated).enabled,
   healthHudReachedZero: hud.health === 'CONTAINED' && hud.fill === 'scaleX(0)',
-  duplicateCastDidNotChangeDefeat: afterDuplicateCast.dragon.health === 0
-    && !afterDuplicateCast.dragon.alive
-    && afterDuplicateCast.world.route.dragon,
-  routeResetRestoredCombat: afterRouteReset.dragon.health === 100
-    && afterRouteReset.dragon.alive
-    && afterRouteReset.dragon.enabled
-    && !afterRouteReset.world.route.dragon
-    && !afterRouteReset.world.route.firstDragon
-    && afterRouteReset.world.gate.state === 'LOCKED',
-  frostDidNotPreventLaterDamage: frozenBeforeLightning.dragon.frozen
-    && frozenBeforeLightning.dragon.health === 100
-    && frostThenLightning.dragon.health === 75
+  duplicateCastDidNotChangeDefeat: testDragon(afterDuplicateCast).health === 0
+    && !testDragon(afterDuplicateCast).alive
+    && testDragon(afterDuplicateCast).state === 'DEFEATED',
+  routeResetRestoredCombat: testDragon(afterRouteReset).health === 100
+    && testDragon(afterRouteReset).alive
+    && testDragon(afterRouteReset).enabled
+    && afterRouteReset.world.doors.first.state === 'LOCKED'
+    && afterRouteReset.world.doors.final.state === 'LOCKED',
+  frostDidNotPreventLaterDamage: testDragon(frozenBeforeLightning).frozen
+    && testDragon(frozenBeforeLightning).health === 100
+    && testDragon(frostThenLightning).health === 75
     && frostThenLightning.combat.lastCast?.spell === 'lightning'
     && frostThenLightning.combat.lastCast?.damage === 25,
-  pointerLockLossPreservedFreshCombat: afterPointerLockLoss.dragon.health === 100
-    && resumedAfterPointerLockLoss.dragon.health === 75
+  pointerLockLossPreservedFreshCombat: testDragon(afterPointerLockLoss).health === 100
+    && testDragon(resumedAfterPointerLockLoss).health === 75
     && resumedAfterPointerLockLoss.combat.lastCast?.spell === 'lightning'
     && resumedAfterPointerLockLoss.combat.lastCast?.damage === 25,
   noRuntimeErrors: cdp.errors.length === 0
@@ -242,34 +218,22 @@ const checks = {
 console.log(JSON.stringify({
   checks,
   evidence: {
-    phaseOneHealth,
-    phaseOneDamage,
-    phaseOneFinalCast: phaseOneFinalCast.combat.lastCast,
-    phaseOneDefeated,
-    phaseTwoTargeting: {
-      player: phaseTwoTargeting.player,
-      camera: phaseTwoTargeting.camera,
-      dragon: phaseTwoTargeting.dragon,
-      combat: phaseTwoTargeting.combat
+    targetingBeforeDamage: targetingBeforeDamage.combat,
+    healthAfterHits,
+    damageAfterHits,
+    castResolutions,
+    defeatedDragonPosition: {
+      id: testDragon(defeated).id,
+      defeated: testDragon(defeated).aimPoint,
+      settled: testDragon(defeatedSettled).aimPoint
     },
-    phaseTwoHealth,
-    phaseTwoDamage,
-    phaseTwoResolutions,
-    defeatedGuardianPosition: {
-      initial: gateWaitingForFinalRune.dragon.aimPoint,
-      settled: defeatedGuardianSettled.dragon.aimPoint
-    },
-    dragon: defeated.dragon,
+    dragon: testDragon(defeated),
     world: defeated.world,
-    gateWaitingForFinalRune: {
-      inventory: gateWaitingForFinalRune.inventory,
-      world: gateWaitingForFinalRune.world
-    },
     hud,
     duplicateCast: afterDuplicateCast.combat.lastCast,
     routeReset: afterRouteReset,
     frostThenLightning: {
-      frozen: frozenBeforeLightning.dragon,
+      frozen: testDragon(frozenBeforeLightning),
       afterLightning: frostThenLightning
     },
     pointerLockRecovery: {

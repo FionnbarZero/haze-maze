@@ -1,3 +1,5 @@
+import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
+
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&route=legacy';
 
@@ -63,7 +65,10 @@ await cdp.send('Runtime.enable');
 await cdp.send('Page.enable');
 await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-await cdp.send('Page.navigate', { url: gameUrl });
+await navigateToProof(cdp, gameUrl, {
+  route: 'legacy',
+  params: { mazeSeed: LEGACY_SMOKE_SEED, spellsTest: Date.now() }
+});
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const evaluate = async expression => {
@@ -247,7 +252,10 @@ await cdp.send('Emulation.setDeviceMetricsOverride', {
   screenOrientation: { type: 'landscapePrimary', angle: 90 }
 });
 await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
-await cdp.send('Page.navigate', { url: gameUrl });
+await navigateToProof(cdp, gameUrl, {
+  route: 'legacy',
+  params: { mazeSeed: LEGACY_SMOKE_SEED, spellsTouchTest: Date.now() }
+});
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.start(); true');
 await resetAt(0, 6.2);

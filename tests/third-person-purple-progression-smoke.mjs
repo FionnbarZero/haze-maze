@@ -1,3 +1,6 @@
+import assert from 'node:assert/strict';
+import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
+
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/?quality=low';
 
@@ -63,7 +66,10 @@ await cdp.send('Runtime.enable');
 await cdp.send('Page.enable');
 await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-await cdp.send('Page.navigate', { url: `${gameUrl}${gameUrl.includes('?') ? '&' : '?'}purpleProgression=${Date.now()}` });
+await navigateToProof(cdp, gameUrl, {
+  route: 'legacy',
+  params: { mazeSeed: LEGACY_SMOKE_SEED, purpleProgression: Date.now() }
+});
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const evaluate = async expression => {
@@ -133,31 +139,32 @@ await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.geodes ===
 const geodeMined = await snapshot();
 await teleport({ x: 0, z: 4.8 });
 await aimAtDragon();
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.targeted');
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.castLightning(); true');
-await delay(300);
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.lastCast?.spell === 'lightning'");
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragon.health < 100');
 const geodeAttack = await snapshot();
 
-const treeRunePosition = initial.inventory.runePickups.find(rune => rune.source === 'tree').position;
-await teleport(treeRunePosition);
+const roomRunes = initial.inventory.runePickups;
+assert.deepEqual(roomRunes.map(rune => rune.source), [
+  'southwestRoom',
+  'southeastRoom',
+  'northwestRoom',
+  'northeastRoom'
+]);
+await teleport(roomRunes[0].position);
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 1');
-const treeRune = await snapshot();
-
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.damageActiveDragon(100); true');
-await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.firstDragon');
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runePickups.find(rune => rune.source === 'firstDragon').available");
-const firstDropPosition = (await snapshot()).inventory.runePickups.find(rune => rune.source === 'firstDragon').position;
-await teleport(firstDropPosition);
+const firstRoomRune = await snapshot();
+await teleport(roomRunes[1].position);
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 2');
-const firstDragonRune = await snapshot();
-
-await evaluate('window.__HMW_THIRD_PERSON_PROOF__.damageActiveDragon(100); true');
-await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.route.dragon');
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runePickups.find(rune => rune.source === 'secondDragon').available");
-const beforeFinalRune = await snapshot();
-const secondDropPosition = beforeFinalRune.inventory.runePickups.find(rune => rune.source === 'secondDragon').position;
-await teleport(secondDropPosition);
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.doors.first.state === 'OPEN'");
+const southernRunes = await snapshot();
+await teleport(roomRunes[2].position);
 await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 3');
-await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.gate.state === 'OPEN'");
+const thirdRoomRune = await snapshot();
+await teleport(roomRunes[3].position);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().inventory.runes === 4');
+await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().world.doors.final.state === 'OPEN'");
 const allRunes = await snapshot();
 await evaluate('window.__HMW_THIRD_PERSON_PROOF__.togglePouch(); true');
 await delay(100);
@@ -197,24 +204,22 @@ const checks = {
     && geodeMined.combat.powerups.geodeDamageMultiplier === 1.1,
   geodeAddsTenPercentAttackPower: Math.abs(geodeAttack.combat.lastCast?.damage - 27.5) < 1e-9
     && Math.abs(geodeAttack.dragon.health - 72.5) < 1e-9,
-  treeRuneHiddenNearTree: treeRune.inventory.runes === 1
-    && treeRune.inventory.runePickups.find(rune => rune.source === 'tree').collected,
-  dragonsDropTwoRunes: firstDragonRune.inventory.runes === 2
-    && firstDragonRune.inventory.runePickups.find(rune => rune.source === 'firstDragon').collected
-    && beforeFinalRune.inventory.runePickups.find(rune => rune.source === 'secondDragon').available,
-  gateWaitsForAllThreeRunes: beforeFinalRune.inventory.runes === 2
-    && beforeFinalRune.world.route.dragon
-    && beforeFinalRune.world.gate.state === 'LOCKED',
-  threeRunesUnlockExit: allRunes.inventory.runes === 3
-    && allRunes.world.gate.runes === 3
-    && allRunes.world.gate.state === 'OPEN',
+  roomRunesOpenDoorsInSequence: firstRoomRune.inventory.runes === 1
+    && southernRunes.inventory.runes === 2
+    && southernRunes.world.doors.first.state === 'OPEN'
+    && southernRunes.world.doors.final.state === 'LOCKED'
+    && thirdRoomRune.inventory.runes === 3
+    && allRunes.inventory.runes === 4
+    && allRunes.world.gate.runes === 4
+    && allRunes.world.doors.final.state === 'OPEN'
+    && allRunes.inventory.runePickups.every(rune => rune.collected),
   pouchReportsProgress: pouch.staff === 'Held'
     && pouch.pick === 'Stored'
     && pouch.hammer === 'Stored'
     && pouch.geodes === '1 geode'
-    && pouch.runes === '3 / 3'
+    && pouch.runes === '4 / 4'
     && pouch.geodePower.includes('+10%')
-    && pouch.route.includes('3 / 3 runes'),
+    && pouch.route.includes('4 / 4 runes'),
   noRuntimeErrors: cdp.errors.length === 0
 };
 
@@ -225,7 +230,13 @@ console.log(JSON.stringify({
     staffStored: { witch: staffStored.witch, inventory: staffStored.inventory, castResult: storedCastResult },
     tools: { pickFound: pickFound.inventory, toolsFound: toolsFound.inventory, pickHeld: pickHeld.witch, hammerHeld: hammerHeld.witch },
     geode: { mined: geodeMined.inventory, combat: geodeAttack.combat, dragon: geodeAttack.dragon },
-    runes: { tree: treeRune.inventory, firstDragon: firstDragonRune.inventory, beforeFinal: beforeFinalRune, complete: allRunes },
+    runes: {
+      sources: roomRunes.map(rune => rune.source),
+      afterFirst: firstRoomRune.inventory,
+      afterSouthern: southernRunes.inventory,
+      afterThird: thirdRoomRune.inventory,
+      complete: allRunes
+    },
     pouch,
     errors: cdp.errors
   }

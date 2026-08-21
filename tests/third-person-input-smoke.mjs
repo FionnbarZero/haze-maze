@@ -1,3 +1,5 @@
+import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
+
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&route=legacy';
 
@@ -63,7 +65,10 @@ await cdp.send('Runtime.enable');
 await cdp.send('Page.enable');
 await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-await cdp.send('Page.navigate', { url: gameUrl });
+await navigateToProof(cdp, gameUrl, {
+  route: 'legacy',
+  params: { mazeSeed: LEGACY_SMOKE_SEED, inputTest: Date.now() }
+});
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const evaluate = async expression => {

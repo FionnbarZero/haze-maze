@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { navigateToProof } from './third-person-smoke-navigation.mjs';
 
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9231';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8768/third-person.html?quality=low';
@@ -197,8 +198,13 @@ const results = [];
 try {
   for (const characterId of ['purple']) {
     await cdp.send('Page.bringToFront');
-    await cdp.send('Page.navigate', {
-      url: `${gameUrl}${gameUrl.includes('?') ? '&' : '?'}mazeSeed=chapter-one-browser-${characterId}&character=${characterId}&smoke=${Date.now()}`
+    await navigateToProof(cdp, gameUrl, {
+      route: 'chapter1',
+      params: {
+        mazeSeed: `chapter-one-browser-${characterId}`,
+        character: characterId,
+        smoke: Date.now()
+      }
     });
     await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
     await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.start('${characterId}'); true`);

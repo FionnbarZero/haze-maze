@@ -1,3 +1,5 @@
+import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
+
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&narration=instant&route=legacy';
 
@@ -88,7 +90,10 @@ const waitFor = async (expression, timeoutMilliseconds = 45000) => {
 };
 const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
 const navigate = async () => {
-  await cdp.send('Page.navigate', { url: `${gameUrl}${gameUrl.includes('?') ? '&' : '?'}openingTest=${Date.now()}` });
+  await navigateToProof(cdp, gameUrl, {
+    route: 'legacy',
+    params: { mazeSeed: LEGACY_SMOKE_SEED, openingTest: Date.now() }
+  });
   await waitFor('window.__HMW_THIRD_PERSON_PROOF__?.snapshot().ready');
   await waitFor("document.querySelector('#loading')?.classList.contains('is-hidden')");
   await delay(500);

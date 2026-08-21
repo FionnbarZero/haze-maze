@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
 
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&route=legacy';
@@ -65,8 +66,9 @@ await cdp.send('Runtime.enable');
 await cdp.send('Page.enable');
 await cdp.send('Network.enable');
 await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-await cdp.send('Page.navigate', {
-  url: `${gameUrl}${gameUrl.includes('?') ? '&' : '?'}mazeSeed=expanded-smoke-seed&expandedTest=${Date.now()}`
+await navigateToProof(cdp, gameUrl, {
+  route: 'legacy',
+  params: { mazeSeed: LEGACY_SMOKE_SEED, expandedTest: Date.now() }
 });
 
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -145,9 +147,9 @@ try {
 
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.teleportNearDragon(0, 1.8); true');
   await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.damageTaken > 0', 5000);
-  const hostileContact = await snapshot();
-  assert.equal(hostileContact.dragons[0].aggressive, true);
-  assert.equal(hostileContact.combat.threatDragonId, 'dragon-0');
+  const dragonZeroContact = await snapshot();
+  assert.equal(dragonZeroContact.dragons[0].aggressive, true);
+  assert.equal(dragonZeroContact.combat.threatDragonId, 'dragon-0');
 
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); true');
   const oneRune = await teleportToRune(0);
@@ -187,7 +189,7 @@ try {
       total: initial.dragons.length,
       aggressive: initial.dragons.filter(dragon => dragon.aggressive).length,
       secondDragonDamageTaken: secondDragonContact.combat.damageTaken,
-      hostileDamageTaken: hostileContact.combat.damageTaken
+      dragonZeroDamageTaken: dragonZeroContact.combat.damageTaken
     },
     doors: completed.world.doors,
     exit: completed.world.exit
