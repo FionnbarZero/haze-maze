@@ -13,7 +13,7 @@ This directory contains the isolated Babylon.js ES-module architecture used by t
 - `witch.js` and `dragon.js` build deliberately temporary primitive actors and procedural motion. The Witch builder accepts named palettes so every color witch can share one presentation and animation contract.
 - `remote-player.js` consumes snapshot-shaped teammate state and smooths it independently from local input. Its temporary 10 Hz Green Witch feed can later be replaced by LAN messages without changing the replica.
 - `green-witch.js` owns the Green Witch's health and two unlocked ability templates: two-arm Vine Trap control and smart-targeted Restore healing.
-- `combat.js` resolves authoritative direct or conservative assisted crosshair intent across multiple dragons, validates wall obstruction from the staff orb, drives cast-facing, and implements Purple storm magic, Frost control and damage, Fire offense and creature-blocking protection, player health, and hostile-dragon strikes.
+- `combat.js` resolves authoritative direct or conservative assisted crosshair intent across multiple dragons, validates wall obstruction from the staff orb, drives cast-facing, and implements Purple storm magic, Frost control and damage, Fire offense and creature-blocking protection, player health, and dragon strikes.
 - `inventory.js` builds the greybox berry bushes, treasure chest, geodes, four found runes, potion pickups, and clickable field-pouch inventory, then applies their effects through the combat system.
 - `debug.js` reports FPS, frame-time samples, camera state, capsule state, collision, target, gate, animation, and mesh count.
 - `config.js` centralizes specification-derived tuning values; `utils.js` and `targeting.js` contain shared movement and targeting math.
@@ -31,7 +31,7 @@ The authoritative route records eight checkpoints:
 7. Step into its moonlit portal.
 8. Disappear through the portal to complete the route.
 
-Both doors are real colliders while locked. The first two runes are placed in southern rooms so the player can open the inner door; the remaining two are distributed beyond it. Dragons do not hold required progression items. All ten are containable, but a seeded 10% hostile subset—exactly one dragon in this population—can initiate attacks. This keeps exploration populated without turning every encounter into forced combat.
+Both doors are real colliders while locked. The first two runes are placed in southern rooms so the player can open the inner door; the remaining two are distributed beyond it. Dragons do not hold required progression items. All ten dragons are containable and aggressive; when multiple eligible dragons are in attack range, combat selects only the nearest one as the active threat. Nine dragons patrol, while the central dragon remains stationary.
 
 The Purple Witch's pouch now owns equippable field gear as well as provisions. Her Moon staff starts in hand and can be stored or re-equipped from the pouch; spellcasting requires it. A crystal geode pick and geode hammer are hidden separately in the maze and can each replace the staff in her right hand. Finding both tools permits each of four glowing rocks to yield one magical geode, with every geode permanently increasing lightning damage by 10% for that route.
 
@@ -51,9 +51,9 @@ The browser smoke-test hook at `window.__HMW_THIRD_PERSON_PROOF__` supports dete
 
 ## Regression checks
 
-Run the dependency-free unit suites with `node --test tests/maze-layout.test.mjs tests/targeting.test.mjs tests/character-selection-audio.test.mjs tests/remote-player.test.mjs`. They cover expanded-maze size and population invariants, seeded variation, the exact hostile-dragon ratio, both rune thresholds, targeting math, opening-audio lifecycle, and teammate snapshot behavior.
+Run the dependency-free unit suites with `node --test tests/maze-layout.test.mjs tests/targeting.test.mjs tests/character-selection-audio.test.mjs tests/remote-player.test.mjs`. They cover expanded-maze size and population invariants, seeded variation, all-ten-aggressive and nine-patrol dragon invariants, both rune thresholds, targeting math, opening-audio lifecycle, and teammate snapshot behavior.
 
-`tests/third-person-expanded-maze-smoke.mjs` is the authoritative rendered route regression. It verifies the 3× floor area, 4× scenery/resource populations, ten-dragon distribution, passive-versus-hostile contact behavior, first-door and final-door rune thresholds, runtime stability, and the Witch's disappearance through the Moon Door.
+`tests/third-person-expanded-maze-smoke.mjs` is the authoritative rendered route regression. It verifies the 3× floor area, 4× scenery/resource populations, ten-dragon distribution with all ten aggressive, nearest-eligible-dragon contact selection, first-door and final-door rune thresholds, runtime stability, and the Witch's disappearance through the Moon Door.
 
 `tests/third-person-targeting-smoke.mjs` exercises the rendered proof through Chrome DevTools Protocol. Start the repository on port 8766, launch a Chromium browser with remote debugging on port 9223, then run `node tests/third-person-targeting-smoke.mjs`. The optional `HMW_GAME_URL` and `HMW_CDP_ENDPOINT` environment variables select different local endpoints. The browser regression verifies close-range damage, normal-range damage, off-center character rotation, wall rejection, staff-origin evidence, and dragon separation.
 

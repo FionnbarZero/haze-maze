@@ -27,9 +27,9 @@ test('seeded room walls and dragon placements are repeatable but variable', () =
   assert.notDeepEqual(variant.dragonSpawns, layout.dragonSpawns);
 });
 
-test('exactly ten percent of the ten dragons are aggressive', () => {
+test('all ten dragons are aggressive while nine patrol', () => {
   assert.equal(layout.dragonSpawns.length, WORLD.dragonCount);
-  assert.equal(layout.dragonSpawns.filter(dragon => dragon.aggressive).length, 1);
+  assert.equal(layout.dragonSpawns.filter(dragon => dragon.aggressive).length, 10);
   assert.equal(layout.dragonSpawns.filter(dragon => dragon.aggressive).length / layout.dragonSpawns.length, WORLD.aggressiveDragonRatio);
   assert.equal(layout.dragonSpawns.filter(dragon => dragon.patrolRadius > 0).length, 9);
 });
