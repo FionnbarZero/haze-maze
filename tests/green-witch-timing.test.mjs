@@ -25,7 +25,12 @@ test('Green Witch reset moves omitted-timestamp casts into the new simulation ep
   GreenWitchAbilities.prototype.reset.call(abilities, .25);
 
   assert.equal(abilities.lastTime, .25);
+  assert.equal(abilities.health, 10);
+  assert.equal(abilities.friendHealth, 100);
   assert.deepEqual(abilities.cooldownUntil, { vineTrap: 0, restore: 0 });
+  assert.equal(abilities.lastCast, null);
+  assert.equal(abilities.friendTargeted, false);
+  assert.deepEqual(abilities.transientEffects, []);
   assert.deepEqual(hudTimes, [.25]);
 
   let castTime = null;
@@ -36,6 +41,128 @@ test('Green Witch reset moves omitted-timestamp casts into the new simulation ep
   assert.equal(GreenWitchAbilities.prototype.castSelected.call(abilities), true);
   assert.equal(castTime, .25,
     'an omitted-timestamp action must use the reset simulation epoch, not the previous route time');
+});
+
+test('Green Witch ordinary recovery clears only local temporary ability state', () => {
+  const hudTimes = [];
+  const disabledBindings = [];
+  const disposed = [];
+  const removedClasses = [];
+  const abilities = Object.assign(Object.create(GreenWitchAbilities.prototype), {
+    maximumHealth: 100,
+    friendMaximumHealth: 100,
+    health: 41,
+    friendHealth: 73,
+    selectedSpell: 'restore',
+    lastTime: 18,
+    cooldownUntil: { vineTrap: 24, restore: 23 },
+    lastCast: { spell: 'restore', target: 'purple-witch' },
+    friendTargeted: true,
+    vineBindings: [{ setEnabled: value => disabledBindings.push(value) }, { setEnabled: value => disabledBindings.push(value) }],
+    transientEffects: [{
+      nodes: [{ dispose: () => disposed.push('node') }],
+      light: { dispose: () => disposed.push('light') },
+      material: { dispose: () => disposed.push('material') }
+    }],
+    crosshair: { classList: { remove: (...names) => removedClasses.push(...names) } },
+    crosshairLabel: { dataset: { stateLabel: 'FRIEND' } },
+    updateHud: time => hudTimes.push(time)
+  });
+
+  GreenWitchAbilities.prototype.recoverAfterDefeat.call(abilities, 18.9);
+
+  assert.equal(abilities.lastTime, 18.9);
+  assert.equal(abilities.selectedSpell, 'restore');
+  assert.equal(abilities.health, 41);
+  assert.equal(abilities.friendHealth, 73);
+  assert.deepEqual(abilities.cooldownUntil, { vineTrap: 0, restore: 0 });
+  assert.equal(abilities.lastCast, null);
+  assert.equal(abilities.friendTargeted, false);
+  assert.deepEqual(disabledBindings, [false, false]);
+  assert.deepEqual(disposed, ['node', 'light', 'material']);
+  assert.deepEqual(removedClasses, ['is-targeting', 'is-assisted', 'is-obstructed', 'is-self-cast']);
+  assert.equal(abilities.crosshairLabel.dataset.stateLabel, '');
+  assert.deepEqual(abilities.transientEffects, []);
+  assert.deepEqual(hudTimes, [18.9]);
+});
+
+test('Green Witch reconciles only Vine effects attached to recovered dragons', () => {
+  const disposed = [];
+  const bindingStates = [];
+  const recoveredVine = {
+    kind: 'VINE',
+    targetDragonId: 'dragon-2',
+    nodes: [{ dispose: () => disposed.push('recovered-vine') }]
+  };
+  const unrelatedVine = {
+    kind: 'VINE',
+    targetDragonId: 'dragon-7',
+    nodes: [{ dispose: () => disposed.push('unrelated-vine') }]
+  };
+  const restoreEffect = {
+    kind: 'RESTORE',
+    nodes: [{ dispose: () => disposed.push('restore') }]
+  };
+  const lastCast = { spell: 'vineTrap', target: 'training-dragon' };
+  const abilities = Object.assign(Object.create(GreenWitchAbilities.prototype), {
+    lastTime: 18,
+    health: 41,
+    friendHealth: 73,
+    selectedSpell: 'restore',
+    cooldownUntil: { vineTrap: 24, restore: 23 },
+    lastCast,
+    friendTargeted: true,
+    dragon: { id: 'dragon-2' },
+    vineBindings: [{ setEnabled: value => bindingStates.push(value) }],
+    transientEffects: [recoveredVine, unrelatedVine, restoreEffect],
+    updateHud: () => {}
+  });
+
+  const result = GreenWitchAbilities.prototype.reconcileRecoveredDragons.call(abilities, ['dragon-2'], 18.9);
+
+  assert.deepEqual(result, {
+    recoveredDragonIds: ['dragon-2'],
+    disposedVineEffects: 1,
+    bindingsDisabled: true
+  });
+  assert.deepEqual(disposed, ['recovered-vine']);
+  assert.deepEqual(bindingStates, [false]);
+  assert.deepEqual(abilities.transientEffects, [unrelatedVine, restoreEffect]);
+  assert.equal(abilities.lastTime, 18.9);
+  assert.equal(abilities.health, 41);
+  assert.equal(abilities.friendHealth, 73);
+  assert.equal(abilities.selectedSpell, 'restore');
+  assert.deepEqual(abilities.cooldownUntil, { vineTrap: 24, restore: 23 });
+  assert.equal(abilities.lastCast, lastCast);
+  assert.equal(abilities.friendTargeted, true);
+});
+
+test('Green Witch leaves bindings and unrelated effects alone when another dragon recovers', () => {
+  const disposed = [];
+  const bindingStates = [];
+  const unrelatedVine = {
+    kind: 'VINE',
+    targetDragonId: 'dragon-7',
+    nodes: [{ dispose: () => disposed.push('unrelated-vine') }]
+  };
+  const abilities = Object.assign(Object.create(GreenWitchAbilities.prototype), {
+    lastTime: 18,
+    dragon: { id: 'dragon-7' },
+    vineBindings: [{ setEnabled: value => bindingStates.push(value) }],
+    transientEffects: [unrelatedVine],
+    updateHud: () => {}
+  });
+
+  const result = GreenWitchAbilities.prototype.reconcileRecoveredDragons.call(abilities, ['dragon-2'], 18.9);
+
+  assert.deepEqual(result, {
+    recoveredDragonIds: ['dragon-2'],
+    disposedVineEffects: 0,
+    bindingsDisabled: false
+  });
+  assert.deepEqual(disposed, []);
+  assert.deepEqual(bindingStates, []);
+  assert.deepEqual(abilities.transientEffects, [unrelatedVine]);
 });
 
 test('inventory reset adopts the supplied simulation epoch for post-reset reward timing', () => {

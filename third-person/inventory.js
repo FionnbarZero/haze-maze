@@ -47,6 +47,7 @@ export class PouchInventory {
     this.totalPotionsCollected = 0;
     this.totalPotionsUsed = 0;
     this.lastTime = 0;
+    this.playerActionsEnabled = true;
     this.open = false;
     this.onMessage = () => {};
     this.onOpenChange = () => {};
@@ -721,6 +722,24 @@ export class PouchInventory {
     return this.chapterMode ? this.interactions.mode : this.equippedItem;
   }
 
+  setPlayerActionsEnabled(value) {
+    this.playerActionsEnabled = Boolean(value);
+    if (!this.playerActionsEnabled) this.setOpen(false);
+  }
+
+  canAcceptPlayerAction() {
+    return this.playerActionsEnabled;
+  }
+
+  resynchronizeCombatModifiers() {
+    // Chapter reward count includes Route-Rune fragments. Only legacy mined
+    // geodes feed the legacy lightning modifier; Chapter power comes from
+    // carried Raw Damage Crystals.
+    this.combat.setGeodeCount(this.chapterMode ? 0 : this.geodes);
+    this.combat.setDamageCrystalCount(this.rawDamageCrystals);
+    this.updateInterface();
+  }
+
   applyEquippedItem() {
     const equippedItem = this.currentEquipmentMode();
     const presentationItem = this.chapterMode && equippedItem === EQUIPMENT_MODES.miningTools
@@ -730,6 +749,7 @@ export class PouchInventory {
   }
 
   toggleEquipment(item) {
+    if (!this.canAcceptPlayerAction()) return false;
     if (this.chapterMode) {
       const mode = item === 'staff'
         ? EQUIPMENT_MODES.staff
@@ -769,6 +789,7 @@ export class PouchInventory {
   }
 
   collectEquipment(pickup) {
+    if (!this.canAcceptPlayerAction()) return false;
     if (pickup.collected) return false;
     pickup.collected = true;
     pickup.root.setEnabled(false);
@@ -821,6 +842,7 @@ export class PouchInventory {
   }
 
   collectChapterGeodeReward(rock) {
+    if (!this.canAcceptPlayerAction()) return false;
     const reward = rock?.reward;
     if (!reward?.available || reward.collected || !reward.content) return false;
     let message = '';
@@ -848,6 +870,7 @@ export class PouchInventory {
   }
 
   strikeNearbyGeode() {
+    if (!this.canAcceptPlayerAction()) return false;
     if (!this.chapterMode) return false;
     if (!this.interactions.canActorMine(this.activeCharacter)) {
       this.onMessage('Equip Mining Tools from the pouch before striking a geode');
@@ -896,6 +919,7 @@ export class PouchInventory {
   }
 
   collectRune(rune) {
+    if (!this.canAcceptPlayerAction()) return false;
     if (!rune.available || rune.collected) return false;
     rune.collected = true;
     rune.falling = false;
@@ -924,6 +948,7 @@ export class PouchInventory {
 
   setOpen(value) {
     const next = Boolean(value);
+    if (next && !this.canAcceptPlayerAction()) return;
     if (next === this.open) return;
     this.open = next;
     this.overlay.classList.toggle('is-open', this.open);
@@ -938,10 +963,13 @@ export class PouchInventory {
   }
 
   toggle() {
+    if (!this.canAcceptPlayerAction()) return false;
     this.setOpen(!this.open);
+    return true;
   }
 
   collect(pickup) {
+    if (!this.canAcceptPlayerAction()) return false;
     if (pickup.collected) return false;
     pickup.collected = true;
     pickup.root.setEnabled(false);
@@ -953,6 +981,7 @@ export class PouchInventory {
   }
 
   useHealthBerry() {
+    if (!this.canAcceptPlayerAction()) return false;
     if (this.healthBerries <= 0) {
       this.onMessage('The pouch has no health berries');
       return false;
@@ -971,6 +1000,7 @@ export class PouchInventory {
   }
 
   collectGoldChest() {
+    if (!this.canAcceptPlayerAction()) return false;
     if (this.chest.opened) return false;
     this.chest.opened = true;
     this.gold += this.chest.amount;
@@ -980,6 +1010,7 @@ export class PouchInventory {
   }
 
   collectPowerup(pickup) {
+    if (!this.canAcceptPlayerAction()) return false;
     if (pickup.collected) return false;
     pickup.collected = true;
     pickup.root.setEnabled(false);
@@ -994,6 +1025,7 @@ export class PouchInventory {
   }
 
   useLightningPotion() {
+    if (!this.canAcceptPlayerAction()) return false;
     if (this.activeCharacter !== 'purple') {
       this.onMessage('Storm potions can only empower the Purple Witch');
       return false;
@@ -1015,6 +1047,7 @@ export class PouchInventory {
   }
 
   useAegisPotion() {
+    if (!this.canAcceptPlayerAction()) return false;
     if (this.activeCharacter !== 'purple') {
       this.onMessage('Aegis potions can only empower the Purple Witch');
       return false;
@@ -1045,7 +1078,7 @@ export class PouchInventory {
       pickup.root.position.y = pickup.position.y + Math.sin(time * 2.1 + pickup.phase) * .035;
       const dx = player.x - pickup.position.x;
       const dz = player.z - pickup.position.z;
-      if (dx * dx + dz * dz <= pickupRadiusSquared) this.collect(pickup);
+      if (this.playerActionsEnabled && dx * dx + dz * dz <= pickupRadiusSquared) this.collect(pickup);
     }
 
     for (const pickup of this.powerupPickups) {
@@ -1055,7 +1088,7 @@ export class PouchInventory {
       pickup.glow.intensity = .44 + (.5 + Math.sin(time * 4 + pickup.phase) * .5) * .34;
       const dx = player.x - pickup.position.x;
       const dz = player.z - pickup.position.z;
-      if (dx * dx + dz * dz <= pickupRadiusSquared) this.collectPowerup(pickup);
+      if (this.playerActionsEnabled && dx * dx + dz * dz <= pickupRadiusSquared) this.collectPowerup(pickup);
     }
 
     for (const pickup of this.equipmentPickups) {
@@ -1066,7 +1099,7 @@ export class PouchInventory {
       if (this.activeCharacter !== 'purple') continue;
       const dx = player.x - pickup.position.x;
       const dz = player.z - pickup.position.z;
-      if (dx * dx + dz * dz <= pickupRadiusSquared) this.collectEquipment(pickup);
+      if (this.playerActionsEnabled && dx * dx + dz * dz <= pickupRadiusSquared) this.collectEquipment(pickup);
     }
 
     if (this.chapterMode) {
@@ -1082,7 +1115,7 @@ export class PouchInventory {
         if (time < rock.reward.collectibleAt) continue;
         const dx = player.x - rock.position.x;
         const dz = player.z - rock.position.z;
-        if (dx * dx + dz * dz <= pickupRadiusSquared) this.collectChapterGeodeReward(rock);
+        if (this.playerActionsEnabled && dx * dx + dz * dz <= pickupRadiusSquared) this.collectChapterGeodeReward(rock);
       }
     }
 
@@ -1252,6 +1285,7 @@ export class PouchInventory {
 
   reset(time = 0) {
     this.lastTime = Number.isFinite(time) ? Math.max(0, time) : 0;
+    this.playerActionsEnabled = true;
     this.setOpen(false);
     this.ownedEquipment = this.chapterMode ? null : { staff: true, geodePick: false, geodeHammer: false };
     this.equippedItem = this.chapterMode ? null : 'staff';
@@ -1342,6 +1376,7 @@ export class PouchInventory {
       : { ...this.ownedEquipment };
     return {
       open: this.open,
+      playerActionsEnabled: this.playerActionsEnabled,
       healthBerries: this.healthBerries,
       gold: this.gold,
       lightningPotions: this.lightningPotions,

@@ -78,7 +78,9 @@ export const createMazeLayout = ({
   seed = 'moonhollow-expanded-v1',
   width = 28,
   depth = 52,
-  wallThickness = .5
+  wallThickness = .5,
+  protectedPositions = [],
+  protectedRadius = 0
 } = {}) => {
   const random = createSeededRandom(seed);
   const walls = [];
@@ -123,8 +125,27 @@ export const createMazeLayout = ({
   const dragonCandidates = shuffle([
     [-9.4, -21], [9.1, -20.4], [-8.8, -12], [8.9, -11.4],
     [-9.2, -.2], [9.2, .4], [-8.9, 9.8], [8.8, 10.6],
-    [-9.1, 19.7], [0, 20.5], [9, 20.2], [-.2, -11.5]
-  ], random).slice(0, 9);
+    [-9.1, 19.7], [0, 20.5], [9, 20.2], [-.2, -11.5],
+    [-12.1, -6.8], [12.1, -6.8]
+  ], random).map(([baseX, baseZ]) => {
+    const patrolRadius = .55 + random() * .45;
+    return {
+      x: baseX + (random() - .5) * 1.1,
+      z: baseZ + (random() - .5) * 1.1,
+      patrolRadius,
+      patrolSpeed: .48 + random() * .38,
+      patrolAngle: random() * Math.PI,
+      patrolAspect: .55 + random() * .35,
+      patrolPause: .85 + random() * 1.15
+    };
+  });
+  const validDragonCandidates = dragonCandidates.filter(candidate => protectedPositions.every(position => (
+    Math.hypot(candidate.x - position.x, candidate.z - position.z)
+      >= protectedRadius + candidate.patrolRadius
+  )));
+  if (validDragonCandidates.length < 9) {
+    throw new Error(`Maze seed ${seed} has only ${validDragonCandidates.length} safe dragon patrol sockets`);
+  }
   const dragonSpawns = [
     {
       id: 'dragon-0',
@@ -134,13 +155,16 @@ export const createMazeLayout = ({
       patrolRadius: 0,
       patrolSpeed: 0
     },
-    ...dragonCandidates.map(([x, z], index) => ({
+    ...validDragonCandidates.slice(0, 9).map((candidate, index) => ({
       id: `dragon-${index + 1}`,
-      x: x + (random() - .5) * 1.1,
-      z: z + (random() - .5) * 1.1,
+      x: candidate.x,
+      z: candidate.z,
       aggressive: true,
-      patrolRadius: .55 + random() * .45,
-      patrolSpeed: .55 + random() * .45
+      patrolRadius: candidate.patrolRadius,
+      patrolSpeed: candidate.patrolSpeed,
+      patrolAngle: candidate.patrolAngle,
+      patrolAspect: candidate.patrolAspect,
+      patrolPause: candidate.patrolPause
     }))
   ];
 

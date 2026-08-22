@@ -32,6 +32,32 @@ test('all ten dragons are aggressive while nine patrol', () => {
   assert.equal(layout.dragonSpawns.filter(dragon => dragon.aggressive).length, 10);
   assert.equal(layout.dragonSpawns.filter(dragon => dragon.aggressive).length / layout.dragonSpawns.length, WORLD.aggressiveDragonRatio);
   assert.equal(layout.dragonSpawns.filter(dragon => dragon.patrolRadius > 0).length, 9);
+  assert.ok(layout.dragonSpawns.slice(1).every(dragon => Number.isFinite(dragon.patrolAngle)));
+  assert.ok(layout.dragonSpawns.slice(1).every(dragon => dragon.patrolPause >= .85));
+});
+
+test('seeded protected sockets remain clear of complete dragon patrol envelopes', () => {
+  const protectedPositions = [
+    { x: -10.4, z: -22.8 },
+    { x: 10.5, z: -14.5 },
+    { x: 7.4, z: -8.6 }
+  ];
+  const protectedRadius = WORLD.chapterGeodeDragonClearance;
+  const protectedLayout = createMazeLayout({
+    seed: 'protected-progression-sockets',
+    protectedPositions,
+    protectedRadius
+  });
+
+  assert.equal(protectedLayout.dragonSpawns.length, WORLD.dragonCount);
+  for (const dragon of protectedLayout.dragonSpawns.slice(1)) {
+    for (const position of protectedPositions) {
+      assert.ok(
+        Math.hypot(dragon.x - position.x, dragon.z - position.z) >= protectedRadius + dragon.patrolRadius,
+        `${dragon.id} patrol should remain clear of the protected progression socket`
+      );
+    }
+  }
 });
 
 test('collectible and fountain populations are four times their original counts', () => {

@@ -12,6 +12,7 @@ import { ChapterOneInteractions, EQUIPMENT_MODES } from '../third-person/chapter
 import { ChapterOneGeodeState } from '../third-person/chapter-geode-state.js';
 import { ChapterOneProgression } from '../third-person/chapter-progression.js';
 import { spellDamageMultiplier } from '../third-person/combat.js';
+import { WORLD } from '../third-person/config.js';
 import { createMazeLayout } from '../third-person/maze-layout.js';
 
 const createPlan = seed => {
@@ -31,6 +32,19 @@ test('250 deterministic seeds produce exactly three reachable required fragments
     assert.equal(plan.requiredGeodes.length, 3);
     assert.ok(plan.requiredGeodes.every(geode => geode.position.z < plan.sunkenGate.z));
     assert.deepEqual(repeated, plan, `${seed} should produce a repeatable plan`);
+
+    const protectedPositions = [...plan.requiredGeodes, ...plan.optionalGeodes]
+      .map(geode => geode.position);
+    const protectedLayout = createMazeLayout({
+      seed,
+      protectedPositions,
+      protectedRadius: WORLD.chapterGeodeDragonClearance
+    });
+    assert.equal(protectedLayout.dragonSpawns.length, WORLD.dragonCount);
+    assert.ok(protectedLayout.dragonSpawns.slice(1).every(dragon => protectedPositions.every(position => (
+      Math.hypot(dragon.x - position.x, dragon.z - position.z)
+        >= WORLD.chapterGeodeDragonClearance + dragon.patrolRadius
+    ))), `${seed} should keep every Chapter geode clear of patrol envelopes`);
   }
 });
 

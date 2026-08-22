@@ -188,6 +188,29 @@ export function createPlaceholderDragon(BABYLON, scene, shadowGenerator, positio
       patrolIndex = 0;
       patrolWaitUntil = 0;
     },
+    recoverAfterDefeat(time = this.time) {
+      // Ordinary Chapter respawn never revives a defeated dragon. Only a
+      // living actor that was engaged at the lethal hit may return to spawn.
+      if (!this.alive) return false;
+      const recoveryTime = Number.isFinite(time) ? Math.max(0, time) : this.time;
+      this.health = this.maximumHealth;
+      this.hitUntil = recoveryTime;
+      this.frozenUntil = recoveryTime;
+      this.restrainedUntil = recoveryTime;
+      this.attackUntil = recoveryTime;
+      this.time = recoveryTime;
+      this.state = 'IDLE';
+      root.position.copyFrom(spawnPosition);
+      root.rotation.set(0, Math.PI, 0);
+      root.scaling.setAll(1);
+      root.setEnabled(true);
+      material.emissiveColor = BABYLON.Color3.FromHexString(basePalette.emissive);
+      material.diffuseColor = BABYLON.Color3.FromHexString(basePalette.diffuse);
+      material.specularColor = BABYLON.Color3.FromHexString(basePalette.specular);
+      patrolIndex = 0;
+      patrolWaitUntil = recoveryTime;
+      return true;
+    },
     update(time, deltaTime) {
       this.time = time;
       if (!this.alive) {

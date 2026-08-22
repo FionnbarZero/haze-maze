@@ -1,5 +1,5 @@
-import { PLAYER, POUCH, WORLD } from './config.js?v=20260820-all-dragon-danger-v1';
-import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260820-all-dragon-danger-v1';
+import { PLAYER, POUCH, WORLD } from './config.js?v=20260822-safer-dragons-v2';
+import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260822-safer-dragons-v1';
 import { createChapterOneLevelPlan } from './chapter-level-plan.js?v=20260820-chapter-one-v2';
 import { hexColor3 } from './utils.js';
 
@@ -13,15 +13,24 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   const mazeSeed = options.seed || `${WORLD.defaultMazeSeed}:${generatedSeed}`;
   const routeMode = options.routeMode === 'chapter1' ? 'chapter1' : 'legacy';
-  const layout = createMazeLayout({
+  const layoutOptions = {
     seed: mazeSeed,
     width: WORLD.floorWidth,
     depth: WORLD.floorDepth,
     wallThickness: WORLD.wallThickness
-  });
+  };
+  const planningLayout = createMazeLayout(layoutOptions);
   const levelPlan = routeMode === 'chapter1'
-    ? createChapterOneLevelPlan({ seed: mazeSeed, layout })
+    ? createChapterOneLevelPlan({ seed: mazeSeed, layout: planningLayout })
     : null;
+  const layout = levelPlan
+    ? createMazeLayout({
+      ...layoutOptions,
+      protectedPositions: [...levelPlan.requiredGeodes, ...levelPlan.optionalGeodes]
+        .map(geode => geode.position),
+      protectedRadius: WORLD.chapterGeodeDragonClearance
+    })
+    : planningLayout;
   const random = createSeededRandom(`${mazeSeed}:render`);
 
   const material = (name, diffuse, emissive = '#000000', alpha = 1) => {
@@ -465,10 +474,10 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
       }
       exitMoonDoor.portal.visibility = .06;
     },
-    update(player, dragons = [], deltaTime) {
+    update(player, dragons = [], deltaTime, { playerActionsEnabled = true } = {}) {
       const events = [];
       if (routeMode === 'chapter1') {
-        if (player.position.z > WORLD.entranceZ + .65) {
+        if (playerActionsEnabled && player.position.z > WORLD.entranceZ + .65) {
           markRoute('entrance', 'Moon Gate crossed · mine the three marked Garden Maze geodes', events);
         }
         if (chapterProgression?.routeRune?.completed) {
@@ -478,7 +487,7 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
           beginOpening(firstDoor, events, 'West Route-Rune answered · the Sunken Gate is opening');
         }
         animateDoor(firstDoor, deltaTime, events, 'Sunken Gate');
-        if (firstDoor.state === 'OPEN' && player.position.z > WORLD.firstDoorZ + .75) {
+        if (playerActionsEnabled && firstDoor.state === 'OPEN' && player.position.z > WORLD.firstDoorZ + .75) {
           markRoute('sunkenGate', 'Sunken Gate crossed · Garden Maze slice complete', events);
         }
       } else {

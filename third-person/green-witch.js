@@ -232,9 +232,10 @@ export class GreenWitchAbilities {
     const hands = this.greenWitch.getHandPositions();
     const impact = this.dragon.getAimPoint();
     const restrained = this.dragon.restrain(time, GREEN_WITCH.vineTrapDuration);
+    const targetDragonId = this.dragon.id;
     const effectNames = [
-      this.createVineStream('left', hands.left, impact, -1, time),
-      this.createVineStream('right', hands.right, impact, 1, time)
+      this.createVineStream('left', hands.left, impact, -1, time, targetDragonId),
+      this.createVineStream('right', hands.right, impact, 1, time, targetDragonId)
     ];
     this.lastCast = {
       spell: 'vineTrap',
@@ -254,7 +255,7 @@ export class GreenWitchAbilities {
     return restrained;
   }
 
-  createVineStream(sideName, origin, impact, side, time) {
+  createVineStream(sideName, origin, impact, side, time, targetDragonId) {
     const distance = this.BABYLON.Vector3.Distance(origin, impact);
     const sections = Math.max(8, Math.ceil(distance * 1.5));
     const points = [];
@@ -277,6 +278,7 @@ export class GreenWitchAbilities {
     mesh.isPickable = false;
     this.transientEffects.push({
       kind: 'VINE',
+      targetDragonId,
       nodes: [mesh],
       startedAt: time,
       expiresAt: time + GREEN_WITCH.vineTrapDuration
@@ -420,11 +422,7 @@ export class GreenWitchAbilities {
     }
     const expired = this.transientEffects.filter(effect => time >= effect.expiresAt);
     this.transientEffects = this.transientEffects.filter(effect => time < effect.expiresAt);
-    for (const effect of expired) {
-      for (const node of effect.nodes) node.dispose();
-      effect.light?.dispose();
-      effect.material?.dispose();
-    }
+    for (const effect of expired) this.disposeTransientEffect(effect);
     this.updateLocalTargeting(camera);
     this.updateHud(time);
   }
@@ -456,21 +454,58 @@ export class GreenWitchAbilities {
     }
   }
 
-  reset(time = 0) {
-    this.lastTime = Number.isFinite(time) ? Math.max(0, time) : 0;
-    this.health = this.maximumHealth;
-    this.friendHealth = this.friendMaximumHealth;
+  clearTemporaryAbilityState(time = this.lastTime) {
+    this.lastTime = Number.isFinite(time) ? Math.max(0, time) : this.lastTime;
     this.cooldownUntil = { vineTrap: 0, restore: 0 };
     this.lastCast = null;
     this.friendTargeted = false;
+    this.crosshair?.classList.remove('is-targeting', 'is-assisted', 'is-obstructed', 'is-self-cast');
+    if (this.crosshairLabel) this.crosshairLabel.dataset.stateLabel = '';
     for (const ring of this.vineBindings) ring.setEnabled(false);
-    for (const effect of this.transientEffects) {
-      for (const node of effect.nodes) node.dispose();
-      effect.light?.dispose();
-      effect.material?.dispose();
-    }
+    for (const effect of this.transientEffects) this.disposeTransientEffect(effect);
     this.transientEffects = [];
     this.updateHud(this.lastTime);
+  }
+
+  disposeTransientEffect(effect) {
+    for (const node of effect.nodes) node.dispose();
+    effect.light?.dispose();
+    effect.material?.dispose();
+  }
+
+  reconcileRecoveredDragons(dragonIds, time = this.lastTime) {
+    const recoveredDragonIds = new Set(
+      Array.isArray(dragonIds) ? dragonIds.filter(id => typeof id === 'string' && id) : []
+    );
+    this.lastTime = Number.isFinite(time) ? Math.max(0, time) : this.lastTime;
+    let disposedVineEffects = 0;
+    this.transientEffects = this.transientEffects.filter(effect => {
+      const shouldDispose = effect.kind === 'VINE' && recoveredDragonIds.has(effect.targetDragonId);
+      if (!shouldDispose) return true;
+      this.disposeTransientEffect(effect);
+      disposedVineEffects += 1;
+      return false;
+    });
+    const bindingsDisabled = recoveredDragonIds.has(this.dragon?.id);
+    if (bindingsDisabled) {
+      for (const ring of this.vineBindings) ring.setEnabled(false);
+    }
+    this.updateHud(this.lastTime);
+    return Object.freeze({
+      recoveredDragonIds: Object.freeze([...recoveredDragonIds]),
+      disposedVineEffects,
+      bindingsDisabled
+    });
+  }
+
+  recoverAfterDefeat(time = this.lastTime) {
+    this.clearTemporaryAbilityState(time);
+  }
+
+  reset(time = 0) {
+    this.health = this.maximumHealth;
+    this.friendHealth = this.friendMaximumHealth;
+    this.clearTemporaryAbilityState(time);
   }
 
   snapshot() {
@@ -487,6 +522,8 @@ export class GreenWitchAbilities {
       health: ownHealth,
       maximumHealth: this.maximumHealth,
       friendHealth: this.locallyControlled ? this.friendHealth : this.combat.playerHealth,
+      storedHealth: this.health,
+      storedFriendHealth: this.friendHealth,
       spells: Object.fromEntries(Object.entries(GREEN_WITCH_SPELLS).map(([id, spell]) => [id, { ...spell }])),
       cooldowns: {
         vineTrap: Math.max(0, this.cooldownUntil.vineTrap - this.lastTime),
@@ -499,6 +536,9 @@ export class GreenWitchAbilities {
       targetDragonId: this.dragon?.id || null,
       lastCast: this.lastCast,
       activeVineStreams: this.transientEffects.filter(effect => effect.kind === 'VINE').length,
+      activeVineTargetDragonIds: [...new Set(this.transientEffects
+        .filter(effect => effect.kind === 'VINE' && effect.targetDragonId)
+        .map(effect => effect.targetDragonId))],
       activeRestoreEffects: this.transientEffects.filter(effect => effect.kind === 'RESTORE').length,
       bindingCount: this.vineBindings.filter(ring => ring.isEnabled()).length
     };

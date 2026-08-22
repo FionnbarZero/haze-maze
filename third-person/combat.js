@@ -1,5 +1,6 @@
-import { COMBAT, PLAYER, POUCH } from './config.js?v=20260821-simulation-time-v1';
+import { COMBAT, PLAYER, POUCH } from './config.js?v=20260822-safer-dragons-v2';
 import { blockerPrecedesTarget, raySphereEntryDistance } from './targeting.js?v=20260818-rewards-v1';
+import { createDefeatContext } from './chapter-recovery.js?v=20260821-geode1-v1';
 
 export const SPELLS = Object.freeze({
   lightning: Object.freeze({ label: 'Lightning', cooldown: COMBAT.lightningCooldown, targeted: true }),
@@ -541,7 +542,11 @@ export class LightningCombat {
     if (this.playerHealth === 0) {
       this.playerDefeated = true;
       this.onMessage(`The ${this.playerName} was overwhelmed`);
-      this.onPlayerDefeated();
+      this.onPlayerDefeated(createDefeatContext({
+        defeatedAt: time,
+        finalDamageDragonId: dragonId,
+        threatDragonId: this.threatDragon?.id
+      }));
     } else {
       this.onMessage(`Dragon strike · ${this.playerHealth} health remains`);
     }
@@ -880,10 +885,9 @@ export class LightningCombat {
     }, duration * 1000);
   }
 
-  reset() {
+  clearTemporaryState(time) {
     this.cooldownUntil = createCooldowns();
-    this.selectedSpell = this.loadout[0] || 'lightning';
-    this.lastTime = 0;
+    this.lastTime = Number.isFinite(time) ? Math.max(0, time) : this.lastTime;
     this.targeted = false;
     this.candidateTargeted = false;
     this.assisted = false;
@@ -893,10 +897,6 @@ export class LightningCombat {
     this.playerHealth = this.playerMaximumHealth;
     this.aegisUntil = 0;
     this.lightningBoostUntil = 0;
-    this.geodeCount = 0;
-    this.geodeDamageMultiplier = 1;
-    this.damageCrystalCount = 0;
-    this.damageCrystalMultiplier = 1;
     this.aegisBoostPrimed = false;
     this.lastAegisDuration = COMBAT.aegisDuration;
     this.aegisHitUntil = 0;
@@ -924,7 +924,20 @@ export class LightningCombat {
     this.healthCopy.textContent = `${this.dragon.maximumHealth} / ${this.dragon.maximumHealth}`;
     this.targetStatus.textContent = '';
     this.updateSpellSelection(false);
-    this.updatePlayerHud(0);
+    this.updatePlayerHud(this.lastTime);
+  }
+
+  recoverAfterDefeat(time = this.lastTime) {
+    this.clearTemporaryState(time);
+  }
+
+  reset() {
+    this.selectedSpell = this.loadout[0] || 'lightning';
+    this.geodeCount = 0;
+    this.geodeDamageMultiplier = 1;
+    this.damageCrystalCount = 0;
+    this.damageCrystalMultiplier = 1;
+    this.clearTemporaryState(0);
   }
 
   snapshot() {

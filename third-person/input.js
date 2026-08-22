@@ -10,6 +10,7 @@ export class ProofInput {
     this.actions = new Set();
     this.active = false;
     this.blocked = false;
+    this.playerActionsBlocked = false;
     this.aiming = false;
     this.crouched = false;
     this.touchSprinting = false;
@@ -34,7 +35,7 @@ export class ProofInput {
 
   bindDesktop() {
     addEventListener('keydown', event => {
-      if (!this.active || this.blocked) return;
+      if (!this.active || this.blocked || this.playerActionsBlocked) return;
       const action = DESKTOP_ACTIONS[event.code];
       if (!action) return;
       event.preventDefault();
@@ -62,7 +63,7 @@ export class ProofInput {
     addEventListener('blur', () => this.clearHeldInput());
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.clearHeldInput(); });
     document.addEventListener('mousemove', event => {
-      if (!this.active || this.blocked || this.modalOpen || document.pointerLockElement !== this.canvas) return;
+      if (!this.active || this.blocked || this.playerActionsBlocked || this.modalOpen || document.pointerLockElement !== this.canvas) return;
       this.lookDelta.x += event.movementX * INPUT.mouseSensitivity;
       this.lookDelta.y += event.movementY * INPUT.mouseSensitivity * (INPUT.invertVertical ? -1 : 1);
     });
@@ -73,7 +74,7 @@ export class ProofInput {
     document.addEventListener('pointerlockerror', () => this.clearHeldInput());
     this.canvas.addEventListener('click', () => this.requestPointerLock());
     this.canvas.addEventListener('mousedown', event => {
-      if (!this.active || this.blocked || this.modalOpen || event.pointerType === 'touch') return;
+      if (!this.active || this.blocked || this.playerActionsBlocked || this.modalOpen || event.pointerType === 'touch') return;
       if (event.button === 0) {
         this.requestPointerLock();
       }
@@ -112,7 +113,7 @@ export class ProofInput {
       knob.style.transform = '';
     };
     moveStick.addEventListener('pointerdown', event => {
-      if (!this.active || this.blocked || this.modalOpen) return;
+      if (!this.active || this.blocked || this.playerActionsBlocked || this.modalOpen) return;
       event.preventDefault();
       this.movePointer = event.pointerId;
       try { moveStick.setPointerCapture(event.pointerId); } catch {}
@@ -128,7 +129,7 @@ export class ProofInput {
     let lookY = 0;
     const releaseLook = event => { if (event.pointerId === this.lookPointer) this.lookPointer = null; };
     lookZone.addEventListener('pointerdown', event => {
-      if (!this.active || this.blocked || this.modalOpen) return;
+      if (!this.active || this.blocked || this.playerActionsBlocked || this.modalOpen) return;
       event.preventDefault();
       this.lookPointer = event.pointerId;
       lookX = event.clientX;
@@ -151,15 +152,15 @@ export class ProofInput {
     for (const button of document.querySelectorAll('[data-spell]')) {
       button.addEventListener('pointerdown', event => {
         event.preventDefault();
-        if (!this.active || this.blocked || this.modalOpen) return;
+        if (!this.active || this.blocked || this.playerActionsBlocked || this.modalOpen) return;
         const spell = button.dataset.spell;
         this.onSelectSpell(spell);
         this.onCast(spell);
       });
     }
-    document.querySelector('#jump-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.modalOpen) this.actions.add('jump'); });
-    document.querySelector('#crouch-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.modalOpen) this.toggleCrouch(); });
-    document.querySelector('#shoulder-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.modalOpen) this.onShoulder(); });
+    document.querySelector('#jump-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.playerActionsBlocked && !this.modalOpen) this.actions.add('jump'); });
+    document.querySelector('#crouch-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.playerActionsBlocked && !this.modalOpen) this.toggleCrouch(); });
+    document.querySelector('#shoulder-control').addEventListener('pointerdown', event => { event.preventDefault(); if (this.active && !this.blocked && !this.playerActionsBlocked && !this.modalOpen) this.onShoulder(); });
   }
 
   start() {
@@ -170,7 +171,7 @@ export class ProofInput {
   }
 
   requestPointerLock() {
-    if (!this.active || this.blocked || this.modalOpen || !matchMedia('(pointer:fine)').matches || document.pointerLockElement === this.canvas) return;
+    if (!this.active || this.blocked || this.playerActionsBlocked || this.modalOpen || !matchMedia('(pointer:fine)').matches || document.pointerLockElement === this.canvas) return;
     try {
       const request = this.canvas.requestPointerLock?.();
       request?.catch?.(() => this.clearHeldInput());
@@ -193,6 +194,11 @@ export class ProofInput {
     this.modalOpen = Boolean(value);
     this.clearHeldInput();
     if (this.modalOpen && document.pointerLockElement) document.exitPointerLock?.();
+  }
+
+  setPlayerActionsBlocked(value) {
+    this.playerActionsBlocked = Boolean(value);
+    if (this.playerActionsBlocked) this.clearHeldInput();
   }
 
   updateBlockedState() {
@@ -228,6 +234,7 @@ export class ProofInput {
   }
 
   movementAxes() {
+    if (this.playerActionsBlocked) return { x: 0, y: 0 };
     let x = this.move.x;
     let y = this.move.y;
     if (this.isHeld('moveRight')) x += 1;
@@ -240,7 +247,7 @@ export class ProofInput {
   }
 
   get sprinting() {
-    return this.touchSprinting || this.isHeld('sprint');
+    return !this.playerActionsBlocked && (this.touchSprinting || this.isHeld('sprint'));
   }
 
   isHeld(action) {

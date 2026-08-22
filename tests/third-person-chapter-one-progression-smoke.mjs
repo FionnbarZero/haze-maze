@@ -103,6 +103,10 @@ const blockedCastExpression = characterId => ({
 const GRID_STEP = .4;
 const PLAYER_CLEARANCE = .42;
 const MAX_ROUTE_REPLANS = 8;
+// Software WebGL can render slowly enough that one bounded simulation frame
+// crosses a grid node. Accept one grid step so the driver does not oscillate
+// around a waypoint while still requiring ordinary collision-aware movement.
+const WAYPOINT_REACHED_DISTANCE = GRID_STEP + .15;
 const keyFor = (x, z) => `${x}:${z}`;
 
 function navigationPath(state, target) {
@@ -247,7 +251,7 @@ async function walkWaypoint(target, waypoint, label, replans) {
       );
       throw new Error(`${label} normal movement became unavailable: ${JSON.stringify(diagnostics)}`);
     }
-    if (distance <= .27) return;
+    if (distance <= WAYPOINT_REACHED_DISTANCE) return;
     if (distance < bestDistance - .04) {
       bestDistance = distance;
       lastProgressAt = Date.now();

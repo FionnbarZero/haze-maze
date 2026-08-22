@@ -1,21 +1,22 @@
-import { createWorld } from './world.js?v=20260820-all-dragon-danger-v1';
+import { createWorld } from './world.js?v=20260822-safer-dragons-v2';
 import { createPlaceholderWitch } from './witch.js?v=20260820-chapter-one-v1';
-import { createPlaceholderDragon } from './dragon.js?v=20260821-simulation-time-v1';
-import { ProofInput } from './input.js?v=20260819-solo-cast-v1';
+import { createPlaceholderDragon } from './dragon.js?v=20260821-geode1-v1';
+import { ProofInput } from './input.js?v=20260821-geode1-v1';
 import { CharacterController } from './controller.js?v=20260820-all-dragon-danger-v1';
 import { ShoulderCamera } from './camera.js?v=20260820-all-dragon-danger-v1';
-import { LightningCombat } from './combat.js?v=20260821-simulation-time-v1';
-import { PouchInventory } from './inventory.js?v=20260821-simulation-time-v1';
+import { LightningCombat } from './combat.js?v=20260822-safer-dragons-v2';
+import { PouchInventory } from './inventory.js?v=20260821-geode1-v1';
 import { DebugTelemetry } from './debug.js?v=20260818-witchselect-v1';
 import { AdaptiveQualityController, initialHardwareScaling, resolveQualityRequest } from './quality.js?v=20260818-witchselect-v1';
 import { MobileQualificationRecorder } from './qualification.js?v=20260818-witchselect-v1';
 import { RemotePlayerReplica, SimulatedTeammateFeed } from './remote-player.js?v=20260821-simulation-time-v1';
-import { GreenWitchAbilities } from './green-witch.js?v=20260821-simulation-time-v1';
+import { GreenWitchAbilities } from './green-witch.js?v=20260822-geode1-target-reconcile-v1';
 import { CharacterSelectionFlow, PLAYABLE_WITCHES } from './character-selection.js?v=20260819-elemental-witches-v1';
 import { ChapterOneProgression } from './chapter-progression.js?v=20260820-chapter-one-v3';
 import { ChapterOneGeodeState } from './chapter-geode-state.js?v=20260820-chapter-one-v3';
 import { PERFORMANCE } from './config.js?v=20260821-simulation-time-v1';
 import { SimulationClock, runSimulationSteps } from './simulation-clock.js?v=20260821-simulation-time-v1';
+import { ChapterRespawnState } from './chapter-recovery.js?v=20260821-geode1-v1';
 
 const moduleStartedAt = performance.now();
 const qualityRequest = resolveQualityRequest();
@@ -89,10 +90,21 @@ try {
       actor.clearPatrol();
       return;
     }
+    const angle = spawn.patrolAngle || 0;
+    const aspect = spawn.patrolAspect || .7;
+    const along = new BABYLON.Vector3(Math.cos(angle), 0, Math.sin(angle));
+    const across = new BABYLON.Vector3(-along.z, 0, along.x);
+    const point = (alongScale, acrossScale) => new BABYLON.Vector3(
+      spawn.x + along.x * spawn.patrolRadius * alongScale + across.x * spawn.patrolRadius * aspect * acrossScale,
+      0,
+      spawn.z + along.z * spawn.patrolRadius * alongScale + across.z * spawn.patrolRadius * aspect * acrossScale
+    );
     actor.setPatrol([
-      new BABYLON.Vector3(spawn.x - spawn.patrolRadius, 0, spawn.z),
-      new BABYLON.Vector3(spawn.x + spawn.patrolRadius, 0, spawn.z)
-    ], spawn.patrolSpeed, .65);
+      point(-1, 0),
+      point(0, 1),
+      point(1, 0),
+      point(0, -1)
+    ], spawn.patrolSpeed, spawn.patrolPause || .9);
   };
   for (const [index, actor] of dragons.entries()) applyDragonPatrol(actor, world.dragonSpawns[index]);
   const controller = new CharacterController(BABYLON, world);
@@ -256,12 +268,14 @@ try {
     return entries[legacySpellSlots[requested] ?? 0]?.id || entries[0]?.id || requested;
   };
   const selectActiveSpell = spell => {
+    if (chapterRecovery.pending) return false;
     const selected = resolveActiveSpell(spell);
     return selectedCharacter === 'green'
       ? greenAbilities.selectSpell(selected)
       : combat.selectSpell(selected);
   };
   const castActiveSpell = spell => {
+    if (chapterRecovery.pending) return false;
     const now = simulationClock.time;
     if (routeMode === 'chapter1' && !inventory.canCastWithStaff()) {
       if (spell) {
@@ -293,6 +307,7 @@ try {
   greenAbilities.onMessage = showMessage;
   inventory.onOpenChange = open => input.setModalOpen(open);
   const castGreenUtility = cast => {
+    if (chapterRecovery.pending) return false;
     if (selectedCharacter === 'green' && !inventory.canCastWithStaff()) {
       showMessage('Mining Tools are active · equip the wand or staff to cast');
       return false;
@@ -470,10 +485,17 @@ try {
     }
   });
 
-  let defeatResetAt = 0;
-  const resetTechnicalRoute = () => {
+  let legacyDefeatResetAt = 0;
+  const chapterRecovery = new ChapterRespawnState();
+  const setChapterRecoveryGate = pending => {
+    input.setPlayerActionsBlocked(pending);
+    inventory.setPlayerActionsEnabled(!pending);
+  };
+  const resetFullRoute = () => {
     completed = false;
-    defeatResetAt = 0;
+    legacyDefeatResetAt = 0;
+    chapterRecovery.cancelForFullRestart();
+    setChapterRecoveryGate(false);
     simulationClock.reset(performance.now() / 1000);
     input.clearHeldInput();
     input.setCrouched(false);
@@ -508,7 +530,49 @@ try {
     updateRouteHud(worldState);
     showMessage('Qualification route reset · begin at the Moon Gate');
   };
-  combat.onPlayerDefeated = () => { defeatResetAt = simulationClock.time + .85; };
+  const recoverChapterAfterDefeat = time => {
+    const context = chapterRecovery.context;
+    if (!context) return false;
+
+    input.clearHeldInput();
+    input.setCrouched(false);
+    combat.recoverAfterDefeat(time);
+    inventory.resynchronizeCombatModifiers();
+    controller.reset();
+    localWitch.update(controller, input, 0, time);
+    if (selectedCharacter === 'green') greenAbilities.recoverAfterDefeat(time);
+    localWitch.root.setEnabled(true);
+    localWitch.root.scaling.setAll(1);
+    localWitch.setVisibility(1);
+
+    const resetDragonIds = [];
+    for (const dragonId of context.engagedDragonIds) {
+      const actor = dragons.find(candidate => candidate.id === dragonId);
+      if (actor?.recoverAfterDefeat(time)) resetDragonIds.push(actor.id);
+    }
+    greenAbilities.reconcileRecoveredDragons(resetDragonIds, time);
+    updateCharacterInterface();
+    shoulderCamera.setLook(0, 0);
+    shoulderCamera.snapNextUpdate();
+    world.setChapterProgression(chapterProgression.snapshot());
+    worldState = world.snapshot(dragons);
+    updateRouteHud(worldState);
+    chapterRecovery.complete(time, resetDragonIds, controller.position);
+    setChapterRecoveryGate(false);
+    input.active = true;
+    showMessage('Returned to the Moon Gate · mining and Chapter progress preserved');
+    return true;
+  };
+  combat.onPlayerDefeated = context => {
+    if (routeMode === 'chapter1') {
+      if (chapterRecovery.begin(context)) {
+        input.clearHeldInput();
+        setChapterRecoveryGate(true);
+      }
+      return;
+    }
+    legacyDefeatResetAt = simulationClock.time + .85;
+  };
 
   const snapshotProof = () => ({
     ready: scene.isReady(),
@@ -536,6 +600,7 @@ try {
       heldActions: input.heldActionNames(),
       pendingActions: input.pendingActionNames(),
       modalOpen: input.modalOpen,
+      playerActionsBlocked: input.playerActionsBlocked,
       coarsePointer: matchMedia('(pointer:coarse)').matches
     },
     player: controller.snapshot(),
@@ -578,6 +643,10 @@ try {
     },
     performance: telemetry.snapshot(),
     timing: simulationClock.snapshot(),
+    recovery: {
+      ...chapterRecovery.snapshot(),
+      dragonSpawns: world.dragonSpawns.map(spawn => ({ ...spawn }))
+    },
     quality: qualityController.snapshot(),
     meshCount: scene.meshes.length,
     engine: `Babylon.js WebGL ${engine.webGLVersion}`
@@ -588,7 +657,7 @@ try {
     telemetry,
     qualityController,
     getState: snapshotProof,
-    resetRoute: resetTechnicalRoute
+    resetRoute: resetFullRoute
   });
 
   let lastTime = performance.now();
@@ -626,9 +695,11 @@ try {
       } else {
         world.setRuneCount(inventory.runes);
       }
-      const routeEvents = world.update(controller, dragons, deltaTime);
+      const routeEvents = world.update(controller, dragons, deltaTime, {
+        playerActionsEnabled: !chapterRecovery.pending
+      });
       worldState = world.snapshot(dragons);
-      if (chapterProgression && worldState.doors.first.state === 'OPEN') {
+      if (chapterProgression && !chapterRecovery.pending && worldState.doors.first.state === 'OPEN') {
         chapterProgression.markSunkenGateOpened();
         if (worldState.route.sunkenGate) chapterProgression.completeGardenMaze();
         world.setChapterProgression(chapterProgression.snapshot());
@@ -648,7 +719,8 @@ try {
         localWitch.root.setEnabled(false);
         document.exitPointerLock?.();
       }
-      if (defeatResetAt && time >= defeatResetAt) resetTechnicalRoute();
+      if (routeMode === 'chapter1' && chapterRecovery.isDue(time)) recoverChapterAfterDefeat(time);
+      if (legacyDefeatResetAt && time >= legacyDefeatResetAt) resetFullRoute();
     });
     updateRouteHud(worldState);
     scene.render();
@@ -710,19 +782,21 @@ try {
     selectCharacter: characterId => openingFlow.select(characterId),
     confirmCharacterSelection: () => openingFlow.confirm(),
     setMovement: (x, y, sprint = false) => {
+      if (chapterRecovery.pending) return false;
       input.move.x = Math.max(-1, Math.min(1, x));
       input.move.y = Math.max(-1, Math.min(1, y));
       if (sprint) input.keys.add('ShiftLeft'); else input.keys.delete('ShiftLeft');
+      return true;
     },
-    stopMovement: () => { input.move.x = 0; input.move.y = 0; input.keys.delete('ShiftLeft'); },
+    stopMovement: () => { input.move.x = 0; input.move.y = 0; input.keys.delete('ShiftLeft'); return true; },
     playerPosition: () => ({ x: controller.position.x, y: controller.position.y, z: controller.position.z }),
     look: (yawDelta, pitchDelta = 0) => { input.lookDelta.x += yawDelta; input.lookDelta.y += pitchDelta; },
     setLook: (yaw, pitch) => shoulderCamera.setLook(yaw, pitch),
-    setAim: value => { input.aiming = Boolean(value); },
-    jump: () => input.actions.add('jump'),
-    crouch: () => input.toggleCrouch(),
-    setCrouched: value => input.setCrouched(value),
-    switchShoulder: () => shoulderCamera.switchShoulder(),
+    setAim: value => { if (chapterRecovery.pending) return false; input.aiming = Boolean(value); return true; },
+    jump: () => { if (chapterRecovery.pending) return false; input.actions.add('jump'); return true; },
+    crouch: () => { if (chapterRecovery.pending) return false; input.toggleCrouch(); return true; },
+    setCrouched: value => { if (chapterRecovery.pending) return false; input.setCrouched(value); return true; },
+    switchShoulder: () => { if (chapterRecovery.pending) return false; shoulderCamera.switchShoulder(); return true; },
     selectSpell: selectActiveSpell,
     castSpell: castActiveSpell,
     castLightning: () => castActiveSpell('lightning'),
@@ -732,8 +806,8 @@ try {
     castIceLance: () => castActiveSpell('iceLance'),
     castFireball: () => castActiveSpell('fireball'),
     castFireRing: () => castActiveSpell('fireRing'),
-    castGreenVine: () => greenAbilities.castVineTrap(simulationClock.time),
-    castGreenRestore: (target = 'smart') => target === 'smart'
+    castGreenVine: () => chapterRecovery.pending ? false : greenAbilities.castVineTrap(simulationClock.time),
+    castGreenRestore: (target = 'smart') => chapterRecovery.pending ? false : target === 'smart'
       ? greenAbilities.castSmartRestore(simulationClock.time)
       : greenAbilities.castRestore(simulationClock.time, target === 'friend'),
     setGreenRestoreFriendTargeted: value => greenAbilities.setFriendTargeted(value),
@@ -741,9 +815,13 @@ try {
     resetGreenWitch: () => greenAbilities.reset(simulationClock.time),
     setGreenSimulationEnabled: value => greenSimulation.setEnabled(value),
     receiveGreenSnapshot: snapshot => greenReplica.receiveSnapshot(snapshot),
-    receiveDragonDamage: amount => combat.receiveDragonDamage(amount, simulationClock.time),
-    damageActiveDragon: amount => (combat.currentTarget || dragon).damage(amount, simulationClock.time),
-    damageDragon: (index, amount) => dragons[index]?.damage(amount, simulationClock.time) || false,
+    receiveDragonDamage: (amount, dragonId = null) => {
+      const source = dragonId === null ? combat.threatDragon : dragons.find(actor => actor.id === dragonId);
+      if (dragonId !== null && (!source || !source.alive)) return false;
+      return combat.receiveDragonDamage(amount, simulationClock.time, source?.id || null);
+    },
+    damageActiveDragon: amount => chapterRecovery.pending ? false : (combat.currentTarget || dragon).damage(amount, simulationClock.time),
+    damageDragon: (index, amount) => chapterRecovery.pending ? false : dragons[index]?.damage(amount, simulationClock.time) || false,
     focusDragon: index => {
       const target = dragons[index];
       if (!target) return null;
@@ -766,7 +844,7 @@ try {
     setEquipmentMode: mode => inventory.toggleEquipment(mode),
     strikeNearbyGeode: () => inventory.strikeNearbyGeode(),
     teleport: (x, y, z) => { controller.teleport(x, y, z); shoulderCamera.snapNextUpdate(); },
-    resetRoute: resetTechnicalRoute,
+    resetRoute: resetFullRoute,
     resetPerformance: () => telemetry.reset(),
     dispose: () => {
       engine.stopRenderLoop();

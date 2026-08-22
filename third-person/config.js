@@ -167,10 +167,10 @@ export const COMBAT = Object.freeze({
   aegisCooldown: 8,
   aegisDuration: 5,
   aegisPotionDurationMultiplier: 2,
-  dragonAttackRange: 2.75,
-  dragonAttackWindup: 0.9,
-  dragonAttackInterval: 1.8,
-  dragonAttackDamage: 15,
+  dragonAttackRange: 2.35,
+  dragonAttackWindup: 1.35,
+  dragonAttackInterval: 3.5,
+  dragonAttackDamage: 10,
   dragonAttackAnimationDuration: 0.46,
   staffRayTerminalTolerance: 0.12,
   aimAssistRadius: 1.18,
@@ -196,6 +196,7 @@ export const WORLD = Object.freeze({
   exitDuration: 1.15,
   dragonCount: 10,
   aggressiveDragonRatio: 1,
+  chapterGeodeDragonClearance: 3,
   defaultMazeSeed: 'moonhollow-expanded-v1'
 });
 
