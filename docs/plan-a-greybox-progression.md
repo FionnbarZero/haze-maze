@@ -30,7 +30,7 @@ Only after that loop is safe and fun should Plan A expand to four runes and then
 - A tool has exactly one current owner or one world location. Multiplayer replication must synchronize that ownership state without creating additional copies.
 - Mining requires one Witch to carry both the pick and hammer. Witches can give or trade either tool or both tools to another Witch.
 - Use one crafting altar in the antechamber before the Boss Door.
-- Keep ten dragons total: nine passive dragons randomly distributed through the maze and one aggressive Boss Dragon confined to its dedicated room. The Boss is the one dangerous dragon in this initial version.
+- Keep ten dangerous dragons total: nine patrol deterministically varied routes through the maze, while the central dragon remains stationary. Only the nearest eligible dragon attacks at one time.
 - Use a 25% Water Sprite trigger chance and a 45-second cooldown per fountain as initial configurable values.
 - Record crystal slot use, but postpone a hard inventory-slot limit until playtesting proves it adds value.
 - Build Raw and Refined Crystals first. Make the Greater Crystal recipe visible, but defer its full gameplay tier until the final Plan A stage and never require it for finishing the level.

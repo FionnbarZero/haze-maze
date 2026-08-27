@@ -1,5 +1,5 @@
-import { PLAYER, POUCH, WORLD } from './config.js?v=20260822-safer-dragons-v2';
-import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260822-safer-dragons-v1';
+import { PLAYER, POUCH, WORLD } from './config.js?v=20260822-dragon-placement-v1';
+import { createMazeLayout, createSeededRandom } from './maze-layout.js?v=20260822-dragon-placement-v1';
 import { createChapterOneLevelPlan } from './chapter-level-plan.js?v=20260820-chapter-one-v2';
 import { hexColor3 } from './utils.js';
 
@@ -321,16 +321,15 @@ export function createWorld(BABYLON, scene, shadowGenerator, options = {}) {
     });
   }
 
-  const halfWidth = WORLD.floorWidth / 2;
-  const halfDepth = WORLD.floorDepth / 2;
   const wallY = WORLD.wallHeight / 2;
-  addBox('expanded-outer-wall-west', new BABYLON.Vector3(-halfWidth + WORLD.wallThickness / 2, wallY, 0), new BABYLON.Vector3(WORLD.wallThickness, WORLD.wallHeight, WORLD.floorDepth), { castsShadow: true });
-  addBox('expanded-outer-wall-east', new BABYLON.Vector3(halfWidth - WORLD.wallThickness / 2, wallY, 0), new BABYLON.Vector3(WORLD.wallThickness, WORLD.wallHeight, WORLD.floorDepth), { castsShadow: true });
-  addBox('expanded-outer-wall-south', new BABYLON.Vector3(0, wallY, -halfDepth + WORLD.wallThickness / 2), new BABYLON.Vector3(WORLD.floorWidth, WORLD.wallHeight, WORLD.wallThickness), { castsShadow: true });
-  const finalGap = 4.4;
-  const northSideWidth = (WORLD.floorWidth - finalGap) / 2;
-  addBox('expanded-outer-wall-northwest', new BABYLON.Vector3(-(finalGap / 2 + northSideWidth / 2), wallY, halfDepth - WORLD.wallThickness / 2), new BABYLON.Vector3(northSideWidth, WORLD.wallHeight, WORLD.wallThickness), { castsShadow: true });
-  addBox('expanded-outer-wall-northeast', new BABYLON.Vector3(finalGap / 2 + northSideWidth / 2, wallY, halfDepth - WORLD.wallThickness / 2), new BABYLON.Vector3(northSideWidth, WORLD.wallHeight, WORLD.wallThickness), { castsShadow: true });
+  for (const wall of layout.outerWalls) {
+    addBox(
+      `expanded-${wall.id}`,
+      new BABYLON.Vector3(wall.x, wallY, wall.z),
+      new BABYLON.Vector3(wall.width, WORLD.wallHeight, wall.depth),
+      { castsShadow: true }
+    );
+  }
 
   for (const wall of layout.walls) {
     addBox(

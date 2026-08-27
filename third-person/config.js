@@ -182,6 +182,8 @@ export const COMBAT = Object.freeze({
   dragonDefeatDuration: 0.9
 });
 
+const DRAGON_PLACEMENT_SAFETY_MARGIN = .15;
+
 export const WORLD = Object.freeze({
   floorWidth: 28,
   floorDepth: 52,
@@ -196,7 +198,11 @@ export const WORLD = Object.freeze({
   exitDuration: 1.15,
   dragonCount: 10,
   aggressiveDragonRatio: 1,
-  chapterGeodeDragonClearance: 3,
+  dragonPlacementSafetyMargin: DRAGON_PLACEMENT_SAFETY_MARGIN,
+  chapterGeodeDragonSafetyMargin: DRAGON_PLACEMENT_SAFETY_MARGIN,
+  chapterGeodeDragonClearance: COMBAT.dragonAttackRange
+    + POUCH.geodeMineRadius
+    + DRAGON_PLACEMENT_SAFETY_MARGIN,
   defaultMazeSeed: 'moonhollow-expanded-v1'
 });
 

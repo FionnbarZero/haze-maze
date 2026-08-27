@@ -1,3 +1,5 @@
+import { COMBAT, WORLD } from './config.js?v=20260822-dragon-placement-v1';
+
 const BASELINE_WIDTH = 16;
 const BASELINE_DEPTH = 30;
 
@@ -74,6 +76,97 @@ const verticalPartition = ({ id, x, minimumZ, maximumZ, gapCenter, gapWidth = 3.
   ];
 };
 
+const createOuterWalls = (width, depth, thickness) => {
+  const halfWidth = width / 2;
+  const halfDepth = depth / 2;
+  const finalGap = 4.4;
+  const northSideWidth = (width - finalGap) / 2;
+  return [
+    { id: 'outer-wall-west', x: -halfWidth + thickness / 2, z: 0, width: thickness, depth },
+    { id: 'outer-wall-east', x: halfWidth - thickness / 2, z: 0, width: thickness, depth },
+    { id: 'outer-wall-south', x: 0, z: -halfDepth + thickness / 2, width, depth: thickness },
+    {
+      id: 'outer-wall-northwest',
+      x: -(finalGap / 2 + northSideWidth / 2),
+      z: halfDepth - thickness / 2,
+      width: northSideWidth,
+      depth: thickness
+    },
+    {
+      id: 'outer-wall-northeast',
+      x: finalGap / 2 + northSideWidth / 2,
+      z: halfDepth - thickness / 2,
+      width: northSideWidth,
+      depth: thickness
+    }
+  ];
+};
+
+const createDragonCandidate = (baseX, baseZ, random, jitter = 1.1) => {
+  const patrolRadius = .55 + random() * .45;
+  return {
+    x: baseX + (random() - .5) * jitter,
+    z: baseZ + (random() - .5) * jitter,
+    patrolRadius,
+    patrolSpeed: .48 + random() * .38,
+    patrolAngle: random() * Math.PI,
+    patrolAspect: .55 + random() * .35,
+    patrolPause: .85 + random() * 1.15
+  };
+};
+
+const circleIntersectsWall = (x, z, radius, wall) => {
+  const minimumX = wall.x - wall.width / 2;
+  const maximumX = wall.x + wall.width / 2;
+  const minimumZ = wall.z - wall.depth / 2;
+  const maximumZ = wall.z + wall.depth / 2;
+  const nearestX = Math.max(minimumX, Math.min(maximumX, x));
+  const nearestZ = Math.max(minimumZ, Math.min(maximumZ, z));
+  const deltaX = x - nearestX;
+  const deltaZ = z - nearestZ;
+  return deltaX * deltaX + deltaZ * deltaZ <= radius * radius;
+};
+
+export const dragonPatrolCollisionEnvelopeRadius = (dragon, {
+  collisionRadius = COMBAT.dragonCollisionRadius,
+  geometryMargin = WORLD.dragonPlacementSafetyMargin
+} = {}) => Math.max(0, Number(dragon?.patrolRadius) || 0) + collisionRadius + geometryMargin;
+
+export function dragonPlacementIsSafe(dragon, {
+  walls = [],
+  width,
+  depth,
+  wallThickness,
+  protectedPositions = [],
+  protectedRadius = 0,
+  collisionRadius = COMBAT.dragonCollisionRadius,
+  geometryMargin = WORLD.dragonPlacementSafetyMargin
+} = {}) {
+  if (!Number.isFinite(dragon?.x) || !Number.isFinite(dragon?.z)) return false;
+  const patrolRadius = Math.max(0, Number(dragon.patrolRadius) || 0);
+  const collisionEnvelope = dragonPatrolCollisionEnvelopeRadius(dragon, { collisionRadius, geometryMargin });
+  const innerHalfWidth = width / 2 - wallThickness;
+  const innerHalfDepth = depth / 2 - wallThickness;
+  if (Math.abs(dragon.x) + collisionEnvelope > innerHalfWidth
+    || Math.abs(dragon.z) + collisionEnvelope > innerHalfDepth) return false;
+  if (walls.some(wall => circleIntersectsWall(dragon.x, dragon.z, collisionEnvelope, wall))) return false;
+  return protectedPositions.every(position => (
+    Number.isFinite(position?.x)
+      && Number.isFinite(position?.z)
+      && Math.hypot(dragon.x - position.x, dragon.z - position.z) >= protectedRadius + patrolRadius
+  ));
+}
+
+const fallbackDragonBases = (width, depth) => {
+  const positions = [];
+  const maximumX = width / 2 - 3;
+  const maximumZ = depth / 2 - 3;
+  for (let z = -maximumZ; z <= maximumZ + 1e-9; z += 3.2) {
+    for (let x = -maximumX; x <= maximumX + 1e-9; x += 3.2) positions.push([x, z]);
+  }
+  return positions;
+};
+
 export const createMazeLayout = ({
   seed = 'moonhollow-expanded-v1',
   width = 28,
@@ -121,40 +214,59 @@ export const createMazeLayout = ({
       }));
     }
   });
+  const outerWalls = createOuterWalls(width, depth, wallThickness);
 
   const dragonCandidates = shuffle([
     [-9.4, -21], [9.1, -20.4], [-8.8, -12], [8.9, -11.4],
     [-9.2, -.2], [9.2, .4], [-8.9, 9.8], [8.8, 10.6],
     [-9.1, 19.7], [0, 20.5], [9, 20.2], [-.2, -11.5],
     [-12.1, -6.8], [12.1, -6.8]
-  ], random).map(([baseX, baseZ]) => {
-    const patrolRadius = .55 + random() * .45;
-    return {
-      x: baseX + (random() - .5) * 1.1,
-      z: baseZ + (random() - .5) * 1.1,
-      patrolRadius,
-      patrolSpeed: .48 + random() * .38,
-      patrolAngle: random() * Math.PI,
-      patrolAspect: .55 + random() * .35,
-      patrolPause: .85 + random() * 1.15
-    };
-  });
-  const validDragonCandidates = dragonCandidates.filter(candidate => protectedPositions.every(position => (
-    Math.hypot(candidate.x - position.x, candidate.z - position.z)
-      >= protectedRadius + candidate.patrolRadius
-  )));
+  ], random).map(([baseX, baseZ]) => createDragonCandidate(baseX, baseZ, random));
+  const placementOptions = {
+    walls: [...walls, ...outerWalls],
+    width,
+    depth,
+    wallThickness,
+    protectedPositions,
+    protectedRadius
+  };
+  const validDragonCandidates = dragonCandidates.filter(candidate => dragonPlacementIsSafe(candidate, placementOptions));
   if (validDragonCandidates.length < 9) {
-    throw new Error(`Maze seed ${seed} has only ${validDragonCandidates.length} safe dragon patrol sockets`);
+    const fallbackRandom = createSeededRandom(`${seed}:dragon-placement-fallback`);
+    const fallbackCandidates = shuffle(fallbackDragonBases(width, depth), fallbackRandom)
+      .map(([baseX, baseZ]) => createDragonCandidate(baseX, baseZ, fallbackRandom, .5));
+    for (const candidate of fallbackCandidates) {
+      if (validDragonCandidates.length >= 9) break;
+      if (!dragonPlacementIsSafe(candidate, placementOptions)) continue;
+      const overlapsSelected = validDragonCandidates.some(selected => (
+        Math.hypot(candidate.x - selected.x, candidate.z - selected.z)
+          < dragonPatrolCollisionEnvelopeRadius(candidate)
+            + dragonPatrolCollisionEnvelopeRadius(selected)
+      ));
+      if (!overlapsSelected) validDragonCandidates.push(candidate);
+    }
+  }
+  if (validDragonCandidates.length < 9) {
+    throw new Error(`Maze seed ${seed} has only ${validDragonCandidates.length} safe dragon patrol sockets after deterministic expansion`);
+  }
+  let stationaryDragon = {
+    id: 'dragon-0',
+    x: (random() - .5) * .35,
+    z: 9 + (random() - .5) * .35,
+    aggressive: true,
+    patrolRadius: 0,
+    patrolSpeed: 0
+  };
+  if (!dragonPlacementIsSafe(stationaryDragon, placementOptions)) {
+    const stationaryRandom = createSeededRandom(`${seed}:stationary-dragon-fallback`);
+    const stationaryFallback = shuffle(fallbackDragonBases(width, depth), stationaryRandom)
+      .map(([x, z]) => ({ ...stationaryDragon, x, z }))
+      .find(candidate => dragonPlacementIsSafe(candidate, placementOptions));
+    if (!stationaryFallback) throw new Error(`Maze seed ${seed} has no safe stationary dragon socket`);
+    stationaryDragon = stationaryFallback;
   }
   const dragonSpawns = [
-    {
-      id: 'dragon-0',
-      x: (random() - .5) * .35,
-      z: 9 + (random() - .5) * .35,
-      aggressive: true,
-      patrolRadius: 0,
-      patrolSpeed: 0
-    },
+    stationaryDragon,
     ...validDragonCandidates.slice(0, 9).map((candidate, index) => ({
       id: `dragon-${index + 1}`,
       x: candidate.x,
@@ -199,6 +311,7 @@ export const createMazeLayout = ({
       areaMultiplier: width * depth / (BASELINE_WIDTH * BASELINE_DEPTH)
     },
     walls,
+    outerWalls,
     dragonSpawns,
     fountainPositions,
     treePositions,

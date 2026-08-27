@@ -1,4 +1,4 @@
-import { createWorld } from './world.js?v=20260822-safer-dragons-v2';
+import { createWorld } from './world.js?v=20260822-dragon-placement-v1';
 import { createPlaceholderWitch } from './witch.js?v=20260820-chapter-one-v1';
 import { createPlaceholderDragon } from './dragon.js?v=20260821-geode1-v1';
 import { ProofInput } from './input.js?v=20260821-geode1-v1';

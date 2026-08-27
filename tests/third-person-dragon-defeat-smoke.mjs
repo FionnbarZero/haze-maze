@@ -87,11 +87,9 @@ const waitFor = async (expression, timeoutMilliseconds = 45000) => {
 const snapshot = () => evaluate('window.__HMW_THIRD_PERSON_PROOF__.snapshot()');
 const TEST_DRAGON_INDEX = 1;
 const TEST_DRAGON_ID = `dragon-${TEST_DRAGON_INDEX}`;
-// expanded-smoke-seed: this north-west room position has a direct rendered line to dragon-1.
-const TEST_DRAGON_SIGHT_LINE = Object.freeze({ x: -9, z: 17 });
 const testDragon = state => state.dragons[TEST_DRAGON_INDEX];
 const resetNearTestDragon = async () => {
-  await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.focusDragon(${TEST_DRAGON_INDEX}); window.__HMW_THIRD_PERSON_PROOF__.teleport(${TEST_DRAGON_SIGHT_LINE.x}, 0, ${TEST_DRAGON_SIGHT_LINE.z}); true`);
+  await evaluate(`window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.focusDragon(${TEST_DRAGON_INDEX}); window.__HMW_THIRD_PERSON_PROOF__.teleportNearDragon(${TEST_DRAGON_INDEX}, 4.2); true`);
   await delay(250);
 };
 const acquireTestDragonTarget = async (label, timeoutMilliseconds = 12000) => {
@@ -121,13 +119,20 @@ const acquireTestDragonTarget = async (label, timeoutMilliseconds = 12000) => {
     combat: state.combat
   })}`);
 };
-const castLightningWithO = async () => {
+const castLightningWithO = async ({ expectDamage = true } = {}) => {
+  await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.cooldownRemaining <= 0');
+  const before = await snapshot();
+  const healthBefore = testDragon(before).health;
   await evaluate(`(() => {
     window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, code: 'KeyO', key: 'o' }));
     window.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code: 'KeyO', key: 'o' }));
     return true;
   })()`);
-  await delay(430);
+  if (expectDamage) {
+    await waitFor(`window.__HMW_THIRD_PERSON_PROOF__.snapshot().dragons[${TEST_DRAGON_INDEX}].health < ${healthBefore}`);
+  } else {
+    await delay(430);
+  }
   return snapshot();
 };
 
@@ -160,7 +165,7 @@ const hud = await evaluate(`({
   health: document.querySelector('#target-health-copy').textContent,
   fill: document.querySelector('#target-health-fill').style.transform
 })`);
-await castLightningWithO();
+await castLightningWithO({ expectDamage: false });
 const afterDuplicateCast = await snapshot();
 
 await resetNearTestDragon();

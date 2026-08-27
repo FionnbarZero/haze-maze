@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { COMBAT, PERFORMANCE } from '../third-person/config.js';
 import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
 
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
@@ -138,10 +139,18 @@ try {
   assert.equal(dragonsClearOfWalls(await snapshot()), true, 'dragon patrols must not overlap maze walls');
 
   await evaluate('window.__HMW_THIRD_PERSON_PROOF__.resetRoute(); window.__HMW_THIRD_PERSON_PROOF__.teleportNearDragon(1, 1.8); true');
-  await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.damageTaken > 0', 5000);
+  await waitFor("window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.dragonAttackEvents.filter(event => event.dragonId === 'dragon-1').length >= 2", 12000);
   const secondDragonContact = await snapshot();
+  const consecutiveAttacks = secondDragonContact.combat.dragonAttackEvents
+    .filter(event => event.dragonId === 'dragon-1')
+    .slice(-2);
+  const attackInterval = consecutiveAttacks[1].time - consecutiveAttacks[0].time;
   assert.equal(secondDragonContact.dragons[1].aggressive, true);
   assert.equal(secondDragonContact.combat.threatDragonId, 'dragon-1');
+  assert.ok(
+    Math.abs(attackInterval - COMBAT.dragonAttackInterval) <= PERFORMANCE.maximumSimulationDelta + .02,
+    `consecutive dragon attacks must remain ${COMBAT.dragonAttackInterval}s apart; received ${attackInterval}s`
+  );
   assert.equal(/dragon/i.test(secondDragonContact.camera.collisionMesh), false,
     'a nearby dragon must not collapse the third-person camera boom');
 
@@ -189,6 +198,7 @@ try {
       total: initial.dragons.length,
       aggressive: initial.dragons.filter(dragon => dragon.aggressive).length,
       secondDragonDamageTaken: secondDragonContact.combat.damageTaken,
+      secondDragonAttackInterval: attackInterval,
       dragonZeroDamageTaken: dragonZeroContact.combat.damageTaken
     },
     doors: completed.world.doors,

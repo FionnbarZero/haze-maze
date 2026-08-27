@@ -1,4 +1,5 @@
 import { LEGACY_SMOKE_SEED, navigateToProof } from './third-person-smoke-navigation.mjs';
+import { COMBAT } from '../third-person/config.js';
 
 const debugEndpoint = process.env.HMW_CDP_ENDPOINT || 'http://127.0.0.1:9223';
 const gameUrl = process.env.HMW_GAME_URL || 'http://127.0.0.1:8766/third-person.html?quality=low&route=legacy';
@@ -142,7 +143,7 @@ await delay(1350);
 const aegisAfter = await snapshot();
 
 await resetAt(0, 7.35);
-await delay(1150);
+await waitFor('window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.playerHealth < window.__HMW_THIRD_PERSON_PROOF__.snapshot().combat.playerMaximumHealth', 6000);
 const unshieldedAfter = await snapshot();
 
 const berryRouteStart = await snapshot();
@@ -308,7 +309,7 @@ const checks = {
   aegisAbsorbedStrike: aegisAfter.combat.aegis.absorbedHits >= 1
     && aegisAfter.combat.playerHealth === aegisAfter.combat.playerMaximumHealth,
   unshieldedStrikeDamaged: unshieldedAfter.combat.playerHealth < unshieldedAfter.combat.playerMaximumHealth
-    && unshieldedAfter.combat.damageTaken >= 15,
+    && unshieldedAfter.combat.damageTaken >= COMBAT.dragonAttackDamage,
   berryPickupCollected: berryCollected.inventory.healthBerries === 1
     && berryCollected.inventory.pickups[0].collected
     && berryCollectedHud.count === '1 berry'

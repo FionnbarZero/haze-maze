@@ -12,12 +12,55 @@ import { ChapterOneInteractions, EQUIPMENT_MODES } from '../third-person/chapter
 import { ChapterOneGeodeState } from '../third-person/chapter-geode-state.js';
 import { ChapterOneProgression } from '../third-person/chapter-progression.js';
 import { spellDamageMultiplier } from '../third-person/combat.js';
-import { WORLD } from '../third-person/config.js';
+import { COMBAT, POUCH, WORLD } from '../third-person/config.js';
 import { createMazeLayout } from '../third-person/maze-layout.js';
 
 const createPlan = seed => {
   const layout = createMazeLayout({ seed });
   return { layout, plan: createChapterOneLevelPlan({ seed, layout }) };
+};
+
+const expectedGeodeClearance = COMBAT.dragonAttackRange
+  + POUCH.geodeMineRadius
+  + WORLD.chapterGeodeDragonSafetyMargin;
+
+const collisionEnvelopeRadius = dragon => dragon.patrolRadius
+  + COMBAT.dragonCollisionRadius
+  + WORLD.dragonPlacementSafetyMargin;
+
+const circleIntersectsWall = (dragon, radius, wall) => {
+  const nearestX = Math.max(wall.x - wall.width / 2, Math.min(wall.x + wall.width / 2, dragon.x));
+  const nearestZ = Math.max(wall.z - wall.depth / 2, Math.min(wall.z + wall.depth / 2, dragon.z));
+  return (dragon.x - nearestX) ** 2 + (dragon.z - nearestZ) ** 2 <= radius ** 2;
+};
+
+const protectedChapterLayout = (seed, plan) => createMazeLayout({
+  seed,
+  width: WORLD.floorWidth,
+  depth: WORLD.floorDepth,
+  wallThickness: WORLD.wallThickness,
+  protectedPositions: [...plan.requiredGeodes, ...plan.optionalGeodes].map(geode => geode.position),
+  protectedRadius: expectedGeodeClearance
+});
+
+const assertChapterDragonSafety = (layout, plan, seed) => {
+  const protectedPositions = [...plan.requiredGeodes, ...plan.optionalGeodes].map(geode => geode.position);
+  const innerHalfWidth = layout.dimensions.width / 2 - WORLD.wallThickness;
+  const innerHalfDepth = layout.dimensions.depth / 2 - WORLD.wallThickness;
+  assert.equal(layout.dragonSpawns.length, WORLD.dragonCount, `${seed} dragon count`);
+  assert.equal(layout.dragonSpawns.filter(dragon => dragon.aggressive).length, WORLD.dragonCount, `${seed} aggressive count`);
+  assert.equal(layout.dragonSpawns.filter(dragon => dragon.patrolRadius > 0).length, 9, `${seed} patrol count`);
+  for (const dragon of layout.dragonSpawns) {
+    const collisionEnvelope = collisionEnvelopeRadius(dragon);
+    assert.ok(Math.abs(dragon.x) + collisionEnvelope <= innerHalfWidth, `${seed} ${dragon.id} x boundary`);
+    assert.ok(Math.abs(dragon.z) + collisionEnvelope <= innerHalfDepth, `${seed} ${dragon.id} z boundary`);
+    assert.ok([...layout.walls, ...layout.outerWalls]
+      .every(wall => !circleIntersectsWall(dragon, collisionEnvelope, wall)),
+      `${seed} ${dragon.id} wall clearance`);
+    assert.ok(protectedPositions.every(position => (
+      Math.hypot(dragon.x - position.x, dragon.z - position.z) - dragon.patrolRadius >= expectedGeodeClearance
+    )), `${seed} ${dragon.id} geode mining-area clearance`);
+  }
 };
 
 test('250 deterministic seeds produce exactly three reachable required fragments before the gate', () => {
@@ -33,18 +76,19 @@ test('250 deterministic seeds produce exactly three reachable required fragments
     assert.ok(plan.requiredGeodes.every(geode => geode.position.z < plan.sunkenGate.z));
     assert.deepEqual(repeated, plan, `${seed} should produce a repeatable plan`);
 
-    const protectedPositions = [...plan.requiredGeodes, ...plan.optionalGeodes]
-      .map(geode => geode.position);
-    const protectedLayout = createMazeLayout({
-      seed,
-      protectedPositions,
-      protectedRadius: WORLD.chapterGeodeDragonClearance
-    });
-    assert.equal(protectedLayout.dragonSpawns.length, WORLD.dragonCount);
-    assert.ok(protectedLayout.dragonSpawns.slice(1).every(dragon => protectedPositions.every(position => (
-      Math.hypot(dragon.x - position.x, dragon.z - position.z)
-        >= WORLD.chapterGeodeDragonClearance + dragon.patrolRadius
-    ))), `${seed} should keep every Chapter geode clear of patrol envelopes`);
+    const protectedLayout = protectedChapterLayout(seed, plan);
+    const repeatedProtectedLayout = protectedChapterLayout(seed, plan);
+    assert.deepEqual(repeatedProtectedLayout, protectedLayout, `${seed} protected layout should remain deterministic`);
+    assertChapterDragonSafety(protectedLayout, plan, seed);
+  }
+});
+
+test('1000 additional Chapter seeds construct complete safe deterministic dragon layouts', () => {
+  for (let index = 0; index < 1000; index += 1) {
+    const seed = `chapter-one-generation-sweep-${index}`;
+    const { plan } = createPlan(seed);
+    const protectedLayout = protectedChapterLayout(seed, plan);
+    assertChapterDragonSafety(protectedLayout, plan, seed);
   }
 });
 
