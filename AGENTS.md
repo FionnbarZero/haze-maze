@@ -35,6 +35,22 @@ before beginning a substantial implementation.
 
 # Source control
 
+Before editing, confirm the intended worktree and branch, then refresh the remote
+base explicitly:
+
+```sh
+git fetch origin
+node scripts/repository-safety-preflight.mjs --expect-branch codex/your-task-branch --base origin/master
+```
+
+Replace the example task branch with the branch you intend to edit. Treat the
+preflight as advisory: read every warning and resolve unexpected branch,
+dirty-worktree, or divergence results before continuing. It performs no fetches or
+repository changes and intentionally exits successfully when it reports warnings.
+Never switch, reset, clean, delete, or commit another worktree while completing a
+task. Preserve rescue branches and unrelated WIP unless the user explicitly puts
+them in scope.
+
 When committing code, include a list of all prompts between now and the last commit, e.g.:
 
 ```
